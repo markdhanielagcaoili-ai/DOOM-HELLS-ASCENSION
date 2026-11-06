@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOOM: HELL'S ASCENSION — 3D Kinetic FPS & Game Design Project</title>
+  <meta name="description" content="DOOM: HELL'S ASCENSION — Original 3D Raycasting First-Person Shooter and Complete 6-Criteria Game Design Specification." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- TOP COMMAND NAVIGATION BAR -->
+  <header class="top-nav">
+    <div class="brand-cluster">
+      <span class="brand-sigil">❖</span>
+      <div>
+        <h1 class="brand-title">DOOM: <span class="accent-crimson">HELL'S ASCENSION</span></h1>
+        <p class="brand-sub">KINETIC VERTICAL-ASCENSION FPS // ENGINE V1.0</p>
+      </div>
+    </div>
+
+    <nav class="nav-tabs" aria-label="Main view navigation">
+      <button class="nav-tab active" data-view="view-game" id="tab-btn-game">
+        <span class="tab-icon">⌖</span> PLAY FPS SIMULATION
+      </button>
+      <button class="nav-tab" data-view="view-criteria" id="tab-btn-criteria">
+        <span class="tab-icon">📜</span> 6-CRITERIA DESIGN RUBRIC (60 PTS)
+      </button>
+      <button class="nav-tab" data-view="view-codex" id="tab-btn-codex">
+        <span class="tab-icon">⚔</span> ARSENAL &amp; BESTIARY
+      </button>
+    </nav>
+
+    <div class="nav-actions">
+      <button class="util-btn" id="btn-toggle-music" title="Toggle Industrial Synth Audio (M)">
+        🔊 AUDIO: ON
+      </button>
+      <button class="util-btn" id="btn-toggle-crt" title="Toggle Visor Scanlines">
+        📺 VISOR FX
+      </button>
+    </div>
+  </header>
+
+  <!-- =================================================================== -->
+  <!-- VIEW 1: 3D FPS GAMEPLAY VIEWPORT & TACTICAL HUD                     -->
+  <!-- =================================================================== -->
+  <main id="view-game" class="view-section active">
+    <div id="game-wrapper" class="scanlines-on">
+      <!-- Primary 3D Raycaster & Weapon Viewmodel Canvas -->
+      <canvas id="game-canvas" width="960" height="540"></canvas>
+
+      <!-- Screen-Space Visual FX Overlays -->
+      <div id="fx-damage" class="screen-fx"></div>
+      <div id="fx-overdrive" class="screen-fx"></div>
+      <div id="fx-pickup" class="screen-fx"></div>
+      <div id="fx-dash" class="screen-fx"></div>
+
+      <!-- Dynamic Crosshair & Hitmarker -->
+      <div id="crosshair-layer">
+        <div id="crosshair">
+          <span class="ch-dot"></span>
+          <span class="ch-arm ch-top"></span>
+          <span class="ch-arm ch-right"></span>
+          <span class="ch-arm ch-bottom"></span>
+          <span class="ch-arm ch-left"></span>
+          <div id="hitmarker" class="hidden"></div>
+        </div>
+        <div id="interaction-prompt" class="hidden">ASCENSION BEACON UNSEALED — STEP INTO THE GOLDEN RIFT</div>
+      </div>
+
+      <!-- IN-GAME TACTICAL HUD -->
+      <div id="hud-layer">
+        <!-- Top Row: Stratum Telemetry | Boss Bar / Clock | Tactical Radar -->
+        <div class="hud-top">
+          <div class="hud-panel hud-mission">
+            <div class="stratum-header">
+              <span id="hud-mode-badge" class="badge-crimson">CAMPAIGN</span>
+              <span id="hud-stratum-name">STRATUM I: THE NADIR VAULT</span>
+            </div>
+            <div class="quota-row">
+              <span id="hud-objective-text">PURGE HOSTILE GARRISON</span>
+              <span id="hud-enemies-count">10 / 10</span>
+            </div>
+            <div class="progress-track">
+              <div id="hud-quota-bar" class="progress-fill fill-crimson" style="width: 100%;"></div>
+            </div>
+            <div id="killfeed" class="killfeed-list"></div>
+          </div>
+
+          <!-- Center Top: Clock & Boss Health Bar -->
+          <div class="hud-center-top">
+            <div class="clock-cluster">
+              <span class="clock-label" id="hud-clock-label">ASCENSION TIME</span>
+              <span class="clock-value" id="hud-timer">00:00.0</span>
+            </div>
+            <div id="boss-bar-container" class="boss-panel hidden">
+              <div class="boss-title-row">
+                <span>☠ ARCHON MALAKOR, SOVEREIGN OF CINDERS</span>
+                <span id="boss-hp-text">1200 / 1200</span>
+              </div>
+              <div class="progress-track boss-track">
+                <div id="boss-hp-bar" class="progress-fill fill-boss" style="width: 100%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Right: Tactical Radar + Score & Multiplier -->
+          <div class="hud-panel hud-radar-panel">
+            <div class="radar-frame">
+              <canvas id="minimap-canvas" width="148" height="148"></canvas>
+              <span class="radar-tag">RADAR // 360°</span>
+            </div>
+            <div class="score-cluster">
+              <div class="score-box">
+                <span class="hud-micro-label">ASCENSION SCORE</span>
+                <span id="hud-score" class="score-digits">000000</span>
+              </div>
+              <div class="multiplier-box">
+                <span class="hud-micro-label">KILL-CHAIN MULTIPLIER</span>
+                <div class="mult-row">
+                  <span id="hud-multiplier" class="mult-value">1.0×</span>
+                  <div class="mult-bar-wrap">
+                    <div id="hud-mult-bar" class="mult-bar-fill" style="width: 0%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Visor Telemetry Bar -->
+        <div class="hud-bottom">
+          <!-- Left: Vitality, Aegis Armor, Phase-Dash -->
+          <div class="hud-panel hud-vitals">
+            <div class="vital-row">
+              <div class="vital-stat">
+                <span class="hud-micro-label">VITALITY (HP)</span>
+                <span id="hud-hp" class="vital-number hp-color">100</span>
+              </div>
+              <div class="vital-bars">
+                <div class="progress-track">
+                  <div id="hud-hp-bar" class="progress-fill fill-hp" style="width: 100%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="vital-row">
+              <div class="vital-stat">
+                <span class="hud-micro-label">AEGIS ARMOR</span>
+                <span id="hud-armor" class="vital-number armor-color">50</span>
+              </div>
+              <div class="vital-bars">
+                <div class="progress-track">
+                  <div id="hud-armor-bar" class="progress-fill fill-armor" style="width: 50%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="dash-status-row">
+              <span class="dash-key">[SHIFT] PHASE-DASH</span>
+              <div class="progress-track dash-track">
+                <div id="hud-dash-bar" class="progress-fill fill-dash" style="width: 100%;"></div>
+              </div>
+              <span id="hud-dash-state" class="dash-ready-tag">READY</span>
+            </div>
+          </div>
+
+          <!-- Center: Ascension Resonance Overdrive Core -->
+          <div class="hud-panel hud-ascension-core">
+            <div class="ascension-top-row">
+              <span class="hud-micro-label">ASCENSION RESONANCE [Q / E]</span>
+              <span id="hud-ascension-pct" class="ascension-pct">0%</span>
+            </div>
+            <div class="progress-track ascension-track">
+              <div id="hud-ascension-bar" class="progress-fill fill-ascension" style="width: 0%;"></div>
+            </div>
+            <div id="hud-ascension-status" class="ascension-subtext">
+              HARVEST FALLEN FIENDS TO CHARGE CHRONO-OVERDRIVE
+            </div>
+          </div>
+
+          <!-- Right: Weapon Telemetry & 4-Slot Arsenal -->
+          <div class="hud-panel hud-arsenal">
+            <div class="ammo-header">
+              <div>
+                <span class="hud-micro-label">ACTIVE ORDNANCE</span>
+                <div id="hud-weapon-name" class="weapon-title">CINDER-LANCE</div>
+              </div>
+              <div class="ammo-readout">
+                <span id="hud-ammo-current" class="ammo-big">∞</span>
+                <span id="hud-ammo-type" class="hud-micro-label">THERMAL CELL</span>
+              </div>
+            </div>
+            <div class="weapon-slots">
+              <button class="w-slot active" data-slot="0" id="slot-0">
+                <span class="w-key">1</span>
+                <span class="w-name">LANCE</span>
+                <span class="w-ammo" id="slot-ammo-0">∞</span>
+              </button>
+              <button class="w-slot" data-slot="1" id="slot-1">
+                <span class="w-key">2</span>
+                <span class="w-name">SCATTER</span>
+                <span class="w-ammo" id="slot-ammo-1">24</span>
+              </button>
+              <button class="w-slot" data-slot="2" id="slot-2">
+                <span class="w-key">3</span>
+                <span class="w-name">PULSE</span>
+                <span class="w-ammo" id="slot-ammo-2">80</span>
+              </button>
+              <button class="w-slot" data-slot="3" id="slot-3">
+                <span class="w-key">4</span>
+                <span class="w-name">B.F.G.</span>
+                <span class="w-ammo" id="slot-ammo-3">80</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- OVERLAY 1: MAIN TITLE & INTERACTIVITY MODE LAUNCHER             -->
+      <!-- =============================================================== -->
+      <div id="menu-overlay" class="overlay-screen">
+        <div class="menu-card">
+          <div class="menu-hero-badge">PROJECT SPECIFICATION &amp; 3D FPS ENGINE</div>
+          <h2 class="menu-logo">DOOM: <span>HELL'S ASCENSION</span></h2>
+          <p class="menu-tagline">
+            Awaken at the frozen floor of the Nadir Vault. Harvest kinetic <strong>Ascension Resonance</strong> from abyssal fiends, trigger <strong>Chrono-Thermal Overdrive</strong>, and fight upward through three tectonic strata to seal the Empyrean Breach.
+          </p>
+
+          <!-- Mode Selection Cards (Matches Criterion 4: Interactivity Modes) -->
+          <div class="mode-grid">
+            <div class="mode-card selected" data-mode="campaign">
+              <div class="mode-card-header">
+                <span class="mode-num">MODE 01</span>
+                <span class="mode-tag">RECOMMENDED</span>
+              </div>
+              <h3>CAMPAIGN ASCENSION</h3>
+              <p>Conquer 3 vertical strata (Nadir Vault → Crucible Foundry → Empyrean Breach) and vanquish <strong>Archon Malakor</strong>.</p>
+            </div>
+
+            <div class="mode-card" data-mode="endless">
+              <div class="mode-card-header">
+                <span class="mode-num">MODE 02</span>
+                <span class="mode-tag">SURVIVAL</span>
+              </div>
+              <h3>ENDLESS ABYSSAL HORDE</h3>
+              <p>Relentless escalating demon waves in the Crucible Colosseum. Dynamic supply drops and high-score mastery tracking.</p>
+            </div>
+
+            <div class="mode-card" data-mode="blitz">
+              <div class="mode-card-header">
+                <span class="mode-num">MODE 03</span>
+                <span class="mode-tag">TIME-TRIAL</span>
+              </div>
+              <h3>PURGATORY BLITZ</h3>
+              <p>Race a 150-second Doomsday Clock across all 3 strata. Every demon purged grants a <strong>+2.5s Chrono-Extension</strong>.</p>
+            </div>
+          </div>
+
+          <!-- Difficulty & Launch Row -->
+          <div class="launch-controls">
+            <div class="difficulty-selector">
+              <span class="diff-label">THREAT LEVEL:</span>
+              <button class="diff-btn" data-diff="0.75">INITIATE</button>
+              <button class="diff-btn active" data-diff="1.0">WARDEN</button>
+              <button class="diff-btn" data-diff="1.35">NIGHTMARE</button>
+            </div>
+
+            <div class="cta-buttons">
+              <button id="btn-start-game" class="btn-primary-launch">
+                ▶ INITIATE ASCENSION (LAUNCH 3D FPS)
+              </button>
+              <button id="btn-open-criteria-from-menu" class="btn-secondary-outline">
+                📜 VIEW 6-CRITERIA RUBRIC (60 PTS)
+              </button>
+            </div>
+          </div>
+
+          <!-- Keybind Reference Strip -->
+          <div class="controls-strip">
+            <div><kbd>WASD</kbd> Move / Strafe</div>
+            <div><kbd>MOUSE</kbd> / <kbd>←→</kbd> Aim</div>
+            <div><kbd>CLICK</kbd> / <kbd>SPACE</kbd> Fire</div>
+            <div><kbd>1-4</kbd> Weapons</div>
+            <div><kbd>SHIFT</kbd> Phase-Dash</div>
+            <div><kbd>Q</kbd> / <kbd>E</kbd> Ascension Overdrive</div>
+            <div><kbd>P</kbd> / <kbd>ESC</kbd> Pause</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- OVERLAY 2: STRATUM TRANSITION / VICTORY / DEFEAT MODAL          -->
+      <!-- =============================================================== -->
+      <div id="state-modal" class="overlay-screen hidden">
+        <div class="state-card">
+          <div id="modal-badge" class="menu-hero-badge">TELEMETRY REPORT</div>
+          <h2 id="modal-title" class="modal-heading">STRATUM PURGED</h2>
+          <p id="modal-subtitle" class="modal-desc">The Ascension Beacon resonates with harvested soul-ichor.</p>
+
+          <div class="stats-grid">
+            <div class="stat-tile">
+              <span class="stat-label">FINAL / CURRENT SCORE</span>
+              <span id="stat-score" class="stat-val">0</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-label">FIENDS PURGED</span>
+              <span id="stat-kills" class="stat-val">0</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-label">PEAK MULTIPLIER</span>
+              <span id="stat-mult" class="stat-val">1.0×</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-label">COMBAT RATING</span>
+              <span id="stat-rank" class="stat-val rank-s">S+</span>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button id="btn-modal-primary" class="btn-primary-launch">ASCEND TO NEXT STRATUM</button>
+            <button id="btn-modal-restart" class="btn-secondary-outline">RESTART MISSION</button>
+            <button id="btn-modal-menu" class="btn-secondary-outline">MAIN COMMAND MENU</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- =================================================================== -->
+  <!-- VIEW 2: 6-CRITERIA GAME DESIGN SPECIFICATION (6 ITEMS x 10 POINTS)  -->
+  <!-- =================================================================== -->
+  <section id="view-criteria" class="view-section">
+    <div class="doc-container">
+      <div class="doc-hero">
+        <div>
+          <span class="doc-pill">GAME DEVELOPMENT PROJECT SPECIFICATION // 6 ITEMS × 10 POINTS = 60 POINTS</span>
+          <h2>DOOM: HELL'S ASCENSION — <span class="accent-crimson">6-CRITERIA DESIGN DOCUMENT</span></h2>
+          <p>
+            Comprehensive architectural and mechanical specification fulfilling all six game development rubric criteria with original vertical-ascension mechanics, thermodynamic weapon symbiosis, and multi-layered progression.
+          </p>
+        </div>
+        <div class="doc-hero-actions">
+          <button class="btn-primary-launch btn-sm" id="btn-return-to-fps">
+            ⌖ LAUNCH / RETURN TO 3D FPS
+          </button>
+          <button class="btn-secondary-outline btn-sm" onclick="window.print()">
+            🖨 PRINT / SAVE PDF RUBRIC
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Filter Bar for the 6 Rubric Items -->
+      <div class="criteria-filter-bar">
+        <button class="crit-filter active" data-filter="all">ALL 6 ITEMS (60 PTS)</button>
+        <button class="crit-filter" data-filter="item-1">1. GAMEPLAY (10 PTS)</button>
+        <button class="crit-filter" data-filter="item-2">2. RULES (10 PTS)</button>
+        <button class="crit-filter" data-filter="item-3">3. VICTORY &amp; LOSS (10 PTS)</button>
+        <button class="crit-filter" data-filter="item-4">4. INTERACTIVITY MODES (10 PTS)</button>
+        <button class="crit-filter" data-filter="item-5">5. CHALLENGES (10 PTS)</button>
+        <button class="crit-filter" data-filter="item-6">6. STRUCTURE (10 PTS)</button>
+      </div>
+
+      <div class="criteria-grid">
+        <!-- ITEM 1: GAMEPLAY -->
+        <article class="criterion-card" id="item-1">
+          <div class="criterion-header">
+            <span class="criterion-index">ITEM 01</span>
+            <h3>1. Gameplay</h3>
+            <span class="criterion-points">10 POINTS</span>
+          </div>
+          <div class="criterion-body">
+            <p class="lead-p">
+              <strong>Original Concept — Inverted Thermodynamic Ascension:</strong> Rather than descending into an underworld, the player awakens at the lowest frozen-ash floor of the Pit (<em>The Nadir Vault</em>) as a <strong>Resonance Warden</strong>. Because abyssal gravity crushes ordinary vessels, the only path to survival is <strong>upward kinetic propulsion</strong> powered by harvesting thermal soul-energy from fallen fiends.
+            </p>
+            <ul class="spec-list">
+              <li>
+                <strong>Kinetic Resonance Harvesting:</strong> Eliminating enemies charges the <strong>Ascension Gauge (0–100%)</strong> and drops localized <em>Vitality Ichor</em>, <em>Aegis Shards</em>, and <em>Ordnance Cells</em>, rewarding aggressive forward momentum over passive cover-camping.
+              </li>
+              <li>
+                <strong>Chrono-Thermal Overdrive (<code>[Q]</code> / <code>[E]</code>):</strong> At 100% Ascension Resonance, the Warden triggers an 8-second temporal distortion that slows enemy movement and projectiles by <strong>45%</strong>, doubles weapon fire rate, restores 25 Aegis Armor, and grants <strong>2.0× outgoing damage</strong>.
+              </li>
+              <li>
+                <strong>Abyssal Phase-Dash (<code>[SHIFT]</code>):</strong> Omnidirectional high-impulse dash with <code>0.25s</code> of invulnerability frames (<em>i-frames</em>) to weave through 3D projectile volleys and flank heavy brutes.
+              </li>
+              <li>
+                <strong>Four-Weapon Symbiotic Arsenal:</strong> Seamless switching between the <em>Cinder-Lance</em> (regenerative thermal sidearm), <em>Hellfire Scatter-Maw</em> (7-pellet pneumatic slag shotgun), <em>Soul-Tether Pulse Rifle</em> (high-RPM resonance builder), and the <em>B.F.G. — Brimstone Fissure Generator</em> (singularity shockwave cannon).
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ITEM 2: RULES -->
+        <article class="criterion-card" id="item-2">
+          <div class="criterion-header">
+            <span class="criterion-index">ITEM 02</span>
+            <h3>2. Rules</h3>
+            <span class="criterion-points">10 POINTS</span>
+          </div>
+          <div class="criterion-body">
+            <p class="lead-p">
+              The simulation enforces deterministic combat, resource, and spatial containment rules that govern every player decision:
+            </p>
+            <ul class="spec-list">
+              <li>
+                <strong>Rule 1 — Aegis Shield Partitioning:</strong> The player possesses <code>100 Vitality (HP)</code> and up to <code>100 Aegis Armor</code>. While Aegis Armor is active, it intercepts <strong>65% of incoming damage</strong>, protecting core Vitality from lethal burst damage.
+              </li>
+              <li>
+                <strong>Rule 2 — Ordnance &amp; Capacitor Conservation:</strong> Slot 1 (<em>Cinder-Lance</em>) has infinite self-charging thermal ammo to prevent soft-locks. Slot 2 consumes <em>Slag Shells</em> (1 per blast, max 60). Slot 3 consumes <em>Plasma Cells</em> (1 per bolt, max 200). Slot 4 (<em>B.F.G.</em>) consumes <strong>25 Plasma Cells</strong> per cataclysmic detonation.
+              </li>
+              <li>
+                <strong>Rule 3 — Kill-Chain Decay Law:</strong> Consecutive kills within a <strong>4.5-second window</strong> increment the Resonance &amp; Score Multiplier by <code>+0.5×</code> (up to <code>5.0×</code>). If 4.5 seconds pass without a kill, the multiplier resets to <code>1.0×</code>.
+              </li>
+              <li>
+                <strong>Rule 4 — Stratum Containment Seal:</strong> Each Stratum's <strong>Ascension Rift Beacon</strong> remains locked in a dormant state until <strong>100% of the Stratum's Hostile Quota</strong> is eliminated.
+              </li>
+              <li>
+                <strong>Rule 5 — Phase-Dash Cooldown Equilibrium:</strong> Each Phase-Dash requires a <strong>1.4-second capacitor recharge</strong> before another dash can be executed.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ITEM 3: VICTORY AND LOSS CONDITIONS -->
+        <article class="criterion-card" id="item-3">
+          <div class="criterion-header">
+            <span class="criterion-index">ITEM 03</span>
+            <h3>3. Victory and Loss Conditions</h3>
+            <span class="criterion-points">10 POINTS</span>
+          </div>
+          <div class="criterion-body">
+            <div class="two-col-sub">
+              <div class="sub-box victory-box">
+                <h4>🏆 VICTORY CONDITIONS</h4>
+                <ul class="spec-list compact">
+                  <li><strong>Stratum Clear:</strong> Purge 100% of hostile entities in the current Stratum to unseal the <em>Ascension Beacon</em>, then physically step into the golden-crimson rift.</li>
+                  <li><strong>Campaign Triumph (Total Ascension):</strong> Ascend through all three strata (<em>Nadir Vault</em>, <em>Crucible Foundry</em>, <em>Empyrean Breach</em>) and slay the apex boss, <strong>Archon Malakor, Sovereign of Cinders</strong>.</li>
+                  <li><strong>Purgatory Blitz Victory:</strong> Complete all three strata and slay the Archon before the Doomsday Clock reaches <code>00:00.0</code>.</li>
+                  <li><strong>S+ Sovereign Mastery:</strong> Finish with a score exceeding <code>15,000 points</code> and a peak multiplier of <code>5.0×</code>.</li>
+                </ul>
+              </div>
+              <div class="sub-box loss-box">
+                <h4>💀 LOSS CONDITIONS</h4>
+                <ul class="spec-list compact">
+                  <li><strong>Vessel Shatter (Vitality ≤ 0):</strong> If melee strikes, fireball orbs, or void barrages reduce the Warden's Vitality to <code>0</code>, the run terminates immediately in an <strong>ASCENSION FAILED</strong> state.</li>
+                  <li><strong>Chrono-Collapse (Time-Trial Mode):</strong> In <em>Purgatory Blitz</em> mode, allowing the countdown timer to expire (<code>00:00.0</code>) seals the tectonic plates permanently, resulting in instant defeat.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- ITEM 4: INTERACTIVITY MODES -->
+        <article class="criterion-card" id="item-4">
+          <div class="criterion-header">
+            <span class="criterion-index">ITEM 04</span>
+            <h3>4. Interactivity Modes</h3>
+            <span class="criterion-points">10 POINTS</span>
+          </div>
+          <div class="criterion-body">
+            <p class="lead-p">
+              <strong>DOOM: HELL'S ASCENSION</strong> implements both multi-modal <strong>User-System Interaction Layers</strong> and three distinct <strong>Playable Game Modes</strong>:
+            </p>
+            <ul class="spec-list">
+              <li>
+                <strong>1. First-Person Kinetic Combat Mode (Primary Perspective):</strong> Real-time 360° pointer-lock mouse aiming, WASD strafe-jumping/dashing, depth-shaded 3D raycast rendering, animated weapon viewmodels, and directional stereo/synth audio cues.
+              </li>
+              <li>
+                <strong>2. Spatial Telemetry &amp; Radar Mode (Simultaneous HUD):</strong> Real-time 2D top-down vector radar tracking corridor geometry, hostile threat vectors, supply caches, and the Ascension Beacon alongside peripheral damage/overdrive shaders.
+              </li>
+              <li>
+                <strong>3. Playable Mode A — Campaign Ascension:</strong> Structured 3-Stratum narrative progression culminating in the multi-phase boss battle against <em>Archon Malakor</em>.
+              </li>
+              <li>
+                <strong>4. Playable Mode B — Endless Abyssal Horde:</strong> Infinite wave-survival mode with dynamically scaling enemy count, speed, and periodic arena supply drops.
+              </li>
+              <li>
+                <strong>5. Playable Mode C — Purgatory Blitz (Speedrun):</strong> High-velocity countdown mode where every kill injects <code>+2.5 seconds</code> directly into the survival timer.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ITEM 5: CHALLENGES -->
+        <article class="criterion-card" id="item-5">
+          <div class="criterion-header">
+            <span class="criterion-index">ITEM 05</span>
+            <h3>5. Challenges</h3>
+            <span class="criterion-points">10 POINTS</span>
+          </div>
+          <div class="criterion-body">
+            <p class="lead-p">
+              Players are tested across five interconnected skill dimensions:
+            </p>
+            <ul class="spec-list">
+              <li>
+                <strong>1. Multi-Archetype Target Prioritization:</strong> Simultaneous waves combine fast melee rushers (<em>Ash-Wretches</em>), strafing fireball lobbers (<em>Cinder-Imps</em>), heavily armored tanks (<em>Iron-Gorgers</em>), and teleporting void casters (<em>Void-Cantors</em>).
+              </li>
+              <li>
+                <strong>2. 3D Projectile Evasion &amp; Cover Usage:</strong> Enemy fireballs and void bolts travel through 3D space; players must read projectile trajectories, time their <code>[SHIFT]</code> Phase-Dashes, and use obsidian pillars as physical cover.
+              </li>
+              <li>
+                <strong>3. Ammunition Triage:</strong> Balancing high-consumption Plasma Cells between sustained <em>Pulse Rifle</em> fire and reserving 25 cells for emergency <em>B.F.G.</em> crowd-clears.
+              </li>
+              <li>
+                <strong>4. Momentum vs. Survival Risk:</strong> Keeping the <code>5.0×</code> Kill-Chain Multiplier alive requires relentless aggression within 4.5-second windows, tempting players into dangerous crossfire.
+              </li>
+              <li>
+                <strong>5. Apex Boss Mechanics (Archon Malakor):</strong> In Stratum III, the Archon unleashes tri-fan plasma volleys and summons reinforcement waves at 50% HP, testing mastery of Overdrive timing and arena kiting.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ITEM 6: STRUCTURE -->
+        <article class="criterion-card full-span" id="item-6">
+          <div class="criterion-header">
+            <span class="criterion-index">ITEM 06</span>
+            <h3>6. Structure (Objectives, Flow, Duration, Availability, Relationship, Progression)</h3>
+            <span class="criterion-points">10 POINTS</span>
+          </div>
+          <div class="criterion-body">
+            <div class="structure-grid">
+              <div class="struct-item">
+                <h4>A. OBJECTIVES</h4>
+                <p>
+                  <strong>Macro Objective:</strong> Escape the Nadir Vault by ascending through three infernal strata and defeating <em>Archon Malakor</em>.<br>
+                  <strong>Micro Objectives:</strong> Eliminate each Stratum's hostile quota, harvest Ichor/Aegis caches, maintain a <code>5.0×</code> combo chain, charge Ascension Overdrive, and enter the unsealed Rift Beacon.
+                </p>
+              </div>
+
+              <div class="struct-item">
+                <h4>B. FLOW</h4>
+                <p>
+                  Designed around a <strong>Sawtooth Pacing Curve</strong>: <em>Safe Drop-In &amp; Orientation</em> → <em>Corridor Skirmishes</em> → <em>Multi-Directional Arena Crescendo</em> → <em>Overdrive Counter-Attack</em> → <em>Beacon Unsealing &amp; Tactical Breather</em> before ascending to the next Stratum.
+                </p>
+              </div>
+
+              <div class="struct-item">
+                <h4>C. DURATION</h4>
+                <p>
+                  <strong>Single Stratum:</strong> <code>2–4 minutes</code>.<br>
+                  <strong>Full 3-Stratum Campaign:</strong> <code>8–12 minutes</code>.<br>
+                  <strong>Purgatory Blitz:</strong> Fast-paced <code>2.5–4 minute</code> speedrun.<br>
+                  <strong>Endless Horde:</strong> <code>10–30+ minutes</code> of high-score survival.
+                </p>
+              </div>
+
+              <div class="struct-item">
+                <h4>D. AVAILABILITY</h4>
+                <p>
+                  Deployed globally on <strong>Vercel</strong> and hosted on <strong>GitHub</strong> as a zero-dependency HTML5/JavaScript application. Instant startup in any modern desktop browser with procedural textures and WebAudio synthesis (no external downloads required).
+                </p>
+              </div>
+
+              <div class="struct-item">
+                <h4>E. RELATIONSHIP</h4>
+                <p>
+                  All mechanics form a <strong>symbiotic closed loop</strong>: <em>Aggression</em> generates kills → Kills feed the <em>Ascension Gauge</em> &amp; drop <em>Ammo</em> → <em>Ascension Overdrive</em> slows enemies &amp; restores <em>Aegis Armor</em> → Survival unlocks the <em>Stratum Beacon</em>.
+                </p>
+              </div>
+
+              <div class="struct-item">
+                <h4>F. PROGRESSION</h4>
+                <p>
+                  <strong>Environmental &amp; Threat Escalation:</strong><br>
+                  • <strong>Stratum I (The Nadir Vault):</strong> Frozen ash walls; Ash-Wretches &amp; Cinder-Imps.<br>
+                  • <strong>Stratum II (The Crucible Foundry):</strong> Molten brass walls; introduces Iron-Gorgers &amp; Void-Cantors.<br>
+                  • <strong>Stratum III (The Empyrean Breach):</strong> Blood-sanctum architecture; culminates in the <strong>Archon Malakor</strong> boss encounter.
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- VIEW 3: ARSENAL & BESTIARY CODEX                                    -->
+  <!-- =================================================================== -->
+  <section id="view-codex" class="view-section">
+    <div class="doc-container">
+      <div class="doc-hero">
+        <div>
+          <span class="doc-pill">WARDEN FIELD MANUAL // WEAPONS &amp; HOSTILE ENTITIES</span>
+          <h2>SYMBIOTIC ARSENAL &amp; <span class="accent-crimson">ABYSSAL BESTIARY</span></h2>
+          <p>Technical specifications for all four Resonant Weapons and five Abyssal Hostile Archetypes encountered during the Ascension.</p>
+        </div>
+        <button class="btn-primary-launch btn-sm" onclick="document.getElementById('tab-btn-game').click()">
+          ⌖ RETURN TO 3D FPS
+        </button>
+      </div>
+
+      <h3 class="section-divider-title">I. RESONANT ORDNANCE (WEAPONS)</h3>
+      <div class="codex-grid">
+        <div class="codex-card">
+          <div class="codex-tag">SLOT [1] // SIDEARM</div>
+          <h4>CINDER-LANCE</h4>
+          <p>Self-recharging thermal beam pistol. Fires concentrated ash-plasma bolts with zero spread and infinite reserve cells.</p>
+          <div class="codex-stats">
+            <span>DMG: 26</span><span>ROF: MEDIUM</span><span>AMMO: ∞ THERMAL</span>
+          </div>
+        </div>
+
+        <div class="codex-card">
+          <div class="codex-tag">SLOT [2] // CLOSE QUARTERS</div>
+          <h4>HELLFIRE SCATTER-MAW</h4>
+          <p>Twin-bore pneumatic slag shotgun. Unleashes 7 superheated shrapnel pellets in a horizontal spread with high stagger force.</p>
+          <div class="codex-stats">
+            <span>DMG: 18 × 7</span><span>ROF: PUMP</span><span>AMMO: 1 SLAG SHELL</span>
+          </div>
+        </div>
+
+        <div class="codex-card">
+          <div class="codex-tag">SLOT [3] // SUSTAINED ASSAULT</div>
+          <h4>SOUL-TETHER PULSE RIFLE</h4>
+          <p>High-RPM automatic plasma repeater. Rapid consecutive hits supercharge the Warden's Ascension Resonance Gauge.</p>
+          <div class="codex-stats">
+            <span>DMG: 22 / BOLT</span><span>ROF: VERY HIGH</span><span>AMMO: 1 PLASMA CELL</span>
+          </div>
+        </div>
+
+        <div class="codex-card">
+          <div class="codex-tag">SLOT [4] // CATACLYSMIC ORDNANCE</div>
+          <h4>B.F.G. (BRIMSTONE FISSURE GENERATOR)</h4>
+          <p>Discharges an unstable void-crimson singularity that vaporizes targets on impact and triggers a massive radial shockwave across the chamber.</p>
+          <div class="codex-stats">
+            <span>DMG: 350 + AoE</span><span>ROF: HEAVY</span><span>AMMO: 25 PLASMA CELLS</span>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-divider-title">II. ABYSSAL BESTIARY (HOSTILE ARCHETYPES)</h3>
+      <div class="codex-grid">
+        <div class="codex-card enemy-card">
+          <div class="codex-tag">TIER I // MELEE SWARMER</div>
+          <h4>ASH-WRETCH</h4>
+          <p>Frenzied husk fused with volcanic slag. Sprints aggressively down corridors to overwhelm the Warden with jagged bone-blades.</p>
+          <div class="codex-stats">
+            <span>HP: 65</span><span>SPEED: FAST</span><span>ATTACK: MELEE CLEAVE</span>
+          </div>
+        </div>
+
+        <div class="codex-card enemy-card">
+          <div class="codex-tag">TIER II // RANGED SKIRMISHER</div>
+          <h4>CINDER-IMP</h4>
+          <p>Agile pyrokinetic fiend that strafes laterally between pillars and hurls incandescent hell-orbs through 3D space.</p>
+          <div class="codex-stats">
+            <span>HP: 95</span><span>SPEED: MEDIUM</span><span>ATTACK: HELL-ORB PROJECTILE</span>
+          </div>
+        </div>
+
+        <div class="codex-card enemy-card">
+          <div class="codex-tag">TIER III // ARMORED JUGGERNAUT</div>
+          <h4>IRON-GORGER</h4>
+          <p> Hulking foundry-forged colossus encased in riveted crucible plate. Soaks heavy punishment while firing twin slag-mortars.</p>
+          <div class="codex-stats">
+            <span>HP: 240</span><span>SPEED: SLOW</span><span>ATTACK: HEAVY SLAG BLAST</span>
+          </div>
+        </div>
+
+        <div class="codex-card enemy-card">
+          <div class="codex-tag">TIER IV // PHASE CASTER</div>
+          <h4>VOID-CANTOR</h4>
+          <p>Ethereal abyssal priest capable of phase-blinking across sightlines after launching high-velocity void lances.</p>
+          <div class="codex-stats">
+            <span>HP: 150</span><span>SPEED: BLINK-SHIFT</span><span>ATTACK: VOID LANCE</span>
+          </div>
+        </div>
+
+        <div class="codex-card enemy-card boss-codex-card">
+          <div class="codex-tag">TIER V // STRATUM III APEX BOSS</div>
+          <h4>ARCHON MALAKOR, SOVEREIGN OF CINDERS</h4>
+          <p>Supreme Warden of the Empyrean Breach. Commands tri-spread hellfire barrages, tectonic shockwaves, and summons lesser fiends when enraged below 50% Vitality.</p>
+          <div class="codex-stats">
+            <span>HP: 1,200</span><span>PHASE SHIFT: 50% HP</span><span>ATTACK: TRI-VOLLEY &amp; SUMMON</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="game.js"></script>
+</body>
+</html>

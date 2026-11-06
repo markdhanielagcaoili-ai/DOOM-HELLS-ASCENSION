@@ -1,0 +1,23 @@
+{
+  "name": "doom-hells-ascension",
+  "version": "1.0.0",
+  "description": "DOOM: HELL'S ASCENSION — 3D Raycasting First-Person Shooter & 6-Criteria Game Design Project",
+  "private": false,
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve .",
+    "build": "echo \"Static build complete\""
+  },
+  "keywords": [
+    "fps",
+    "shooter",
+    "raycaster",
+    "doom",
+    "hells-ascension",
+    "game-design",
+    "webgl",
+    "canvas"
+  ],
+  "author": "markdhanielagcaoili-ai",
+  "license": "MIT"
+}
