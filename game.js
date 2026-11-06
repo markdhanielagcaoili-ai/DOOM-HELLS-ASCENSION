@@ -61,7 +61,7 @@
   });
 
   // =========================================================================
-  // 2. WEBAUDIO PROCEDURAL SOUND & INDUSTRIAL SYNTH ENGINE
+  // 2. REALISTIC MULTI-LAYER BALLISTIC & MECHANICAL RELOAD SOUND ENGINE
   // =========================================================================
   class SoundEngine {
     constructor() {
@@ -69,12 +69,22 @@
       this.enabled = true;
       this.musicTimer = null;
       this.step = 0;
+      this.noiseBuffer = null;
     }
 
     init() {
       if (!this.ctx) {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtx) this.ctx = new AudioCtx();
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+          // Pre-build 2-second broadband white/pink noise buffer for realistic gun acoustics
+          const sr = this.ctx.sampleRate;
+          this.noiseBuffer = this.ctx.createBuffer(1, sr * 2, sr);
+          const data = this.noiseBuffer.getChannelData(0);
+          for (let i = 0; i < data.length; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+        }
       }
       if (this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume();
@@ -92,110 +102,239 @@
       }
     }
 
+    makeDistortionCurve(amount = 60) {
+      const n = 44100;
+      const curve = new Float32Array(n);
+      const deg = Math.PI / 180;
+      for (let i = 0; i < n; ++i) {
+        const x = (i * 2) / n - 1;
+        curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
+      }
+      return curve;
+    }
+
+    // Helper: Filtered noise burst with ADSR envelope & optional saturation
+    burstNoise(startTime, duration, filterType, freq, qVal, gainPeak, saturate = false) {
+      if (!this.ctx || !this.noiseBuffer) return;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = filterType;
+      filter.frequency.setValueAtTime(freq, startTime);
+      filter.Q.value = qVal;
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, startTime);
+      gain.gain.linearRampToValueAtTime(gainPeak, startTime + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+      src.connect(filter);
+      if (saturate) {
+        const shaper = this.ctx.createWaveShaper();
+        shaper.curve = this.makeDistortionCurve(85);
+        filter.connect(shaper);
+        shaper.connect(gain);
+      } else {
+        filter.connect(gain);
+      }
+      gain.connect(this.ctx.destination);
+      src.start(startTime, Math.random() * 0.5, duration);
+      src.stop(startTime + duration);
+    }
+
+    // Helper: Metallic mechanical click/clack impulse
+    metallicClick(startTime, freq1, freq2, duration, gainVal = 0.22) {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq1, startTime);
+      osc.frequency.exponentialRampToValueAtTime(freq2, startTime + duration);
+      gain.gain.setValueAtTime(gainVal, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+      // High-frequency steel transient
+      this.burstNoise(startTime, duration * 0.65, 'bandpass', Math.max(1800, freq1 * 2), 3.5, gainVal * 0.8);
+    }
+
+    // Realistic 5-Layer Gunshot Acoustics (Supersonic Crack + Muzzle Thump + Powder Bark + Bolt Cycle + Plaza Echo + Brass Casing Clink)
     playShoot(weaponId) {
       if (!this.enabled) return;
       this.init();
       if (!this.ctx) return;
+      const now = this.ctx.currentTime;
 
       if (weaponId === 0) {
-        // Hell-Carbine: punchy suppressed metallic rifle crack
-        this.tone(290, 55, 0.13, 'sawtooth', 0.28);
-        this.noise(0.09, 0.26);
+        // M4A1 / G36 Hell-Carbine (5.56/7.62 NATO Tactical Crack + Bolt Clack + Canyon Echo)
+        this.toneAt(now, 175, 38, 0.09, 'sine', 0.45); // Sub-bass chest punch
+        this.burstNoise(now, 0.025, 'bandpass', 3200, 1.4, 0.42, true); // Supersonic bullet crack
+        this.burstNoise(now, 0.13, 'lowpass', 950, 0.9, 0.38, true); // Gunpowder muzzle bark
+        this.metallicClick(now + 0.032, 2800, 1400, 0.035, 0.18); // Steel bolt carrier cycle
+        // Citadel stone plaza reflection echo
+        this.burstNoise(now + 0.095, 0.26, 'lowpass', 620, 0.7, 0.14, false);
+        this.playBrassCasingClink(now + 0.28);
       } else if (weaponId === 1) {
-        // Hellfire Breacher-12: heavy 12-gauge boom
-        this.tone(140, 34, 0.3, 'sawtooth', 0.38);
-        this.noise(0.26, 0.42);
+        // SPAS-12 Hellfire Breacher (Massive 12-Gauge Shotgun Cannon Boom + Pump/Bolt Clack)
+        this.toneAt(now, 135, 28, 0.22, 'sawtooth', 0.55); // Deep 12G chest thump
+        this.burstNoise(now, 0.035, 'bandpass', 2400, 1.2, 0.48, true); // Buckshot blast crack
+        this.burstNoise(now, 0.26, 'lowpass', 780, 0.8, 0.52, true); // Heavy muzzle roar
+        this.burstNoise(now + 0.11, 0.38, 'lowpass', 480, 0.7, 0.2, false); // Cathedral echo tail
+        // Pump-action / semi-auto shell rack clack
+        this.metallicClick(now + 0.22, 1600, 920, 0.055, 0.24);
+        this.metallicClick(now + 0.31, 2200, 1300, 0.05, 0.24);
       } else if (weaponId === 2) {
-        // Soul-Shredder LMG: heavy rapid machine gun thump
-        this.tone(240, 65, 0.11, 'square', 0.25);
-        this.noise(0.08, 0.22);
+        // M249 Soul-Shredder LMG (Heavy Open-Bolt Machine Gun Bark + Belt Link Clatter)
+        this.toneAt(now, 160, 42, 0.085, 'sawtooth', 0.4);
+        this.burstNoise(now, 0.022, 'bandpass', 2900, 1.5, 0.38, true);
+        this.burstNoise(now, 0.11, 'lowpass', 1050, 1.0, 0.35, true);
+        this.metallicClick(now + 0.025, 3600, 2100, 0.03, 0.2); // Belt link clatter
+        this.playBrassCasingClink(now + 0.24);
       } else if (weaponId === 3) {
-        // B.F.G. Singularity Launcher
-        this.tone(95, 26, 0.65, 'sawtooth', 0.44);
-        this.tone(520, 90, 0.55, 'sine', 0.32);
-        this.noise(0.5, 0.4);
+        // B.F.G.-9000 Singularity Launcher (Sub-Bass Core Discharge + Plasma Thunder)
+        this.toneAt(now, 95, 24, 0.65, 'sawtooth', 0.5);
+        this.toneAt(now, 540, 85, 0.55, 'sine', 0.35);
+        this.burstNoise(now, 0.52, 'lowpass', 680, 1.2, 0.45, true);
+      } else if (weaponId === 4) {
+        // AWM Abyssal Rail-Sniper (.338 Lapua / Anti-Materiel Thunderous Crack + Long Canyon Echo + Bolt Action)
+        this.toneAt(now, 145, 25, 0.28, 'sawtooth', 0.6); // Massive sniper recoil thump
+        this.burstNoise(now, 0.04, 'bandpass', 3800, 1.2, 0.55, true); // Piercing supersonic whip-crack
+        this.burstNoise(now, 0.32, 'lowpass', 890, 0.9, 0.52, true); // High-caliber muzzle blast
+        this.burstNoise(now + 0.14, 0.48, 'lowpass', 520, 0.6, 0.24, false); // Long plaza echo
+        // Bolt-action cycling after shot
+        this.metallicClick(now + 0.38, 1900, 2800, 0.06, 0.25);
+        this.metallicClick(now + 0.54, 2900, 1500, 0.065, 0.28);
+        this.playBrassCasingClink(now + 0.62);
       }
     }
 
-    playReload() {
+    playBrassCasingClink(startTime) {
+      if (!this.ctx) return;
+      // High-pitched brass cylinder bounce on stone floor
+      [0, 0.085].forEach((offset, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const f = 6400 + Math.random() * 1400;
+        osc.frequency.setValueAtTime(f, startTime + offset);
+        osc.frequency.exponentialRampToValueAtTime(f * 0.88, startTime + offset + 0.035);
+        gain.gain.setValueAtTime(0.055 / (i + 1), startTime + offset);
+        gain.gain.exponentialRampToValueAtTime(0.0005, startTime + offset + 0.035);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(startTime + offset);
+        osc.stop(startTime + offset + 0.035);
+      });
+    }
+
+    // Realistic 4-Stage Mechanical Firearm Reload Audio
+    playReload(weaponId = 0) {
       if (!this.enabled) return;
       this.init();
       if (!this.ctx) return;
-      this.tone(520, 310, 0.08, 'triangle', 0.16);
-      setTimeout(() => this.tone(340, 680, 0.09, 'sawtooth', 0.18), 420);
-      setTimeout(() => this.tone(720, 480, 0.07, 'square', 0.15), 850);
+      const now = this.ctx.currentTime;
+
+      // Stage 1 (0.04s): Magazine release catch click + empty mag sliding out of magwell
+      this.metallicClick(now + 0.03, 2100, 1200, 0.04, 0.26);
+      this.burstNoise(now + 0.06, 0.14, 'bandpass', 680, 2.2, 0.22, false);
+
+      // Stage 2 (0.42s): Fresh heavy magazine slammed into magwell + baseplate palm thud + latch lock
+      this.toneAt(now + 0.42, 145, 48, 0.075, 'sine', 0.38); // Palm slap thud
+      this.metallicClick(now + 0.44, 1500, 2950, 0.05, 0.32); // Steel mag-catch lock CLACK!
+
+      // Stage 3 (0.76s): Charging handle / bolt carrier pulled sharply to the rear
+      this.burstNoise(now + 0.75, 0.11, 'bandpass', 1850, 2.5, 0.25, false);
+      this.metallicClick(now + 0.76, 1300, 2400, 0.06, 0.28);
+
+      // Stage 4 (0.93s): Bolt release slams forward chambering brass round (CHCK-CLACK!)
+      this.toneAt(now + 0.93, 240, 68, 0.06, 'triangle', 0.35);
+      this.metallicClick(now + 0.93, 3400, 1700, 0.065, 0.36);
+    }
+
+    playMelee(meleeId = 0) {
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      if (meleeId === 2) {
+        // Ripper Chainsword motorized rev + metallic teeth shred
+        this.toneAt(now, 110, 260, 0.28, 'sawtooth', 0.36);
+        this.burstNoise(now, 0.26, 'bandpass', 1400, 1.5, 0.35, true);
+      } else if (meleeId === 3) {
+        // Hell-Breaker Warhammer seismic slam
+        this.toneAt(now, 140, 28, 0.42, 'sawtooth', 0.52);
+        this.burstNoise(now, 0.35, 'lowpass', 520, 0.9, 0.48, true);
+      } else {
+        // Bowie Knife / Crucible Katana metallic air whoosh + razor slash
+        this.burstNoise(now, 0.14, 'bandpass', 1600, 1.8, 0.32, false);
+        this.metallicClick(now + 0.03, 3800, 1900, 0.08, 0.25);
+      }
     }
 
     playHit(isKill = false) {
       if (!this.enabled || !this.ctx) return;
+      const now = this.ctx.currentTime;
       if (isKill) {
-        this.tone(220, 58, 0.24, 'sawtooth', 0.26);
-        this.tone(620, 920, 0.12, 'triangle', 0.18);
+        this.toneAt(now, 220, 58, 0.24, 'sawtooth', 0.28);
+        this.toneAt(now, 620, 920, 0.12, 'triangle', 0.2);
       } else {
-        this.tone(820, 440, 0.05, 'triangle', 0.16);
+        this.toneAt(now, 820, 440, 0.05, 'triangle', 0.18);
       }
     }
 
     playPlayerDamage() {
       if (!this.enabled || !this.ctx) return;
-      this.tone(125, 42, 0.22, 'sawtooth', 0.32);
-      this.noise(0.15, 0.25);
+      const now = this.ctx.currentTime;
+      this.toneAt(now, 125, 42, 0.22, 'sawtooth', 0.34);
+      this.burstNoise(now, 0.15, 'lowpass', 800, 1.0, 0.28, true);
     }
 
     playPickup() {
-      if (!this.enabled || !this.ctx) return;
-      this.tone(460, 920, 0.14, 'sine', 0.2);
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      this.toneAt(now, 460, 920, 0.14, 'sine', 0.22);
+      this.metallicClick(now + 0.05, 2400, 3200, 0.05, 0.18);
     }
 
     playDash() {
       if (!this.enabled || !this.ctx) return;
-      this.tone(260, 640, 0.13, 'sine', 0.2);
-      this.noise(0.1, 0.14);
+      const now = this.ctx.currentTime;
+      this.toneAt(now, 260, 640, 0.13, 'sine', 0.2);
+      this.burstNoise(now, 0.11, 'bandpass', 1200, 1.2, 0.18, false);
     }
 
     playOverdrive() {
-      if (!this.enabled || !this.ctx) return;
-      this.tone(200, 880, 0.48, 'sawtooth', 0.32);
-      this.tone(330, 660, 0.48, 'triangle', 0.25);
+      if (!this.enabled) return;
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      this.toneAt(now, 200, 880, 0.48, 'sawtooth', 0.32);
+      this.toneAt(now, 330, 660, 0.48, 'triangle', 0.25);
     }
 
     tone(startFreq, endFreq, duration, type = 'sawtooth', gainVal = 0.2) {
       if (!this.ctx) return;
-      const now = this.ctx.currentTime;
+      this.toneAt(this.ctx.currentTime, startFreq, endFreq, duration, type, gainVal);
+    }
+
+    toneAt(startTime, startFreq, endFreq, duration, type = 'sawtooth', gainVal = 0.2) {
+      if (!this.ctx) return;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = type;
-      osc.frequency.setValueAtTime(startFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
-      gain.gain.setValueAtTime(gainVal, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      osc.frequency.setValueAtTime(startFreq, startTime);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), startTime + duration);
+      gain.gain.setValueAtTime(gainVal, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + duration);
-    }
-
-    noise(duration, gainVal = 0.2) {
-      if (!this.ctx) return;
-      const bufferSize = Math.floor(this.ctx.sampleRate * duration);
-      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
-      }
-      const src = this.ctx.createBufferSource();
-      src.buffer = buffer;
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 1250;
-      const gain = this.ctx.createGain();
-      const now = this.ctx.currentTime;
-      gain.gain.setValueAtTime(gainVal, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
-      src.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.ctx.destination);
-      src.start(now);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
     }
 
     startMusic() {
@@ -206,12 +345,9 @@
       this.musicTimer = setInterval(() => {
         if (!this.enabled || !gameState.running || gameState.paused) return;
         const freq = riff[this.step % riff.length];
-        this.tone(freq, freq * 0.98, 0.16, 'sawtooth', 0.065);
+        this.tone(freq, freq * 0.98, 0.16, 'sawtooth', 0.055);
         if (this.step % 4 === 0) {
-          this.tone(105, 32, 0.12, 'sine', 0.1);
-        }
-        if (this.step % 4 === 2) {
-          this.noise(0.06, 0.045);
+          this.tone(105, 32, 0.12, 'sine', 0.09);
         }
         this.step++;
       }, 190);
@@ -229,69 +365,86 @@
   document.getElementById('btn-toggle-music').addEventListener('click', () => sound.toggle());
 
   // =========================================================================
-  // 3. WEAPONS, ENEMY ARCHETYPES & STRATA THEMES
+  // 3. WEAPONS, MELEE, SPECIAL ABILITIES & ENEMY ARCHETYPES
   // =========================================================================
   const WEAPONS = [
     {
       id: 0,
-      name: 'HELL-CARBINE MK-VI',
+      name: 'M4A1 HELL-CARBINE',
+      desc: '5.56/7.62 NATO demonic tactical carbine with G36 carry-handle iron sights and infinite reserve magazines.',
       ammoType: 'infinite',
       ammoLabel: '[R] RELOAD // 7.62 BRIMSTONE',
       magSize: 30,
       cost: 1,
+      baseDamage: 28,
       damage: 28,
       cooldown: 0.11,
       pellets: 1,
-      spread: 0.016,
-      adsSpread: 0.003,
+      spread: 0.015,
+      adsSpread: 0.0025,
       color: 0xff7722,
       auto: true,
       resonanceGain: 5,
-      recoilKick: 0.045
+      recoilKick: 0.045,
+      owned: true,
+      level: 1,
+      upgradeCost: 220
     },
     {
       id: 1,
-      name: 'HELLFIRE BREACHER-12',
+      name: 'SPAS-12 BREACHER',
+      desc: 'Heavy 12-gauge combat shotgun firing 8 superheated brimstone buckshot pellets per shell.',
       ammoType: 'shells',
       ammoLabel: '[R] RELOAD // 12G SLAG SHELLS',
       magSize: 8,
       cost: 1,
+      baseDamage: 21,
       damage: 21,
-      cooldown: 0.56,
+      cooldown: 0.54,
       pellets: 8,
-      spread: 0.085,
-      adsSpread: 0.045,
+      spread: 0.082,
+      adsSpread: 0.042,
       color: 0xff3b22,
       auto: false,
       resonanceGain: 12,
-      recoilKick: 0.11
+      recoilKick: 0.11,
+      owned: true,
+      level: 1,
+      upgradeCost: 250
     },
     {
       id: 2,
-      name: 'SOUL-SHREDDER LMG',
+      name: 'M249 SOUL-SHREDDER',
+      desc: 'High-RPM belt-fed machine gun with 60-round box magazine. Rapidly builds Ascension Resonance.',
       ammoType: 'cells',
       ammoLabel: '[R] RELOAD // PLASMA BELT',
       magSize: 60,
       cost: 1,
+      baseDamage: 25,
       damage: 25,
       cooldown: 0.085,
       pellets: 1,
-      spread: 0.028,
-      adsSpread: 0.008,
+      spread: 0.026,
+      adsSpread: 0.007,
       color: 0x24d8ff,
       auto: true,
       resonanceGain: 6,
-      recoilKick: 0.055
+      recoilKick: 0.055,
+      owned: true,
+      level: 1,
+      upgradeCost: 280
     },
     {
       id: 3,
       name: 'B.F.G. SINGULARITY',
+      desc: 'Discharges an unstable void-crimson singularity orb that detonates in a massive radial shockwave.',
       ammoType: 'cells',
       ammoLabel: '25 PLASMA CELLS / CORE',
       magSize: 1,
       cost: 25,
+      baseDamage: 420,
       damage: 420,
-      cooldown: 1.05,
+      cooldown: 1.0,
       pellets: 1,
       spread: 0,
       adsSpread: 0,
@@ -299,7 +452,118 @@
       auto: false,
       isBFG: true,
       resonanceGain: 25,
-      recoilKick: 0.16
+      recoilKick: 0.16,
+      owned: true,
+      level: 1,
+      upgradeCost: 350
+    },
+    {
+      id: 4,
+      name: 'AWM ABYSSAL SNIPER',
+      desc: '.338 Anti-Materiel Rail-Sniper with high-zoom optic and 2.5× headshot damage multiplier.',
+      ammoType: 'shells',
+      ammoLabel: '[R] RELOAD // .338 AP SLUGS',
+      magSize: 5,
+      cost: 1,
+      baseDamage: 195,
+      damage: 195,
+      cooldown: 0.82,
+      pellets: 1,
+      spread: 0.008,
+      adsSpread: 0.0005,
+      color: 0xffd15c,
+      auto: false,
+      isSniper: true,
+      resonanceGain: 18,
+      recoilKick: 0.14,
+      owned: false,
+      buyCost: 350,
+      level: 1,
+      upgradeCost: 300
+    }
+  ];
+
+  const MELEE_WEAPONS = [
+    {
+      id: 0,
+      name: 'BOWIE COMBAT KNIFE',
+      desc: 'Standard-issue black-ops serrated combat blade for rapid close-quarters slashes ([V]).',
+      damage: 60,
+      range: 3.2,
+      cooldown: 0.42,
+      color: 0xc8d2dc,
+      owned: true,
+      cost: 0
+    },
+    {
+      id: 1,
+      name: 'CRUCIBLE BLOOD-KATANA',
+      desc: 'Superheated demonic nodachi that cleaves multiple hostiles in a wide 4.4m crimson arc ([V]).',
+      damage: 135,
+      range: 4.4,
+      cooldown: 0.48,
+      color: 0xff2a1a,
+      owned: false,
+      cost: 250
+    },
+    {
+      id: 2,
+      name: 'RIPPER CHAINSWORD',
+      desc: 'Motorized high-torque demonic chainsaw blade. Shreds armor and leeches +20 Vitality HP per hit ([V]).',
+      damage: 185,
+      range: 3.8,
+      cooldown: 0.52,
+      lifesteal: 20,
+      color: 0xffaa22,
+      owned: false,
+      cost: 400
+    },
+    {
+      id: 3,
+      name: 'HELL-BREAKER WARHAMMER',
+      desc: 'Colossal obsidian maul. Slams the ground to unleash a 7m 360° seismic shockwave around you ([V]).',
+      damage: 260,
+      range: 7.0,
+      cooldown: 0.72,
+      isShockwave: true,
+      color: 0xb85cff,
+      owned: false,
+      cost: 550
+    }
+  ];
+
+  const SPECIAL_ABILITIES = [
+    {
+      id: 'nova',
+      name: 'HELLFIRE ORBITAL NOVA',
+      desc: 'Press [X] to launch a 360° ring of 12 explosive brimstone missiles that obliterate surrounding demons.',
+      cost: 200,
+      chargesPerBuy: 2,
+      tag: 'OFFENSIVE BARRAGE'
+    },
+    {
+      id: 'aegis',
+      name: 'VAMPIRIC BLOOD-AEGIS',
+      desc: 'Press [X] for 6 seconds of 100% Invulnerability Shield + all bullets leech +10 HP per hit.',
+      cost: 300,
+      chargesPerBuy: 2,
+      tag: 'DEFENSIVE / LIFESTEAL'
+    },
+    {
+      id: 'meteor',
+      name: 'BRIMSTONE METEOR STRIKE',
+      desc: 'Press [X] to call down 8 cataclysmic molten meteors from the Citadel sky onto active demons.',
+      cost: 420,
+      chargesPerBuy: 2,
+      tag: 'APOCALYPTIC AIRSTRIKE'
+    },
+    {
+      id: 'resupply',
+      name: 'FULL TACTICAL RESUPPLY CRATE',
+      desc: 'Instantly restores 100 Vitality HP, 100 Aegis Armor, +32 Slag Shells, +100 Plasma Cells, and full mags.',
+      cost: 150,
+      isInstant: true,
+      tag: 'INSTANT SUPPLY DROP'
     }
   ];
 
@@ -938,6 +1202,9 @@
   let runeStripMat = null;
   let barrelTwinGroup = null;
   let bfgCoreMesh = null;
+  let sniperScopeGroup = null;
+  let meleeViewGroup = null;
+  let meleeBladeMat = null;
 
   function build3DWeaponViewmodel() {
     const gunmetalMat = new THREE.MeshStandardMaterial({
@@ -1049,6 +1316,39 @@
     bfgCoreMesh.visible = false;
     gunGroup.add(bfgCoreMesh);
 
+    // Optional AWM Sniper Optic Scope & Long Fluted Barrel (Visible when Slot 5 Sniper equipped)
+    sniperScopeGroup = new THREE.Group();
+    const scopeTube = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.24, 14), gunmetalMat);
+    scopeTube.rotation.x = Math.PI / 2;
+    scopeTube.position.set(0, 0.135, -0.02);
+    const scopeLens = new THREE.Mesh(
+      new THREE.CircleGeometry(0.019, 12),
+      new THREE.MeshBasicMaterial({ color: 0xffd15c })
+    );
+    scopeLens.position.set(0, 0.135, 0.101);
+    const longBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, 0.38, 12), chromeBoltMat);
+    longBarrel.rotation.x = Math.PI / 2;
+    longBarrel.position.set(0, 0.005, -0.68);
+    sniperScopeGroup.add(scopeTube, scopeLens, longBarrel);
+    sniperScopeGroup.visible = false;
+    gunGroup.add(sniperScopeGroup);
+
+    // 3D Melee Blade / Katana / Chainsword / Warhammer Group (Swings on [V] Melee Attack!)
+    meleeViewGroup = new THREE.Group();
+    meleeBladeMat = new THREE.MeshStandardMaterial({
+      color: 0xc8d2dc,
+      roughness: 0.2,
+      metalness: 0.9,
+      emissive: 0x330500
+    });
+    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), darkPolymerMat);
+    const bladeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.52, 0.055), meleeBladeMat);
+    bladeMesh.position.set(0, 0.32, 0);
+    meleeViewGroup.add(hilt, bladeMesh);
+    meleeViewGroup.position.set(-0.22, -0.15, -0.38);
+    meleeViewGroup.visible = false;
+    weaponRig.add(meleeViewGroup);
+
     // 7. Detachable Curved Magazine (Animates during [R] Reload!)
     magMesh = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.16, 0.068), darkPolymerMat);
     magMesh.position.set(0, -0.11, -0.08);
@@ -1102,6 +1402,8 @@
   const gameState = {
     running: false,
     paused: false,
+    shopOpen: false,
+    activeShopCat: 'guns',
     mode: 'campaign',
     stratumIndex: 0,
     wave: 1,
@@ -1114,6 +1416,7 @@
     blitzTimer: 150,
     overdriveActive: false,
     overdriveTimer: 0,
+    vampiricTimer: 0,
     ascensionGauge: 0,
     beaconUnlocked: false,
     muzzleTimer: 0,
@@ -1123,6 +1426,7 @@
     isADS: false,
     reloading: false,
     reloadTimer: 0,
+    meleeSwingTimer: 0,
     enemies: [],
     projectiles: [],
     pickups: [],
@@ -1144,12 +1448,17 @@
     maxHp: 100,
     armor: 50,
     maxArmor: 100,
+    credits: 500,
     shells: 32,
     maxShells: 64,
     cells: 120,
     maxCells: 240,
-    mags: [30, 8, 60, 1],
+    mags: [30, 8, 60, 1, 5],
     weaponIndex: 0,
+    meleeIndex: 0,
+    meleeCooldown: 0,
+    equippedAbility: 'nova',
+    abilityCharges: { nova: 1, aegis: 0, meteor: 0 },
     fireCooldown: 0,
     dashCooldown: 0,
     dashTimer: 0,
@@ -1186,26 +1495,41 @@
 
   function selectWeapon(idx) {
     if (idx < 0 || idx >= WEAPONS.length) return;
+    const w = WEAPONS[idx];
+    if (!w.owned) {
+      addKillfeed(`🔒 ${w.name} IS LOCKED — PRESS [B] TO BUY IN ARMORY SHOP!`);
+      return;
+    }
     player.weaponIndex = idx;
     gameState.reloading = false;
     document.getElementById('reload-indicator').classList.add('hidden');
-    const w = WEAPONS[idx];
     if (runeStripMat) runeStripMat.color.setHex(w.color);
     if (barrelTwinGroup) barrelTwinGroup.visible = idx === 1;
     if (bfgCoreMesh) bfgCoreMesh.visible = idx === 3;
+    if (sniperScopeGroup) sniperScopeGroup.visible = idx === 4;
     updateHUD();
   }
 
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
-    if (!gameState.running) return;
+
+    if (e.code === 'KeyB') {
+      e.preventDefault();
+      toggleShopModal();
+      return;
+    }
+
+    if (!gameState.running || gameState.shopOpen) return;
 
     if (e.code === 'Digit1') selectWeapon(0);
     if (e.code === 'Digit2') selectWeapon(1);
     if (e.code === 'Digit3') selectWeapon(2);
     if (e.code === 'Digit4') selectWeapon(3);
+    if (e.code === 'Digit5') selectWeapon(4);
     if (e.code === 'KeyM') sound.toggle();
     if (e.code === 'KeyR') startReload();
+    if (e.code === 'KeyV') triggerMeleeAttack();
+    if (e.code === 'KeyX') triggerSpecialAbility();
 
     if (e.code === 'Space' && player.onGround && !gameState.paused) {
       e.preventDefault();
@@ -1434,9 +1758,10 @@
 
     player.hp = 100;
     player.armor = 50;
+    player.credits = Math.max(player.credits, 500);
     player.shells = 32;
     player.cells = 120;
-    player.mags = [30, 8, 60, 1];
+    player.mags = WEAPONS.map(w => w.magSize);
     player.weaponIndex = 0;
     selectWeapon(0);
 
@@ -1537,7 +1862,111 @@
     gameState.reloading = true;
     gameState.reloadTimer = 1.05;
     document.getElementById('reload-indicator').classList.remove('hidden');
-    sound.playReload();
+    sound.playReload(player.weaponIndex);
+  }
+
+  // =========================================================================
+  // 10B. 3D MELEE ATTACK ([V]) & SPECIAL ABILITIES ([X])
+  // =========================================================================
+  function triggerMeleeAttack() {
+    if (player.meleeCooldown > 0 || !gameState.running || gameState.paused) return;
+    const m = MELEE_WEAPONS[player.meleeIndex];
+    player.meleeCooldown = m.cooldown;
+    gameState.meleeSwingTimer = 0.34;
+    if (meleeBladeMat) meleeBladeMat.color.setHex(m.color);
+    sound.playMelee(m.id);
+
+    const forwardX = -Math.sin(player.yaw);
+    const forwardZ = -Math.cos(player.yaw);
+    let hitCount = 0;
+
+    for (const e of gameState.enemies) {
+      if (e.dead) continue;
+      const dx = e.x - player.x;
+      const dz = e.z - player.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > m.range) continue;
+
+      if (!m.isShockwave) {
+        // Check forward 120-degree cleave cone
+        const dot = (dx * forwardX + dz * forwardZ) / (dist || 1);
+        if (dot < 0.25) continue;
+      }
+
+      hitCount++;
+      const dmg = m.damage * (gameState.overdriveActive ? 2.0 : 1.0);
+      damageEnemy(e, dmg, 14, false);
+      spawnImpactParticles(new THREE.Vector3(e.x, 1.3, e.z), m.color, 10);
+
+      if (m.lifesteal) {
+        player.hp = Math.min(player.maxHp, player.hp + m.lifesteal);
+      }
+    }
+
+    if (m.isShockwave) {
+      flashScreen('fx-overdrive', 0.2);
+      spawnImpactParticles(new THREE.Vector3(player.x + forwardX * 2, 0.3, player.z + forwardZ * 2), 0xb85cff, 24);
+      addKillfeed(`🔨 WARHAMMER SEISMIC SLAM! (${hitCount} DEMONS CRUSHED)`);
+    } else if (hitCount > 0) {
+      showHitmarker();
+      addKillfeed(`🗡 ${m.name} CLEAVED ${hitCount} HOSTILE(S)!`);
+    }
+    updateHUD();
+  }
+
+  function triggerSpecialAbility() {
+    if (!gameState.running || gameState.paused) return;
+    const abId = player.equippedAbility;
+    const charges = player.abilityCharges[abId] || 0;
+    if (charges <= 0) {
+      addKillfeed(`NO ${abId.toUpperCase()} CHARGES LEFT — BUY MORE IN [B] SHOP!`);
+      return;
+    }
+
+    player.abilityCharges[abId]--;
+    sound.playOverdrive();
+
+    if (abId === 'nova') {
+      // Launch 12 radial Hellfire Missiles in 360 degrees
+      flashScreen('fx-damage', 0.22);
+      for (let i = 0; i < 12; i++) {
+        const ang = (i / 12) * Math.PI * 2;
+        const vx = Math.sin(ang) * 24;
+        const vz = Math.cos(ang) * 24;
+        const orbMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(0.32, 12, 12),
+          new THREE.MeshBasicMaterial({ color: 0xff5511 })
+        );
+        orbMesh.position.set(player.x + Math.sin(ang) * 1.1, 1.35, player.z + Math.cos(ang) * 1.1);
+        scene.add(orbMesh);
+        gameState.projectiles.push({
+          mesh: orbMesh,
+          vx,
+          vy: 0,
+          vz,
+          damage: 260,
+          fromPlayer: true,
+          isBFG: true
+        });
+      }
+      addKillfeed('🔥 UNLEASHED HELLFIRE ORBITAL NOVA (12 MISSILES)!');
+    } else if (abId === 'aegis') {
+      gameState.vampiricTimer = 6.0;
+      player.invulnTimer = 6.0;
+      player.armor = player.maxArmor;
+      flashScreen('fx-pickup', 0.45);
+      addKillfeed('🛡 VAMPIRIC BLOOD-AEGIS ACTIVE (6s INVULNERABILITY + LIFESTEAL)!');
+    } else if (abId === 'meteor') {
+      flashScreen('fx-overdrive', 0.35);
+      const targets = gameState.enemies.filter(e => !e.dead);
+      targets.forEach(e => {
+        spawnImpactParticles(new THREE.Vector3(e.x, 4.5, e.z), 0xffaa22, 18);
+        spawnImpactParticles(new THREE.Vector3(e.x, 1.2, e.z), 0xff2200, 18);
+        damageEnemy(e, 380, 15, true);
+      });
+      addKillfeed('☄ BRIMSTONE METEOR AIRSTRIKE OBLITERATED THE PLAZA!');
+    }
+    updateHUD();
   }
 
   function finishReload() {
@@ -1680,10 +2109,14 @@
 
         if (closestEnemy) {
           hitEnemyAny = true;
-          // Headshot bonus check!
-          const isHeadshot = hitPoint && hitPoint.y > 1.85 * closestEnemy.scale;
-          const finalDmg = weapon.damage * dmgMult * (isHeadshot ? 1.5 : 1.0);
+          // Headshot bonus check! (Sniper gets 2.5x headshot multiplier!)
+          const isHeadshot = hitPoint && hitPoint.y > 1.82 * closestEnemy.scale;
+          const hsMult = isHeadshot ? (weapon.isSniper ? 2.5 : 1.5) : 1.0;
+          const finalDmg = weapon.damage * dmgMult * hsMult;
           damageEnemy(closestEnemy, finalDmg, weapon.resonanceGain / weapon.pellets, isHeadshot);
+          if (gameState.vampiricTimer > 0) {
+            player.hp = Math.min(player.maxHp, player.hp + 10);
+          }
           if (hitPoint) spawnImpactParticles(hitPoint, 0xff2211, 7);
         } else if (hitPoint && worldHits.length > 0) {
           spawnImpactParticles(hitPoint, 0xffbb44, 5);
@@ -1790,15 +2223,19 @@
       const pts = Math.round(enemy.score * gameState.multiplier * (isHeadshot ? 1.25 : 1));
       gameState.score += pts;
 
+      // Award Soul Credits ($SC) for the Armory Shop!
+      const creditBounty = Math.round((enemy.score * 0.38) * (isHeadshot ? 1.35 : 1.0));
+      player.credits += creditBounty;
+
       if (!gameState.overdriveActive) {
         gameState.ascensionGauge = Math.min(100, gameState.ascensionGauge + 14);
       }
 
       if (gameState.mode === 'blitz') {
         gameState.blitzTimer += 2.5;
-        addKillfeed(`${isHeadshot ? 'HEADSHOT! ' : ''}PURGED ${enemy.name} (+${pts} // +2.5s)`);
+        addKillfeed(`${isHeadshot ? 'HEADSHOT! ' : ''}${enemy.name} (+$${creditBounty} // +2.5s)`);
       } else {
-        addKillfeed(`${isHeadshot ? 'HEADSHOT! ' : ''}PURGED ${enemy.name} (+${pts} PTS)`);
+        addKillfeed(`${isHeadshot ? 'HEADSHOT! ' : ''}${enemy.name} (+${pts} PTS // +$${creditBounty})`);
       }
 
       sound.playHit(true);
@@ -1867,8 +2304,11 @@
     }
 
     if (player.fireCooldown > 0) player.fireCooldown = Math.max(0, player.fireCooldown - dt);
+    if (player.meleeCooldown > 0) player.meleeCooldown = Math.max(0, player.meleeCooldown - dt);
     if (player.dashCooldown > 0) player.dashCooldown = Math.max(0, player.dashCooldown - dt);
     if (player.invulnTimer > 0) player.invulnTimer = Math.max(0, player.invulnTimer - dt);
+    if (gameState.vampiricTimer > 0) gameState.vampiricTimer = Math.max(0, gameState.vampiricTimer - dt);
+    if (gameState.meleeSwingTimer > 0) gameState.meleeSwingTimer = Math.max(0, gameState.meleeSwingTimer - dt);
 
     // Reload timer & magazine animation
     if (gameState.reloading) {
@@ -1960,37 +2400,88 @@
     camera.position.set(player.x, player.y + Math.sin(gameState.bobPhase) * (gameState.isADS ? 0.015 : 0.045), player.z);
     camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
 
-    const targetFov = gameState.isADS ? 46 : 70;
+    const isSniperEquipped = WEAPONS[player.weaponIndex] && WEAPONS[player.weaponIndex].isSniper;
+    const targetFov = gameState.isADS ? (isSniperEquipped ? 26 : 46) : 70;
     if (Math.abs(camera.fov - targetFov) > 0.1) {
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, dt * 14);
       camera.updateProjectionMatrix();
     }
 
-    // Update 3D Weapon Viewmodel (Hip-fire <-> ADS interpolation + Reload tilt + Recoil)
+    // Update 3D Weapon Viewmodel (Hip-fire <-> ADS interpolation + 4-Stage Reload Animation + Recoil)
     const targetPos = gameState.isADS ? ADS_POS : HIP_POS;
     const targetRot = gameState.isADS ? ADS_ROT : HIP_ROT;
     weaponRig.position.lerp(targetPos, dt * 15);
-    weaponRig.rotation.x = THREE.MathUtils.lerp(weaponRig.rotation.x, targetRot.x + gameState.recoilPitch, dt * 15);
-    weaponRig.rotation.y = THREE.MathUtils.lerp(weaponRig.rotation.y, targetRot.y, dt * 15);
-    weaponRig.rotation.z = THREE.MathUtils.lerp(
-      weaponRig.rotation.z,
-      targetRot.z + (gameState.reloading ? 0.48 : 0),
-      dt * 12
+
+    let reloadRoll = 0;
+    let reloadPitchAdd = 0;
+    let reloadDropY = 0;
+    let boltRackZ = 0;
+
+    if (gameState.reloading) {
+      const prog = 1 - gameState.reloadTimer / 1.05; // 0.0 -> 1.0
+      if (prog < 0.35) {
+        // Stage 1: Tilt rifle & drop empty magazine out
+        reloadRoll = 0.42;
+        reloadPitchAdd = 0.18;
+      } else if (prog < 0.68) {
+        // Stage 2: Slam fresh magazine into magwell (upward jolt at 0.45)
+        reloadRoll = 0.38;
+        reloadPitchAdd = prog > 0.42 && prog < 0.55 ? -0.12 : 0.12;
+        reloadDropY = prog > 0.42 && prog < 0.52 ? 0.035 : -0.02;
+      } else if (prog < 0.9) {
+        // Stage 3: Pull charging handle / bolt carrier sharply back
+        reloadRoll = -0.22;
+        reloadPitchAdd = 0.08;
+        boltRackZ = 0.085;
+      } else {
+        // Stage 4: Bolt slams forward
+        reloadRoll = 0;
+        boltRackZ = 0;
+      }
+    }
+
+    weaponRig.rotation.x = THREE.MathUtils.lerp(
+      weaponRig.rotation.x,
+      targetRot.x + gameState.recoilPitch + reloadPitchAdd,
+      dt * 15
     );
+    weaponRig.rotation.y = THREE.MathUtils.lerp(weaponRig.rotation.y, targetRot.y, dt * 15);
+    weaponRig.rotation.z = THREE.MathUtils.lerp(weaponRig.rotation.z, targetRot.z + reloadRoll, dt * 14);
 
     const swayAmp = gameState.isADS ? 0.002 : 0.011;
     gunGroup.position.set(
       Math.cos(gameState.bobPhase * 0.5) * swayAmp,
-      Math.abs(Math.sin(gameState.bobPhase)) * swayAmp - (gameState.reloading ? 0.06 : 0),
+      Math.abs(Math.sin(gameState.bobPhase)) * swayAmp + reloadDropY,
       gameState.recoilOffset
     );
     if (boltMesh) {
-      boltMesh.position.z = 0.02 + gameState.recoilOffset * 1.4;
+      boltMesh.position.z = 0.02 + gameState.recoilOffset * 1.4 + boltRackZ;
     }
     if (magMesh) {
-      magMesh.position.y = gameState.reloading
-        ? -0.11 - Math.sin((1 - gameState.reloadTimer / 1.05) * Math.PI) * 0.16
-        : -0.11;
+      if (gameState.reloading) {
+        const prog = 1 - gameState.reloadTimer / 1.05;
+        if (prog < 0.36) {
+          magMesh.position.y = -0.11 - (prog / 0.36) * 0.24;
+        } else if (prog < 0.48) {
+          magMesh.position.y = -0.35 + ((prog - 0.36) / 0.12) * 0.24;
+        } else {
+          magMesh.position.y = -0.11;
+        }
+      } else {
+        magMesh.position.y = -0.11;
+      }
+    }
+
+    // 3D Melee Blade Slash Animation ([V])
+    if (meleeViewGroup) {
+      if (gameState.meleeSwingTimer > 0) {
+        meleeViewGroup.visible = true;
+        const p = 1 - gameState.meleeSwingTimer / 0.34;
+        meleeViewGroup.position.set(-0.35 + p * 0.65, -0.08, -0.44);
+        meleeViewGroup.rotation.set(-0.6, 0.3, -1.2 + p * 2.4);
+      } else {
+        meleeViewGroup.visible = false;
+      }
     }
 
     // Rotate Citadel Portal & Check if Player Entered
@@ -2338,8 +2829,21 @@
     }
 
     document.getElementById('hud-score').textContent = String(gameState.score).padStart(6, '0');
+    const credEl = document.getElementById('hud-credits');
+    if (credEl) credEl.textContent = `🩸 $${player.credits}`;
     document.getElementById('hud-multiplier').textContent = `${gameState.multiplier.toFixed(1)}×`;
     document.getElementById('hud-mult-bar').style.width = `${(gameState.comboTimer / 4.5) * 100}%`;
+
+    const meleeEl = document.getElementById('hud-melee-equipped');
+    if (meleeEl) {
+      meleeEl.textContent = `[V] MELEE: ${MELEE_WEAPONS[player.meleeIndex].name}`;
+    }
+    const abEl = document.getElementById('hud-ability-equipped');
+    if (abEl) {
+      const abObj = SPECIAL_ABILITIES.find(a => a.id === player.equippedAbility);
+      const chg = player.abilityCharges[player.equippedAbility] || 0;
+      abEl.textContent = `[X] ${abObj ? abObj.name.split(' ')[1] : 'SPECIAL'} (${chg})`;
+    }
 
     document.getElementById('hud-hp').textContent = player.hp;
     document.getElementById('hud-hp-bar').style.width = `${player.hp}%`;
@@ -2388,9 +2892,255 @@
     document.getElementById('slot-ammo-1').textContent = `${player.mags[1]}/${player.shells}`;
     document.getElementById('slot-ammo-2').textContent = `${player.mags[2]}/${player.cells}`;
     document.getElementById('slot-ammo-3').textContent = `${player.cells}`;
+    const slot4El = document.getElementById('slot-ammo-4');
+    if (slot4El) {
+      slot4El.textContent = WEAPONS[4].owned ? `${player.mags[4]}/${player.shells}` : 'LOCKED';
+    }
 
     document.querySelectorAll('.w-slot').forEach((btn, sIdx) => {
       btn.classList.toggle('active', sIdx === idx);
+    });
+  }
+
+  // =========================================================================
+  // 12B. BLACK-MARKET ARMORY & LOADOUT SHOP CONTROLLER ([B] KEY)
+  // =========================================================================
+  function openShopModal() {
+    gameState.shopOpen = true;
+    gameState.isADS = false;
+    if (gameState.running) gameState.paused = true;
+    if (document.exitPointerLock) document.exitPointerLock();
+    document.getElementById('shop-modal').classList.remove('hidden');
+    renderShopItems(gameState.activeShopCat);
+  }
+
+  function closeShopModal() {
+    gameState.shopOpen = false;
+    document.getElementById('shop-modal').classList.add('hidden');
+    if (gameState.running && document.getElementById('state-modal').classList.contains('hidden')) {
+      gameState.paused = false;
+      if (renderer.domElement.requestPointerLock) renderer.domElement.requestPointerLock();
+    }
+    updateHUD();
+  }
+
+  function toggleShopModal() {
+    if (gameState.shopOpen) closeShopModal();
+    else openShopModal();
+  }
+
+  document.getElementById('tab-btn-shop').addEventListener('click', () => {
+    switchMainView('view-game');
+    openShopModal();
+  });
+  document.getElementById('btn-open-shop-from-menu').addEventListener('click', openShopModal);
+  document.getElementById('hud-btn-open-shop').addEventListener('click', openShopModal);
+  document.getElementById('btn-close-shop').addEventListener('click', closeShopModal);
+
+  document.querySelectorAll('.shop-cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.shop-cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      gameState.activeShopCat = btn.dataset.cat;
+      renderShopItems(btn.dataset.cat);
+    });
+  });
+
+  function renderShopItems(category) {
+    const walletEl = document.getElementById('shop-credits-amount');
+    if (walletEl) walletEl.textContent = `🩸 $${player.credits}`;
+    const grid = document.getElementById('shop-items-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    if (category === 'guns') {
+      WEAPONS.forEach((w, idx) => {
+        const isEquipped = player.weaponIndex === idx && w.owned;
+        const card = document.createElement('div');
+        card.className = `shop-item-card ${isEquipped ? 'equipped-card' : ''}`;
+
+        const nextCost = w.owned ? Math.round(w.upgradeCost * w.level) : w.buyCost;
+        const canAfford = player.credits >= nextCost;
+        const maxed = w.level >= 5;
+
+        card.innerHTML = `
+          <div>
+            <div class="shop-card-top">
+              <span class="shop-tier-tag">SLOT [${idx + 1}] // FIREARM</span>
+              <span class="shop-level-badge">${w.owned ? `MK-${w.level}` : 'LOCKED'}</span>
+            </div>
+            <h4>${w.name}</h4>
+            <p>${w.desc}</p>
+            <div class="shop-stat-pills">
+              <span>DMG: ${w.damage}${w.pellets > 1 ? ` × ${w.pellets}` : ''}</span>
+              <span>MAG: ${w.magSize}</span>
+              <span>${w.owned ? `UPGRADE: +22% DMG` : 'NEW WEAPON'}</span>
+            </div>
+          </div>
+          <div class="shop-card-actions">
+            ${
+              !w.owned
+                ? `<button class="btn-shop-buy" data-action="buy-gun" data-idx="${idx}" ${!canAfford ? 'disabled' : ''}>
+                     UNLOCK GUN ($${nextCost})
+                   </button>`
+                : `<button class="btn-shop-buy" data-action="upgrade-gun" data-idx="${idx}" ${!canAfford || maxed ? 'disabled' : ''}>
+                     ${maxed ? 'MAX LEVEL (MK-5)' : `UPGRADE MK-${w.level + 1} ($${nextCost})`}
+                   </button>
+                   <button class="btn-shop-equip" data-action="equip-gun" data-idx="${idx}">
+                     ${isEquipped ? '✓ EQUIPPED' : 'EQUIP'}
+                   </button>`
+            }
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    } else if (category === 'melee') {
+      MELEE_WEAPONS.forEach((m, idx) => {
+        const isEquipped = player.meleeIndex === idx;
+        const canAfford = player.credits >= m.cost;
+        const card = document.createElement('div');
+        card.className = `shop-item-card ${isEquipped ? 'equipped-card' : ''}`;
+
+        card.innerHTML = `
+          <div>
+            <div class="shop-card-top">
+              <span class="shop-tier-tag">QUICK MELEE [V]</span>
+              <span class="shop-level-badge">${m.owned ? 'OWNED' : `$${m.cost}`}</span>
+            </div>
+            <h4>${m.name}</h4>
+            <p>${m.desc}</p>
+            <div class="shop-stat-pills">
+              <span>DMG: ${m.damage}</span>
+              <span>REACH: ${m.range}m</span>
+              <span>${m.lifesteal ? `+${m.lifesteal} HP LEECH` : m.isShockwave ? '360° SHOCKWAVE' : 'FAST SLASH'}</span>
+            </div>
+          </div>
+          <div class="shop-card-actions">
+            ${
+              !m.owned
+                ? `<button class="btn-shop-buy" data-action="buy-melee" data-idx="${idx}" ${!canAfford ? 'disabled' : ''}>
+                     BUY MELEE ($${m.cost})
+                   </button>`
+                : `<button class="btn-shop-equip" data-action="equip-melee" data-idx="${idx}">
+                     ${isEquipped ? '✓ EQUIPPED ON [V]' : 'EQUIP ON [V]'}
+                   </button>`
+            }
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    } else if (category === 'abilities') {
+      SPECIAL_ABILITIES.forEach(ab => {
+        const isEquipped = !ab.isInstant && player.equippedAbility === ab.id;
+        const canAfford = player.credits >= ab.cost;
+        const charges = player.abilityCharges[ab.id] || 0;
+        const card = document.createElement('div');
+        card.className = `shop-item-card ${isEquipped ? 'equipped-card' : ''}`;
+
+        card.innerHTML = `
+          <div>
+            <div class="shop-card-top">
+              <span class="shop-tier-tag">${ab.tag}</span>
+              <span class="shop-level-badge">${ab.isInstant ? 'INSTANT' : `CHARGES: ${charges}`}</span>
+            </div>
+            <h4>${ab.name}</h4>
+            <p>${ab.desc}</p>
+            <div class="shop-stat-pills">
+              <span>COST: $${ab.cost}</span>
+              <span>${ab.isInstant ? 'FULL HP/ARMOR/AMMO' : `+${ab.chargesPerBuy} CHARGES / BUY`}</span>
+            </div>
+          </div>
+          <div class="shop-card-actions">
+            <button class="btn-shop-buy" data-action="buy-ability" data-id="${ab.id}" ${!canAfford ? 'disabled' : ''}>
+              ${ab.isInstant ? `BUY RESUPPLY ($${ab.cost})` : `BUY +${ab.chargesPerBuy} CHARGES ($${ab.cost})`}
+            </button>
+            ${
+              !ab.isInstant
+                ? `<button class="btn-shop-equip" data-action="equip-ability" data-id="${ab.id}">
+                     ${isEquipped ? '✓ ACTIVE ON [X]' : 'EQUIP ON [X]'}
+                   </button>`
+                : ''
+            }
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Bind shop card buttons
+    grid.querySelectorAll('button[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const act = btn.dataset.action;
+        if (act === 'buy-gun') {
+          const idx = parseInt(btn.dataset.idx, 10);
+          const w = WEAPONS[idx];
+          if (player.credits >= w.buyCost && !w.owned) {
+            player.credits -= w.buyCost;
+            w.owned = true;
+            player.shells = Math.min(player.maxShells, player.shells + 20);
+            player.mags[idx] = w.magSize;
+            selectWeapon(idx);
+            sound.playPickup();
+            addKillfeed(`🛒 UNLOCKED ${w.name}!`);
+          }
+        } else if (act === 'upgrade-gun') {
+          const idx = parseInt(btn.dataset.idx, 10);
+          const w = WEAPONS[idx];
+          const cost = Math.round(w.upgradeCost * w.level);
+          if (player.credits >= cost && w.level < 5) {
+            player.credits -= cost;
+            w.level++;
+            w.damage = Math.round(w.baseDamage * (1 + (w.level - 1) * 0.22));
+            if (!w.isBFG) w.magSize += 4;
+            player.mags[idx] = w.magSize;
+            player.shells = Math.min(player.maxShells, player.shells + 16);
+            player.cells = Math.min(player.maxCells, player.cells + 50);
+            sound.playReload(idx);
+            addKillfeed(`🔧 UPGRADED ${w.name} TO MK-${w.level} (${w.damage} DMG)!`);
+          }
+        } else if (act === 'equip-gun') {
+          selectWeapon(parseInt(btn.dataset.idx, 10));
+          sound.playPickup();
+        } else if (act === 'buy-melee') {
+          const idx = parseInt(btn.dataset.idx, 10);
+          const m = MELEE_WEAPONS[idx];
+          if (player.credits >= m.cost && !m.owned) {
+            player.credits -= m.cost;
+            m.owned = true;
+            player.meleeIndex = idx;
+            sound.playMelee(idx);
+            addKillfeed(`🗡 PURCHASED & EQUIPPED ${m.name} ON [V]!`);
+          }
+        } else if (act === 'equip-melee') {
+          player.meleeIndex = parseInt(btn.dataset.idx, 10);
+          sound.playMelee(player.meleeIndex);
+        } else if (act === 'buy-ability') {
+          const id = btn.dataset.id;
+          const ab = SPECIAL_ABILITIES.find(a => a.id === id);
+          if (ab && player.credits >= ab.cost) {
+            player.credits -= ab.cost;
+            if (ab.isInstant) {
+              player.hp = player.maxHp;
+              player.armor = player.maxArmor;
+              player.shells = player.maxShells;
+              player.cells = player.maxCells;
+              player.mags = WEAPONS.map(w => w.magSize);
+              sound.playReload(player.weaponIndex);
+              addKillfeed('📦 FULL TACTICAL RESUPPLY APPLIED (100 HP / 100 ARMOR / MAX AMMO)!');
+            } else {
+              player.abilityCharges[id] = (player.abilityCharges[id] || 0) + ab.chargesPerBuy;
+              player.equippedAbility = id;
+              sound.playOverdrive();
+              addKillfeed(`⚡ PURCHASED +${ab.chargesPerBuy} ${ab.name} CHARGES!`);
+            }
+          }
+        } else if (act === 'equip-ability') {
+          player.equippedAbility = btn.dataset.id;
+          sound.playPickup();
+        }
+        renderShopItems(gameState.activeShopCat);
+        updateHUD();
+      });
     });
   }
 

@@ -697,6 +697,261 @@ html, body {
   gap: 0.35rem;
 }
 
+.weapon-slots.five-slots {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.score-credits-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.credits-badge {
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: var(--gold);
+  background: rgba(255, 209, 92, 0.14);
+  border: 1px solid rgba(255, 209, 92, 0.45);
+  padding: 0.1rem 0.45rem;
+}
+
+.loadout-quick-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-top: 0.38rem;
+  padding-top: 0.32rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: auto;
+}
+
+.loadout-tag {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: #e6d3a7;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.14rem 0.42rem;
+}
+
+.ability-tag {
+  color: var(--cyan-aegis);
+  border-color: rgba(36, 216, 255, 0.35);
+}
+
+.hud-shop-btn {
+  background: linear-gradient(135deg, #d8b467, #9c7832);
+  border: 1px solid #fff2c6;
+  color: #090806;
+  font-family: var(--font-display);
+  font-size: 0.64rem;
+  font-weight: 900;
+  padding: 0.16rem 0.52rem;
+  cursor: pointer;
+}
+
+/* ========================================================================= */
+/* BLACK-MARKET ARMORY & LOADOUT SHOP MODAL                                  */
+/* ========================================================================= */
+.shop-container-card {
+  max-width: 1080px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: linear-gradient(165deg, rgba(16, 13, 10, 0.97), rgba(8, 7, 10, 0.98));
+  border: 1px solid #d4b263;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.92), 0 0 40px rgba(212, 178, 99, 0.2);
+  padding: 1.5rem 1.75rem;
+}
+
+.shop-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.25rem;
+  border-bottom: 1px solid rgba(212, 178, 99, 0.25);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.shop-heading {
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 900;
+  margin-bottom: 0.25rem;
+}
+
+.shop-sub {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  max-width: 620px;
+}
+
+.shop-wallet-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.wallet-box {
+  background: rgba(255, 209, 92, 0.1);
+  border: 1px solid #d4b263;
+  padding: 0.45rem 0.95rem;
+  text-align: right;
+}
+
+.wallet-digits {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--gold);
+}
+
+.shop-category-tabs {
+  display: flex;
+  gap: 0.55rem;
+  margin-bottom: 1.15rem;
+  flex-wrap: wrap;
+}
+
+.shop-cat-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 178, 99, 0.28);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: all 0.15s ease;
+}
+
+.shop-cat-btn.active, .shop-cat-btn:hover {
+  background: linear-gradient(135deg, rgba(212, 178, 99, 0.26), rgba(255, 59, 34, 0.18));
+  border-color: var(--gold);
+  color: #fff;
+}
+
+.shop-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
+  gap: 0.95rem;
+}
+
+.shop-item-card {
+  background: rgba(22, 19, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 3px solid #c9a75c;
+  padding: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.shop-item-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+}
+
+.shop-item-card.equipped-card {
+  border-color: var(--hp-green);
+  border-top-color: var(--hp-green);
+  box-shadow: 0 0 18px rgba(40, 240, 136, 0.18);
+}
+
+.shop-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  margin-bottom: 0.25rem;
+}
+
+.shop-tier-tag {
+  color: var(--gold);
+}
+
+.shop-level-badge {
+  background: rgba(255, 59, 34, 0.2);
+  border: 1px solid var(--crimson);
+  color: #fff;
+  padding: 0.08rem 0.42rem;
+}
+
+.shop-item-card h4 {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  color: #fff;
+  margin-bottom: 0.3rem;
+}
+
+.shop-item-card p {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.shop-stat-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.shop-stat-pills span {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.15rem 0.45rem;
+  color: #e8d5a5;
+}
+
+.shop-card-actions {
+  display: flex;
+  gap: 0.45rem;
+  margin-top: 0.25rem;
+}
+
+.btn-shop-buy {
+  flex: 1;
+  background: linear-gradient(180deg, #e5cb8e 0%, #a88234 100%);
+  border: 1px solid #fff0c2;
+  color: #0b0905;
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.btn-shop-buy:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.btn-shop-equip {
+  flex: 1;
+  background: rgba(40, 240, 136, 0.16);
+  border: 1px solid var(--hp-green);
+  color: var(--hp-green);
+  font-family: var(--font-display);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
 .w-slot {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.14);

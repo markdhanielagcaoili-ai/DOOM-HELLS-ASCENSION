@@ -27,6 +27,9 @@
       <button class="nav-tab active" data-view="view-game" id="tab-btn-game">
         <span class="tab-icon">⌖</span> PLAY 3D FPS
       </button>
+      <button class="nav-tab" id="tab-btn-shop">
+        <span class="tab-icon">🛒</span> ARMORY SHOP [B]
+      </button>
       <button class="nav-tab" data-view="view-criteria" id="tab-btn-criteria">
         <span class="tab-icon">📜</span> 6-CRITERIA DESIGN RUBRIC (60 PTS)
       </button>
@@ -118,8 +121,11 @@
             </div>
             <div class="score-cluster">
               <div class="score-box">
-                <span class="hud-micro-label">ASCENSION SCORE</span>
-                <span id="hud-score" class="score-digits">000000</span>
+                <span class="hud-micro-label">ASCENSION SCORE // CREDITS</span>
+                <div class="score-credits-row">
+                  <span id="hud-score" class="score-digits">000000</span>
+                  <span id="hud-credits" class="credits-badge">🩸 $500</span>
+                </div>
               </div>
               <div class="multiplier-box">
                 <span class="hud-micro-label">KILL-CHAIN MULTIPLIER</span>
@@ -171,7 +177,7 @@
             </div>
           </div>
 
-          <!-- Center: Ascension Resonance Overdrive Core -->
+          <!-- Center: Ascension Resonance Overdrive & Special/Melee Loadout -->
           <div class="hud-panel hud-ascension-core">
             <div class="ascension-top-row">
               <span class="hud-micro-label">ASCENSION RESONANCE [Q / E]</span>
@@ -183,9 +189,14 @@
             <div id="hud-ascension-status" class="ascension-subtext">
               HARVEST FALLEN FIENDS TO CHARGE CHRONO-OVERDRIVE
             </div>
+            <div class="loadout-quick-row">
+              <span id="hud-melee-equipped" class="loadout-tag">[V] MELEE: BOWIE KNIFE</span>
+              <span id="hud-ability-equipped" class="loadout-tag ability-tag">[X] SPECIAL: ORBITAL NOVA (1)</span>
+              <button id="hud-btn-open-shop" class="hud-shop-btn">[B] SHOP</button>
+            </div>
           </div>
 
-          <!-- Right: Weapon Telemetry & 4-Slot Arsenal -->
+          <!-- Right: Weapon Telemetry & 5-Slot Arsenal -->
           <div class="hud-panel hud-arsenal">
             <div class="ammo-header">
               <div>
@@ -197,26 +208,31 @@
                 <span id="hud-ammo-type" class="hud-micro-label">[R] RELOAD // 7.62 BRIMSTONE</span>
               </div>
             </div>
-            <div class="weapon-slots">
+            <div class="weapon-slots five-slots">
               <button class="w-slot active" data-slot="0" id="slot-0">
                 <span class="w-key">1</span>
                 <span class="w-name">CARBINE</span>
-                <span class="w-ammo" id="slot-ammo-0">∞</span>
+                <span class="w-ammo" id="slot-ammo-0">30/∞</span>
               </button>
               <button class="w-slot" data-slot="1" id="slot-1">
                 <span class="w-key">2</span>
                 <span class="w-name">BREACHER</span>
-                <span class="w-ammo" id="slot-ammo-1">32</span>
+                <span class="w-ammo" id="slot-ammo-1">8/32</span>
               </button>
               <button class="w-slot" data-slot="2" id="slot-2">
                 <span class="w-key">3</span>
                 <span class="w-name">HELL-LMG</span>
-                <span class="w-ammo" id="slot-ammo-2">120</span>
+                <span class="w-ammo" id="slot-ammo-2">60/120</span>
               </button>
               <button class="w-slot" data-slot="3" id="slot-3">
                 <span class="w-key">4</span>
                 <span class="w-name">B.F.G.</span>
                 <span class="w-ammo" id="slot-ammo-3">120</span>
+              </button>
+              <button class="w-slot" data-slot="4" id="slot-4">
+                <span class="w-key">5</span>
+                <span class="w-name">SNIPER</span>
+                <span class="w-ammo" id="slot-ammo-4">LOCKED</span>
               </button>
             </div>
           </div>
@@ -309,6 +325,9 @@
                 <button id="btn-start-game" class="btn-brass-launch">
                   ▶ INITIATE BLACK-OPS ASCENSION (PLAY 3D FPS)
                 </button>
+                <button id="btn-open-shop-from-menu" class="btn-brass-outline">
+                  🛒 ARMORY &amp; LOADOUT SHOP [B]
+                </button>
                 <button id="btn-open-criteria-from-menu" class="btn-brass-outline">
                   📜 6-CRITERIA RUBRIC (60 PTS)
                 </button>
@@ -319,11 +338,46 @@
                 <span><kbd>L-CLICK</kbd> Fire</span>
                 <span><kbd>R-CLICK</kbd> Iron Sights</span>
                 <span><kbd>R</kbd> Reload</span>
-                <span><kbd>SHIFT</kbd> Dash</span>
-                <span><kbd>Q</kbd> Overdrive</span>
+                <span><kbd>V</kbd> Melee</span>
+                <span><kbd>X</kbd> Special</span>
+                <span><kbd>B</kbd> Armory Shop</span>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- =============================================================== -->
+      <!-- OVERLAY 2: BLACK-MARKET ARMORY & LOADOUT SHOP ([B] KEY)         -->
+      <!-- =============================================================== -->
+      <div id="shop-modal" class="overlay-screen hidden">
+        <div class="shop-container-card">
+          <div class="shop-top-bar">
+            <div>
+              <span class="menu-hero-badge">BLACK-MARKET SOUL-FORGE // TACTICAL REQUISITION</span>
+              <h2 class="shop-heading">DEMONIC ARMORY &amp; <span class="accent-crimson">LOADOUT SHOP</span></h2>
+              <p class="shop-sub">Spend harvested <strong>Soul Credits ($SC)</strong> to requisition heavy firearms, upgrade barrels, equip 3D melee blades (<code>[V]</code>), and unlock devastating special abilities (<code>[X]</code>).</p>
+            </div>
+            <div class="shop-wallet-cluster">
+              <div class="wallet-box">
+                <span class="hud-micro-label">AVAILABLE SOUL CREDITS</span>
+                <span id="shop-credits-amount" class="wallet-digits">🩸 $500</span>
+              </div>
+              <button id="btn-close-shop" class="btn-brass-launch">
+                ↩ RESUME / DEPLOY [B / ESC]
+              </button>
+            </div>
+          </div>
+
+          <!-- Category Filter Tabs -->
+          <div class="shop-category-tabs">
+            <button class="shop-cat-btn active" data-cat="guns">🔫 FIREARMS &amp; UPGRADES</button>
+            <button class="shop-cat-btn" data-cat="melee">🗡 MELEE WEAPONS [V]</button>
+            <button class="shop-cat-btn" data-cat="abilities">⚡ SPECIAL ABILITIES [X] &amp; SUPPLIES</button>
+          </div>
+
+          <!-- Dynamic Shop Cards Grid -->
+          <div id="shop-items-grid" class="shop-items-grid"></div>
         </div>
       </div>
 
