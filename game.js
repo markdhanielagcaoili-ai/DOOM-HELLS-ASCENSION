@@ -1999,3 +1999,4 @@
   loadStratum(0);
   requestAnimationFrame(mainLoop);
 })();
+

@@ -5,8 +5,7 @@
   "private": false,
   "scripts": {
     "start": "npx serve .",
-    "dev": "npx serve .",
-    "build": "echo \"Static build complete\""
+    "dev": "npx serve ."
   },
   "keywords": [
     "fps",

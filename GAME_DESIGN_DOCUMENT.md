@@ -113,3 +113,4 @@ While inspired by classic fast-paced shooters, **DOOM: HELL'S ASCENSION** introd
 - **Stratum I — The Nadir Vault**: Cold obsidian prison; introduces *Ash-Wretches* and *Cinder-Imps*; player masters movement, *Cinder-Lance*, and *Scatter-Maw*.
 - **Stratum II — The Crucible Foundry**: Molten brass and brimstone smelteries; introduces *Iron-Gorgers* and *Void-Cantors*; unlocks the *Soul-Tether Pulse Rifle*.
 - **Stratum III — The Empyrean Breach**: Sanctum of the Rift; unlocks the *B.F.G. (Brimstone Fissure Generator)* and culminates in the multi-phase battle against **Archon Malakor**.
+
