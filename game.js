@@ -2543,7 +2543,377 @@
   }
 
   // =========================================================================
-  // 13. MAIN RENDER & ANIMATION LOOP
+  // 13. "BLACK"-INSPIRED SHATTERED GLASS & DIAGONAL RIFLE LANDING RENDERER
+  // =========================================================================
+  const heroCanvas = document.getElementById('landing-hero-canvas');
+  const heroCtx = heroCanvas ? heroCanvas.getContext('2d') : null;
+  const titleStage = document.getElementById('black-title-stage');
+
+  const landingFX = {
+    mouseX: 0,
+    mouseY: 0,
+    targetX: 0,
+    targetY: 0,
+    shockwave: 0,
+    shards: [],
+    embers: [],
+    streaks: [],
+    smokeWisps: []
+  };
+
+  function initBlackLandingFX() {
+    if (!heroCanvas) return;
+
+    // 1. Generate 145 Razor-Sharp Shattered Glass Shards radiating from the blast core
+    landingFX.shards = [];
+    for (let i = 0; i < 145; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 20 + Math.pow(Math.random(), 0.75) * 680;
+      const numVerts = 3 + Math.floor(Math.random() * 3);
+      const size = 6 + Math.random() * 34;
+      const verts = [];
+      for (let v = 0; v < numVerts; v++) {
+        const va = (v / numVerts) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+        const vr = size * (0.45 + Math.random() * 0.65);
+        verts.push({ x: Math.cos(va) * vr, y: Math.sin(va) * vr });
+      }
+      landingFX.shards.push({
+        angle,
+        dist,
+        speed: 12 + Math.random() * 45,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 1.4,
+        depth: 0.3 + Math.random() * 1.2,
+        alpha: 0.25 + Math.random() * 0.6,
+        glint: Math.random() > 0.65,
+        verts
+      });
+    }
+
+    // 2. Generate 95 Golden-Amber Blast Embers at the shatter origin
+    landingFX.embers = [];
+    for (let i = 0; i < 95; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.pow(Math.random(), 1.3) * 290;
+      landingFX.embers.push({
+        angle,
+        dist,
+        size: 1.5 + Math.random() * 4.5,
+        speed: 18 + Math.random() * 55,
+        color: Math.random() > 0.35 ? '#ffaa2b' : '#fff0b8'
+      });
+    }
+
+    // 3. Generate Radial Ballistic Trajectory Streaks (Matching BLACK key art)
+    landingFX.streaks = [];
+    for (let i = 0; i < 42; i++) {
+      landingFX.streaks.push({
+        angle: -Math.PI * 0.85 + Math.random() * Math.PI * 1.85,
+        innerR: 35 + Math.random() * 90,
+        outerR: 320 + Math.random() * 820,
+        width: 0.6 + Math.random() * 2.2,
+        gold: Math.random() > 0.65,
+        alpha: 0.14 + Math.random() * 0.42
+      });
+    }
+
+    // 4. Generate Curling Gunsmoke Ribbons along the diagonal barrel
+    landingFX.smokeWisps = [];
+    for (let i = 0; i < 9; i++) {
+      landingFX.smokeWisps.push({
+        offsetT: i / 9,
+        amp: 18 + Math.random() * 32,
+        freq: 0.8 + Math.random() * 1.2,
+        thickness: 14 + Math.random() * 26,
+        alpha: 0.08 + Math.random() * 0.14
+      });
+    }
+
+    window.addEventListener('mousemove', e => {
+      if (gameState.running && !gameState.paused) return;
+      landingFX.targetX = (e.clientX / window.innerWidth - 0.5) * 2;
+      landingFX.targetY = (e.clientY / window.innerHeight - 0.5) * 2;
+    });
+
+    document.getElementById('menu-overlay').addEventListener('mousedown', () => {
+      landingFX.shockwave = 1.0;
+      sound.playShoot(0);
+    });
+  }
+
+  function renderBlackLandingHero(now, dt) {
+    if (!heroCtx || (gameState.running && !gameState.paused)) return;
+
+    const W = heroCanvas.width;
+    const H = heroCanvas.height;
+
+    landingFX.mouseX += (landingFX.targetX - landingFX.mouseX) * Math.min(1, dt * 6);
+    landingFX.mouseY += (landingFX.targetY - landingFX.mouseY) * Math.min(1, dt * 6);
+    if (landingFX.shockwave > 0) {
+      landingFX.shockwave = Math.max(0, landingFX.shockwave - dt * 3.2);
+    }
+
+    // Subtle parallax on the brushed-brass title stage
+    if (titleStage) {
+      const tx = landingFX.mouseX * -14;
+      const ty = landingFX.mouseY * -8;
+      titleStage.style.transform = `translate(${tx}px, ${ty}px)`;
+    }
+
+    // Blast origin in lower-left (behind "DO" of DOOM, matching BLACK cover art)
+    const originX = W * 0.27 + landingFX.mouseX * 18;
+    const originY = H * 0.62 + landingFX.mouseY * 14;
+
+    // 1. Pitch-Black Studio Void Background
+    heroCtx.fillStyle = '#050504';
+    heroCtx.fillRect(0, 0, W, H);
+
+    // 2. Fiery Golden-Bronze Shatter Core Glow at Lower-Left Origin
+    const coreRadius = 340 + landingFX.shockwave * 140;
+    const coreGrad = heroCtx.createRadialGradient(originX, originY, 8, originX, originY, coreRadius);
+    coreGrad.addColorStop(0, 'rgba(255, 230, 155, 0.92)');
+    coreGrad.addColorStop(0.22, 'rgba(235, 145, 38, 0.62)');
+    coreGrad.addColorStop(0.55, 'rgba(85, 55, 22, 0.22)');
+    coreGrad.addColorStop(1, 'rgba(5, 5, 4, 0)');
+    heroCtx.fillStyle = coreGrad;
+    heroCtx.fillRect(0, 0, W, H);
+
+    // 3. Radial Ballistic Trajectory Streaks
+    heroCtx.save();
+    heroCtx.translate(originX, originY);
+    for (const st of landingFX.streaks) {
+      heroCtx.strokeStyle = st.gold
+        ? `rgba(218, 168, 75, ${st.alpha})`
+        : `rgba(195, 210, 225, ${st.alpha})`;
+      heroCtx.lineWidth = st.width;
+      heroCtx.beginPath();
+      heroCtx.moveTo(Math.cos(st.angle) * st.innerR, Math.sin(st.angle) * st.innerR);
+      heroCtx.lineTo(Math.cos(st.angle) * st.outerR, Math.sin(st.angle) * st.outerR);
+      heroCtx.stroke();
+    }
+    heroCtx.restore();
+
+    // 4. DIAGONAL METALLIC ASSAULT RIFLE BARREL, A-FRAME FRONT SIGHT & FLASH HIDER (Matching BLACK Cover!)
+    heroCtx.save();
+    const kickOffset = landingFX.shockwave * -22;
+    heroCtx.translate(originX + kickOffset, originY - kickOffset * 0.55);
+    // Diagonal angle pointing from bottom-left to upper-right (-28.5 degrees)
+    heroCtx.rotate(-0.498 + landingFX.mouseY * 0.025);
+
+    // Metallic cylinder shader helper
+    const makeSteelGrad = (yTop, yBot) => {
+      const g = heroCtx.createLinearGradient(0, yTop, 0, yBot);
+      g.addColorStop(0, '#4a525a');
+      g.addColorStop(0.22, '#e2ebf2');
+      g.addColorStop(0.45, '#8c97a3');
+      g.addColorStop(0.76, '#1a2026');
+      g.addColorStop(1, '#58636e');
+      return g;
+    };
+
+    // 4A. Detached / Exploding Carry-Handle Rear Sight Assembly on Left (Like BLACK cover!)
+    heroCtx.save();
+    heroCtx.translate(-185 - landingFX.mouseX * 15, -48 - landingFX.mouseY * 12);
+    heroCtx.rotate(-0.18);
+    heroCtx.fillStyle = makeSteelGrad(-32, 32);
+    heroCtx.beginPath();
+    heroCtx.moveTo(-75, 22);
+    heroCtx.lineTo(75, 22);
+    heroCtx.lineTo(62, -24);
+    heroCtx.lineTo(-58, -24);
+    heroCtx.closePath();
+    heroCtx.fill();
+    heroCtx.strokeStyle = '#d8e3ec';
+    heroCtx.lineWidth = 1.5;
+    heroCtx.stroke();
+    // Carry handle thumb-nuts
+    [-42, 38].forEach(nx => {
+      heroCtx.fillStyle = '#c5ced6';
+      heroCtx.beginPath();
+      heroCtx.arc(nx, 10, 9, 0, Math.PI * 2);
+      heroCtx.fill();
+      heroCtx.strokeStyle = '#111';
+      heroCtx.stroke();
+    });
+    heroCtx.restore();
+
+    // 4B. Upper Receiver, Delta Ring & Handguard Cap emerging from the shatter cloud
+    heroCtx.fillStyle = makeSteelGrad(-44, 44);
+    heroCtx.fillRect(-40, -40, 175, 80);
+
+    // Tapered Delta Ring
+    heroCtx.beginPath();
+    heroCtx.moveTo(135, -42);
+    heroCtx.lineTo(178, -32);
+    heroCtx.lineTo(178, 32);
+    heroCtx.lineTo(135, 42);
+    heroCtx.closePath();
+    heroCtx.fill();
+
+    // Ribbed Handguard Barrel Shroud
+    heroCtx.fillStyle = makeSteelGrad(-30, 30);
+    heroCtx.fillRect(178, -28, 170, 56);
+    heroCtx.fillStyle = '#14181d';
+    for (let rx = 190; rx < 340; rx += 18) {
+      heroCtx.fillRect(rx, -26, 8, 52);
+    }
+
+    // 4C. Heavy Steel Rifle Barrel extending to the upper-right
+    heroCtx.fillStyle = makeSteelGrad(-19, 19);
+    heroCtx.fillRect(348, -18, 415, 36);
+
+    // Step-down M4 profile cut on the barrel
+    heroCtx.fillStyle = makeSteelGrad(-15, 15);
+    heroCtx.fillRect(545, -14, 95, 28);
+
+    // Black carbon/gunpowder scorch marks across the steel barrel
+    heroCtx.fillStyle = 'rgba(12, 14, 16, 0.65)';
+    heroCtx.beginPath();
+    heroCtx.moveTo(580, -14);
+    heroCtx.lineTo(625, -14);
+    heroCtx.lineTo(595, 14);
+    heroCtx.lineTo(560, 14);
+    heroCtx.fill();
+
+    // 4D. ICONIC A-FRAME FRONT SIGHT TOWER (M16/M4 Triangular Sight Post in Center-Top of Reference Image!)
+    heroCtx.fillStyle = makeSteelGrad(-175, 45);
+    heroCtx.beginPath();
+    heroCtx.moveTo(355, -18);   // Base rear
+    heroCtx.lineTo(395, -168);  // Rear vertical sight tower
+    heroCtx.lineTo(445, -168);  // Top sight ears
+    heroCtx.lineTo(525, -18);   // Slanted front A-frame strut
+    heroCtx.lineTo(525, 32);    // Lower bayonet lug collar
+    heroCtx.lineTo(355, 32);
+    heroCtx.closePath();
+    heroCtx.fill();
+    heroCtx.strokeStyle = 'rgba(235, 245, 255, 0.65)';
+    heroCtx.lineWidth = 2;
+    heroCtx.stroke();
+
+    // Inner triangular cutout inside the A-frame sight tower
+    heroCtx.fillStyle = '#050504';
+    heroCtx.beginPath();
+    heroCtx.moveTo(405, -24);
+    heroCtx.lineTo(422, -125);
+    heroCtx.lineTo(482, -24);
+    heroCtx.closePath();
+    heroCtx.fill();
+    heroCtx.strokeStyle = '#9aa6b2';
+    heroCtx.lineWidth = 1.5;
+    heroCtx.stroke();
+
+    // Protective Front Sight Ears & Sight Post Pin at top of A-frame
+    heroCtx.fillStyle = '#d4dee8';
+    heroCtx.fillRect(402, -186, 12, 20);
+    heroCtx.fillRect(430, -186, 12, 20);
+    heroCtx.fillStyle = '#ff5522';
+    heroCtx.fillRect(419, -182, 6, 16);
+
+    // 4E. A2 BIRDCAGE FLASH HIDER / MUZZLE COMPENSATOR AT UPPER-RIGHT TIP (Matching Reference Image!)
+    heroCtx.fillStyle = makeSteelGrad(-25, 25);
+    heroCtx.beginPath();
+    heroCtx.roundRect(745, -24, 155, 48, 6);
+    heroCtx.fill();
+    heroCtx.strokeStyle = '#dce6f0';
+    heroCtx.lineWidth = 1.5;
+    heroCtx.stroke();
+
+    // Circular machined wrench grooves on the flash hider
+    heroCtx.fillStyle = '#181d22';
+    heroCtx.fillRect(768, -24, 7, 48);
+    heroCtx.fillRect(784, -24, 7, 48);
+
+    // Dark Oblong Muzzle Compensator Vented Port Slot (Exact match to reference photo!)
+    heroCtx.fillStyle = '#07090b';
+    heroCtx.beginPath();
+    heroCtx.roundRect(808, -11, 56, 20, 8);
+    heroCtx.fill();
+    heroCtx.strokeStyle = '#9aa6b2';
+    heroCtx.lineWidth = 1.5;
+    heroCtx.stroke();
+
+    // Foreshortened Elliptical Hollow Muzzle Bore at the very tip (x = 900)
+    heroCtx.fillStyle = '#060709';
+    heroCtx.beginPath();
+    heroCtx.ellipse(898, 0, 12, 23, 0, 0, Math.PI * 2);
+    heroCtx.fill();
+    heroCtx.strokeStyle = '#d8e4ee';
+    heroCtx.lineWidth = 3;
+    heroCtx.stroke();
+
+    heroCtx.restore();
+
+    // 5. CURLING GUNSMOKE RIBBONS DRIFTING ACROSS THE BARREL (Like Reference Image!)
+    heroCtx.save();
+    for (const sm of landingFX.smokeWisps) {
+      const t = (sm.offsetT + now * 0.00008) % 1;
+      const sx = originX + t * (W * 0.65);
+      const sy = originY - t * (H * 0.58) + Math.sin(now * 0.0015 * sm.freq + sm.offsetT * 12) * sm.amp;
+
+      const sGrad = heroCtx.createRadialGradient(sx, sy, 4, sx, sy, sm.thickness * 3.2);
+      sGrad.addColorStop(0, `rgba(215, 222, 230, ${sm.alpha})`);
+      sGrad.addColorStop(0.5, `rgba(140, 150, 160, ${sm.alpha * 0.5})`);
+      sGrad.addColorStop(1, 'rgba(10, 10, 12, 0)');
+      heroCtx.fillStyle = sGrad;
+      heroCtx.beginPath();
+      heroCtx.ellipse(sx, sy, sm.thickness * 4.2, sm.thickness * 1.4, -0.48, 0, Math.PI * 2);
+      heroCtx.fill();
+    }
+    heroCtx.restore();
+
+    // 6. GOLDEN MOLTEN BLAST SPARKS AT ORIGIN
+    heroCtx.save();
+    for (const em of landingFX.embers) {
+      const r = (em.dist + now * 0.001 * em.speed) % 310;
+      const ex = originX + Math.cos(em.angle) * r;
+      const ey = originY + Math.sin(em.angle) * r;
+      const fade = 1 - r / 310;
+      heroCtx.fillStyle = em.color;
+      heroCtx.globalAlpha = fade * 0.9;
+      heroCtx.fillRect(ex, ey, em.size, em.size);
+    }
+    heroCtx.restore();
+
+    // 7. 145 RAZOR-SHARP SHATTERED GLASS SHARDS WITH SPECULAR WHITE RIMS
+    heroCtx.save();
+    for (const sh of landingFX.shards) {
+      const r = (sh.dist + now * 0.001 * sh.speed + landingFX.shockwave * 55 * sh.depth) % 720;
+      const px = originX + Math.cos(sh.angle) * r + landingFX.mouseX * 28 * sh.depth;
+      const py = originY + Math.sin(sh.angle) * r + landingFX.mouseY * 22 * sh.depth;
+      const rot = sh.rot + now * 0.001 * sh.rotSpeed;
+      const fade = Math.min(1, (1 - r / 720) * 1.35);
+
+      heroCtx.save();
+      heroCtx.translate(px, py);
+      heroCtx.rotate(rot);
+
+      heroCtx.beginPath();
+      sh.verts.forEach((v, idx) => {
+        if (idx === 0) heroCtx.moveTo(v.x, v.y);
+        else heroCtx.lineTo(v.x, v.y);
+      });
+      heroCtx.closePath();
+
+      // Translucent shattered glass body
+      heroCtx.fillStyle = sh.glint
+        ? `rgba(225, 240, 255, ${sh.alpha * fade * 0.55})`
+        : `rgba(110, 130, 148, ${sh.alpha * fade * 0.35})`;
+      heroCtx.fill();
+
+      // Bright razor-sharp glass edge highlight
+      heroCtx.strokeStyle = `rgba(245, 250, 255, ${Math.min(1, sh.alpha * fade * 1.4)})`;
+      heroCtx.lineWidth = sh.glint ? 1.8 : 1.0;
+      heroCtx.stroke();
+
+      heroCtx.restore();
+    }
+    heroCtx.restore();
+  }
+
+  initBlackLandingFX();
+
+  // =========================================================================
+  // 14. MAIN RENDER & ANIMATION LOOP
   // =========================================================================
   let lastFrameTime = performance.now();
   function mainLoop(now) {
@@ -2555,7 +2925,7 @@
     if (gameState.running && !gameState.paused) {
       updateSimulation(dt);
     } else if (!gameState.running) {
-      // Dramatic background showcase angle matching the user's reference screenshot!
+      renderBlackLandingHero(now, dt);
       camera.position.set(1.5 + Math.sin(now * 0.0004) * 0.6, 1.85, 11.5);
       camera.rotation.set(0.05, 0.16 + Math.cos(now * 0.0003) * 0.04, 0, 'YXZ');
     }

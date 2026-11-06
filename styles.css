@@ -733,6 +733,278 @@ html, body {
 }
 
 /* ========================================================================= */
+/* "BLACK"-INSPIRED SHATTERED GLASS & BRUSHED BRASS LANDING PAGE             */
+/* ========================================================================= */
+.black-landing-screen {
+  padding: 0;
+  background: #050504;
+  overflow: hidden;
+}
+
+#landing-hero-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.black-landing-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.1rem 2.2rem 1.25rem;
+}
+
+.black-top-telemetry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  color: rgba(215, 195, 150, 0.72);
+  border-bottom: 1px solid rgba(215, 180, 105, 0.18);
+  padding-bottom: 0.45rem;
+}
+
+.telemetry-version {
+  color: #d8b467;
+}
+
+/* Center-Lower Colossal Brushed-Brass Wordmark */
+.black-title-stage {
+  margin-top: auto;
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: transform 0.08s ease-out;
+}
+
+.brass-logo-wrapper {
+  position: relative;
+  text-align: center;
+  width: 100%;
+  max-width: 1280px;
+}
+
+.brass-wordmark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(4.2rem, 12.5vw, 9.8rem);
+  line-height: 0.88;
+  letter-spacing: 0.06em;
+  transform: scaleX(1.18);
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.95))
+          drop-shadow(0 0 38px rgba(255, 165, 50, 0.22));
+}
+
+.brass-letter {
+  position: relative;
+  display: inline-block;
+  padding: 0 0.02em;
+  /* Realistic Brushed Brass / Bronze Metallic Gradient with Specular Highlights */
+  background: linear-gradient(
+    172deg,
+    #fff3c4 0%,
+    #d8be7c 16%,
+    #9f8244 36%,
+    #e5cf94 51%,
+    #785e2b 70%,
+    #b89b58 86%,
+    #3d2d11 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(255, 232, 175, 0.42);
+  text-shadow:
+    0 2px 0 rgba(65, 48, 18, 0.8),
+    0 5px 0 rgba(38, 28, 10, 0.9),
+    0 9px 18px rgba(0, 0, 0, 0.92);
+}
+
+.brass-tm {
+  font-family: var(--font-ui);
+  font-size: 0.14em;
+  color: #cbb279;
+  align-self: flex-start;
+  margin-top: 0.35em;
+  margin-left: 0.15em;
+  letter-spacing: 0.05em;
+}
+
+/* Jagged Bullet Impact Crater Punched Between the Brass Letters (Just like BLACK) */
+.bullet-hole-crater {
+  position: relative;
+  width: 0.34em;
+  height: 0.34em;
+  margin: 0 -0.17em;
+  top: 0.09em;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.crater-core {
+  width: 100%;
+  height: 100%;
+  border-radius: 44% 56% 48% 52% / 52% 43% 57% 48%;
+  background: radial-gradient(circle at 45% 45%, #020202 52%, #3a2f1d 76%, #d9c38c 92%, #fff 100%);
+  box-shadow:
+    0 0 0 3px rgba(30, 22, 10, 0.95),
+    0 0 18px rgba(255, 160, 45, 0.65),
+    inset 0 0 12px #000;
+}
+
+.crater-petal {
+  position: absolute;
+  width: 38%;
+  height: 38%;
+  background: linear-gradient(135deg, #fff5d1, #876c35);
+  clip-path: polygon(50% 0%, 100% 100%, 0% 85%);
+  filter: drop-shadow(0 2px 4px #000);
+}
+
+.crater-petal.p1 { top: -22%; left: 18%; transform: rotate(-18deg); }
+.crater-petal.p2 { top: 10%; right: -24%; transform: rotate(58deg); }
+.crater-petal.p3 { bottom: -22%; right: 12%; transform: rotate(135deg); }
+.crater-petal.p4 { bottom: -18%; left: -16%; transform: rotate(215deg); }
+.crater-petal.p5 { top: 8%; left: -24%; transform: rotate(290deg); }
+
+.brass-subtitle-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  margin-top: 0.35rem;
+}
+
+.sub-line {
+  width: clamp(40px, 10vw, 150px);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #c9ad6a, #ff5924, #c9ad6a, transparent);
+}
+
+.brass-subtitle-text {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(0.95rem, 2.1vw, 1.55rem);
+  letter-spacing: 0.38em;
+  color: #e8d5a5;
+  text-shadow: 0 0 16px rgba(255, 110, 30, 0.65), 0 2px 6px #000;
+}
+
+/* Bottom Sleek Command Deck */
+.black-command-deck {
+  background: linear-gradient(180deg, rgba(12, 11, 9, 0.76), rgba(6, 5, 4, 0.94));
+  border: 1px solid rgba(212, 182, 112, 0.38);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.92), inset 0 1px 0 rgba(255, 236, 185, 0.2);
+  padding: 0.85rem 1.25rem;
+  backdrop-filter: blur(8px);
+}
+
+.black-mode-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+
+.black-mode-strip .mode-card {
+  padding: 0.55rem 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(205, 178, 118, 0.22);
+}
+
+.black-mode-strip .mode-card.selected {
+  background: linear-gradient(135deg, rgba(196, 158, 78, 0.24), rgba(255, 72, 28, 0.12));
+  border-color: #dfb968;
+  box-shadow: 0 0 18px rgba(223, 185, 104, 0.25);
+}
+
+.black-mode-strip .mode-card h3 {
+  font-size: 0.82rem;
+  margin-bottom: 0.15rem;
+  color: #f5e7c4;
+}
+
+.black-mode-strip .mode-card p {
+  font-size: 0.76rem;
+}
+
+.black-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(205, 178, 118, 0.16);
+  padding-top: 0.65rem;
+}
+
+.btn-brass-launch {
+  background: linear-gradient(180deg, #e5cb8e 0%, #b89449 48%, #7d5f22 100%);
+  border: 1px solid #fff1c7;
+  color: #0b0905;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 900;
+  padding: 0.62rem 1.35rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(225, 186, 100, 0.45);
+  transition: all 0.16s ease;
+}
+
+.btn-brass-launch:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  box-shadow: 0 0 32px rgba(255, 210, 115, 0.75);
+}
+
+.btn-brass-outline {
+  background: rgba(20, 17, 12, 0.85);
+  border: 1px solid #c8a862;
+  color: #e6cf99;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.62rem 1.05rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.btn-brass-outline:hover {
+  background: rgba(200, 168, 98, 0.18);
+  color: #fff;
+}
+
+.black-controls-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #b7a98c;
+}
+
+/* ========================================================================= */
 /* OVERLAY SCREENS (MAIN MENU & VICTORY/DEFEAT MODALS)                       */
 /* ========================================================================= */
 .overlay-screen {

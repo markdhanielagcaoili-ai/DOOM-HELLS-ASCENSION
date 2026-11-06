@@ -224,76 +224,105 @@
       </div>
 
       <!-- =============================================================== -->
-      <!-- OVERLAY 1: MAIN TITLE & INTERACTIVITY MODE LAUNCHER             -->
+      <!-- OVERLAY 1: "BLACK"-INSPIRED SHATTERED GLASS & RIFLE LANDING PAGE -->
       <!-- =============================================================== -->
-      <div id="menu-overlay" class="overlay-screen">
-        <div class="menu-card">
-          <div class="menu-hero-badge">TRUE 3D WEBGL TACTICAL DEMONIC FPS &amp; 6-CRITERIA PROJECT</div>
-          <h2 class="menu-logo">DOOM: <span>HELL'S ASCENSION</span></h2>
-          <p class="menu-tagline">
-            Deploy into the ruined <strong>Citadel of Ash</strong>. Aim down tactical demonic iron sights (<strong>Right-Click</strong>), blast through possessed legions with full 3D ballistic weaponry, trigger <strong>Chrono-Thermal Overdrive</strong>, and ascend through three infernal strata.
-          </p>
+      <div id="menu-overlay" class="overlay-screen black-landing-screen">
+        <!-- Full-bleed interactive canvas rendering the diagonal Rifle, Shattered Glass, Smoke & Ballistic Streaks -->
+        <canvas id="landing-hero-canvas" width="1600" height="900"></canvas>
 
-          <!-- Mode Selection Cards (Matches Criterion 4: Interactivity Modes) -->
-          <div class="mode-grid">
-            <div class="mode-card selected" data-mode="campaign">
-              <div class="mode-card-header">
-                <span class="mode-num">MODE 01</span>
-                <span class="mode-tag">RECOMMENDED</span>
-              </div>
-              <h3>CAMPAIGN ASCENSION</h3>
-              <p>Conquer 3 war-torn 3D Citadel Strata (Citadel of Ash → Molten Basilica → Empyrean Breach) and slay <strong>Archon Malakor</strong>.</p>
-            </div>
+        <div class="black-landing-content">
+          <!-- Top-right subtle classification tag -->
+          <div class="black-top-telemetry">
+            <span class="telemetry-Classification">TACTICAL OCCULT BLACK-OPS // PROJECT RUBRIC: 6 ITEMS × 10 PTS</span>
+            <span class="telemetry-version">WEBGL 3D ENGINE V2.5</span>
+          </div>
 
-            <div class="mode-card" data-mode="endless">
-              <div class="mode-card-header">
-                <span class="mode-num">MODE 02</span>
-                <span class="mode-tag">SURVIVAL</span>
+          <!-- Center-Lower Colossal Brushed-Brass Logo with Jagged Bullet Hole (Matching BLACK reference image) -->
+          <div class="black-title-stage" id="black-title-stage">
+            <div class="brass-logo-wrapper">
+              <div class="brass-wordmark" aria-label="DOOM">
+                <span class="brass-letter">D</span>
+                <span class="brass-letter">O</span>
+                <!-- Jagged 3D Bullet Impact Hole punched right between the letters like in BLACK -->
+                <span class="bullet-hole-crater" title="Ballistic Impact">
+                  <span class="crater-petal p1"></span>
+                  <span class="crater-petal p2"></span>
+                  <span class="crater-petal p3"></span>
+                  <span class="crater-petal p4"></span>
+                  <span class="crater-petal p5"></span>
+                  <span class="crater-core"></span>
+                </span>
+                <span class="brass-letter">O</span>
+                <span class="brass-letter">M</span>
+                <sup class="brass-tm">™</sup>
               </div>
-              <h3>ENDLESS ABYSSAL HORDE</h3>
-              <p>Hold the ruined Citadel Plaza against endless escalating demonic waves with supply drops and high-score tracking.</p>
-            </div>
-
-            <div class="mode-card" data-mode="blitz">
-              <div class="mode-card-header">
-                <span class="mode-num">MODE 03</span>
-                <span class="mode-tag">TIME-TRIAL</span>
+              <div class="brass-subtitle-bar">
+                <span class="sub-line"></span>
+                <span class="brass-subtitle-text">HELL'S ASCENSION</span>
+                <span class="sub-line"></span>
               </div>
-              <h3>PURGATORY BLITZ</h3>
-              <p>Race a 150-second Doomsday Clock across all 3 strata. Every demon purged grants a <strong>+2.5s Chrono-Extension</strong>.</p>
             </div>
           </div>
 
-          <!-- Difficulty & Launch Row -->
-          <div class="launch-controls">
-            <div class="difficulty-selector">
-              <span class="diff-label">THREAT LEVEL:</span>
-              <button class="diff-btn" data-diff="0.75">INITIATE</button>
-              <button class="diff-btn active" data-diff="1.0">WARDEN</button>
-              <button class="diff-btn" data-diff="1.35">NIGHTMARE</button>
+          <!-- Sleek Bottom Tactical Command Deck (Preserves full visibility of the Rifle & Glass Art) -->
+          <div class="black-command-deck">
+            <!-- Mode Pills -->
+            <div class="black-mode-strip">
+              <div class="mode-card selected" data-mode="campaign">
+                <div class="mode-card-header">
+                  <span class="mode-num">OP // 01</span>
+                  <span class="mode-tag">CAMPAIGN</span>
+                </div>
+                <h3>CITADEL ASCENSION</h3>
+                <p>3 Strata + Boss <strong>Archon Malakor</strong></p>
+              </div>
+
+              <div class="mode-card" data-mode="endless">
+                <div class="mode-card-header">
+                  <span class="mode-num">OP // 02</span>
+                  <span class="mode-tag">SURVIVAL</span>
+                </div>
+                <h3>ENDLESS HORDE</h3>
+                <p>Infinite Escalating Demon Waves</p>
+              </div>
+
+              <div class="mode-card" data-mode="blitz">
+                <div class="mode-card-header">
+                  <span class="mode-num">OP // 03</span>
+                  <span class="mode-tag">SPEEDRUN</span>
+                </div>
+                <h3>PURGATORY BLITZ</h3>
+                <p>150s Doomsday Clock (+2.5s / Kill)</p>
+              </div>
             </div>
 
-            <div class="cta-buttons">
-              <button id="btn-start-game" class="btn-primary-launch">
-                ▶ DEPLOY INTO 3D CITADEL (LAUNCH FPS)
-              </button>
-              <button id="btn-open-criteria-from-menu" class="btn-secondary-outline">
-                📜 VIEW 6-CRITERIA RUBRIC (60 PTS)
-              </button>
-            </div>
-          </div>
+            <!-- Action & Difficulty Bar -->
+            <div class="black-action-bar">
+              <div class="difficulty-selector">
+                <span class="diff-label">THREAT:</span>
+                <button class="diff-btn" data-diff="0.75">INITIATE</button>
+                <button class="diff-btn active" data-diff="1.0">WARDEN</button>
+                <button class="diff-btn" data-diff="1.35">NIGHTMARE</button>
+              </div>
 
-          <!-- Keybind Reference Strip -->
-          <div class="controls-strip">
-            <div><kbd>WASD</kbd> Move</div>
-            <div><kbd>MOUSE</kbd> 3D Look</div>
-            <div><kbd>L-CLICK</kbd> Fire</div>
-            <div><kbd>R-CLICK</kbd> Aim Down Sights (ADS)</div>
-            <div><kbd>R</kbd> Reload</div>
-            <div><kbd>SPACE</kbd> Jump</div>
-            <div><kbd>SHIFT</kbd> Phase-Dash</div>
-            <div><kbd>1-4</kbd> Weapons</div>
-            <div><kbd>Q</kbd>/<kbd>E</kbd> Overdrive</div>
+              <div class="cta-buttons">
+                <button id="btn-start-game" class="btn-brass-launch">
+                  ▶ INITIATE BLACK-OPS ASCENSION (PLAY 3D FPS)
+                </button>
+                <button id="btn-open-criteria-from-menu" class="btn-brass-outline">
+                  📜 6-CRITERIA RUBRIC (60 PTS)
+                </button>
+              </div>
+
+              <div class="black-controls-mini">
+                <span><kbd>WASD</kbd> Move</span>
+                <span><kbd>L-CLICK</kbd> Fire</span>
+                <span><kbd>R-CLICK</kbd> Iron Sights</span>
+                <span><kbd>R</kbd> Reload</span>
+                <span><kbd>SHIFT</kbd> Dash</span>
+                <span><kbd>Q</kbd> Overdrive</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
