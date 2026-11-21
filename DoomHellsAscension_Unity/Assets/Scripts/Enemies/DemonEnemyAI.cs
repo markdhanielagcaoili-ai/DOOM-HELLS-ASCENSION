@@ -4,14 +4,54 @@ namespace DoomHellsAscension
 {
     /// <summary>
     /// Demonic Enemy & Unique Realm Boss AI (Levels 1-100):
-    /// - Non-Boss Levels (1-9, 11-19, ..., 91-99): Uses the iconic DOOM Demon sprite billboard with lively
-    ///   stalking/weaving stride animation, obstacle steering, direct melee claw lunges ("sila mismo mag-aatake"),
-    ///   and a Toxic Acid Spit splash-stream ability (NO round balls!) that corrodes and drains player HP over time!
-    /// - Final Boss Levels (10, 20, 30, ..., 100): Keeps all 10 unique giant 3D Realm Final Bosses with
-    ///   distinct 3D geometry (wings, halo rings, shoulder cannons), unique boss patterns, and multi-phase summons!
+    /// - Non-Boss Levels (1-9, 11-19, ..., 91-99): Spawns ALL 13 distinct pixel-art demons from the
+    ///   uploaded Hell-Legion roster (Bone Stalker, Spine Ravager, Twin-Blade Wraith, Horned Executioner,
+    ///   Flying Trident Archfiend, Winged Blood-Imp, Crimson Halberdier, Greatsword Champion, Hell Lasher,
+    ///   Crimson Ogre Brute, Fallen Death-Knight, Scimitar Fiend, and Hellfire Warlord) with exact native
+    ///   aspect ratios, hovering wing motion for flyers, lively stalking/weaving stride movement, direct
+    ///   melee rush lunges, and a Toxic Acid Spit splash-stream ability (NO round balls!).
+    /// - Final Boss Levels (10, 20, 30, ..., 100): Keeps all 10 unique giant 3D Realm Final Bosses!
     /// </summary>
     public class DemonEnemyAI : MonoBehaviour
     {
+        private struct DemonVariantDef
+        {
+            public string resourceName;
+            public string displayName;
+            public float baseHp;
+            public float moveSpeed;
+            public float attackDamage;
+            public float attackCooldown;
+            public float heightWorld;
+            public int scoreValue;
+            public bool isFlying;
+            public bool canBlink;
+        }
+
+        private static readonly DemonVariantDef[] RosterDefs = new DemonVariantDef[]
+        {
+            // Row 1: Spiked Bone & Ash Demons (01-04)
+            new DemonVariantDef { resourceName = "Enemies/demon_01", displayName = "BONE STALKER",       baseHp = 78f,  moveSpeed = 7.3f, attackDamage = 11f, attackCooldown = 0.95f, heightWorld = 2.38f, scoreValue = 170, isFlying = false, canBlink = false },
+            new DemonVariantDef { resourceName = "Enemies/demon_02", displayName = "SPINE RAVAGER",      baseHp = 135f, moveSpeed = 6.1f, attackDamage = 15f, attackCooldown = 1.05f, heightWorld = 2.32f, scoreValue = 260, isFlying = false, canBlink = false },
+            new DemonVariantDef { resourceName = "Enemies/demon_03", displayName = "TWIN-BLADE WRAITH",  baseHp = 115f, moveSpeed = 7.4f, attackDamage = 16f, attackCooldown = 0.88f, heightWorld = 2.55f, scoreValue = 320, isFlying = false, canBlink = true  },
+            new DemonVariantDef { resourceName = "Enemies/demon_04", displayName = "HORNED EXECUTIONER", baseHp = 150f, moveSpeed = 6.0f, attackDamage = 18f, attackCooldown = 1.12f, heightWorld = 2.36f, scoreValue = 300, isFlying = false, canBlink = false },
+            // Row 2: Winged Flying Crimson Fiends (05-06)
+            new DemonVariantDef { resourceName = "Enemies/demon_05", displayName = "TRIDENT ARCHFIEND",  baseHp = 175f, moveSpeed = 6.8f, attackDamage = 17f, attackCooldown = 1.00f, heightWorld = 2.80f, scoreValue = 400, isFlying = true,  canBlink = true  },
+            new DemonVariantDef { resourceName = "Enemies/demon_06", displayName = "WINGED BLOOD-IMP",   baseHp = 85f,  moveSpeed = 8.1f, attackDamage = 12f, attackCooldown = 0.90f, heightWorld = 2.05f, scoreValue = 230, isFlying = true,  canBlink = false },
+            // Row 3: Crimson Hell-Legion Warriors (07-13)
+            new DemonVariantDef { resourceName = "Enemies/demon_07", displayName = "CRIMSON HALBERDIER", baseHp = 120f, moveSpeed = 6.6f, attackDamage = 15f, attackCooldown = 1.00f, heightWorld = 2.38f, scoreValue = 270, isFlying = false, canBlink = false },
+            new DemonVariantDef { resourceName = "Enemies/demon_08", displayName = "GREATSWORD CHAMPION",baseHp = 195f, moveSpeed = 5.7f, attackDamage = 20f, attackCooldown = 1.15f, heightWorld = 2.62f, scoreValue = 420, isFlying = false, canBlink = false },
+            new DemonVariantDef { resourceName = "Enemies/demon_09", displayName = "HELL LASHER",        baseHp = 74f,  moveSpeed = 7.8f, attackDamage = 11f, attackCooldown = 0.85f, heightWorld = 2.32f, scoreValue = 180, isFlying = false, canBlink = false },
+            new DemonVariantDef { resourceName = "Enemies/demon_10", displayName = "CRIMSON OGRE BRUTE", baseHp = 240f, moveSpeed = 5.0f, attackDamage = 22f, attackCooldown = 1.25f, heightWorld = 2.75f, scoreValue = 460, isFlying = false, canBlink = false },
+            new DemonVariantDef { resourceName = "Enemies/demon_11", displayName = "FALLEN DEATH-KNIGHT",baseHp = 165f, moveSpeed = 6.4f, attackDamage = 16f, attackCooldown = 0.95f, heightWorld = 2.24f, scoreValue = 350, isFlying = false, canBlink = false },
+            new DemonVariantDef { resourceName = "Enemies/demon_12", displayName = "SCIMITAR FIEND",     baseHp = 110f, moveSpeed = 7.1f, attackDamage = 14f, attackCooldown = 0.92f, heightWorld = 2.35f, scoreValue = 260, isFlying = false, canBlink = false },
+            new DemonVariantDef { resourceName = "Enemies/demon_13", displayName = "HELLFIRE WARLORD",   baseHp = 185f, moveSpeed = 6.5f, attackDamage = 19f, attackCooldown = 1.02f, heightWorld = 2.45f, scoreValue = 410, isFlying = false, canBlink = true  }
+        };
+
+        private static Texture2D[] cachedRosterTextures;
+        private static int[] rosterBag;
+        private static int rosterBagIndex;
+
         public EnemyType enemyType;
         public string displayName;
         public string bossTitle;
@@ -29,8 +69,6 @@ namespace DoomHellsAscension
         public float Scale { get; private set; } = 1f;
         public bool IsDead { get; private set; }
         public int BossPhase { get; private set; } = 1;
-
-        private static Texture2D cachedDoomDemonTex;
 
         private BossProfile bossProfile;
         private float cooldownTimer;
@@ -50,14 +88,16 @@ namespace DoomHellsAscension
         private float projSpeed = 20f;
         private int acidTickDmg = 4;
 
-        // Non-Boss Animated DOOM Sprite Demon visuals
+        // Non-Boss 13-Demon Roster Sprite Visuals
         private bool usesSpriteDemon;
+        private bool isFlyingDemon;
+        private float hoverBaseY;
         private Transform spritePivot;
         private Transform spriteQuad;
         private Material spriteMat;
-        private Color origSpriteTint = new Color(1f, 0.96f, 0.94f, 1f);
-        private float baseSpriteW = 1.82f;
-        private float baseSpriteH = 2.46f;
+        private Color origSpriteTint = Color.white;
+        private float baseSpriteW = 1.85f;
+        private float baseSpriteH = 2.40f;
 
         // Articulated 3D Boss parts
         private Transform leftLeg;
@@ -72,56 +112,88 @@ namespace DoomHellsAscension
         private Material skinMat;
         private Color origSkinColor;
 
+        private static int DrawNextRosterIndex()
+        {
+            if (rosterBag == null || rosterBag.Length != RosterDefs.Length)
+            {
+                rosterBag = new int[RosterDefs.Length];
+                for (int i = 0; i < rosterBag.Length; i++) rosterBag[i] = i;
+                rosterBagIndex = rosterBag.Length;
+            }
+            if (rosterBagIndex >= rosterBag.Length)
+            {
+                // Fisher-Yates shuffle so all 13 demons appear evenly with no immediate duplicates!
+                for (int i = rosterBag.Length - 1; i > 0; i--)
+                {
+                    int j = Random.Range(0, i + 1);
+                    int tmp = rosterBag[i];
+                    rosterBag[i] = rosterBag[j];
+                    rosterBag[j] = tmp;
+                }
+                rosterBagIndex = 0;
+            }
+            return rosterBag[rosterBagIndex++];
+        }
+
+        private static Texture2D GetRosterTexture(int variantIdx)
+        {
+            if (cachedRosterTextures == null || cachedRosterTextures.Length != RosterDefs.Length)
+            {
+                cachedRosterTextures = new Texture2D[RosterDefs.Length];
+                for (int i = 0; i < RosterDefs.Length; i++)
+                {
+                    Texture2D tex = Resources.Load<Texture2D>(RosterDefs[i].resourceName);
+                    if (tex != null)
+                    {
+                        tex.filterMode = FilterMode.Point;
+                        tex.wrapMode = TextureWrapMode.Clamp;
+                    }
+                    cachedRosterTextures[i] = tex;
+                }
+            }
+            int idx = Mathf.Clamp(variantIdx, 0, cachedRosterTextures.Length - 1);
+            return cachedRosterTextures[idx];
+        }
+
         /// <summary>
-        /// Initialize a non-boss demon (used on all non-boss levels) using the uploaded DOOM Demon visual,
-        /// lively stride/weave movement, direct melee rush lunges, and Toxic Acid Spit ability (no round balls!).
+        /// Initialize a non-boss demon using ALL 13 pixel-art demons from the uploaded roster,
+        /// lively stride/hover movement, direct melee rush lunges, and Toxic Acid Spit ability!
         /// </summary>
         public void Initialize(EnemyType type, float difficultyMult, int campaignLevel)
         {
             enemyType = type;
             isBoss = false;
             usesSpriteDemon = true;
-            isRanged = false; // Charges directly at player for melee claw attacks + spits toxic acid ability!
+            isRanged = false;
             strafeDir = Random.value < 0.5f ? 1f : -1f;
             walkPhase = Random.Range(0f, 6.28f);
-            weaveTimer = Random.Range(1.0f, 2.6f);
+            weaveTimer = Random.Range(1.0f, 2.4f);
 
-            switch (type)
-            {
-                case EnemyType.AshWretch:
-                    displayName = "ACID STALKER"; hp = 75f; moveSpeed = 7.2f; attackDamage = 11f;
-                    attackRange = 3.0f; attackCooldown = 0.95f; scoreValue = 160; Scale = 0.96f;
-                    origSpriteTint = new Color(1.0f, 0.95f, 0.92f, 1f);
-                    break;
-                case EnemyType.CinderImp:
-                    displayName = "VENOM IMP"; hp = 100f; moveSpeed = 6.4f; attackDamage = 13f;
-                    attackRange = 3.1f; attackCooldown = 1.05f; scoreValue = 240; Scale = 1.04f;
-                    origSpriteTint = new Color(1.0f, 0.98f, 0.90f, 1f);
-                    break;
-                case EnemyType.IronGorger:
-                    displayName = "BILE BRUTE"; hp = 215f; moveSpeed = 5.2f; attackDamage = 18f;
-                    attackRange = 3.3f; attackCooldown = 1.15f; scoreValue = 420; Scale = 1.24f;
-                    origSpriteTint = new Color(0.95f, 0.88f, 0.86f, 1f);
-                    break;
-                case EnemyType.VoidCantor:
-                    displayName = "BLIGHT FIEND"; hp = 145f; moveSpeed = 6.8f; attackDamage = 15f;
-                    attackRange = 3.1f; attackCooldown = 1.00f; canBlink = true; scoreValue = 360; Scale = 1.08f;
-                    origSpriteTint = new Color(0.96f, 1.0f, 0.92f, 1f);
-                    break;
-            }
+            int variantIdx = DrawNextRosterIndex();
+            DemonVariantDef def = RosterDefs[variantIdx];
+
+            displayName = def.displayName;
+            isFlyingDemon = def.isFlying;
+            hoverBaseY = def.isFlying ? 0.65f : 0f;
+            canBlink = def.canBlink;
+            Scale = def.heightWorld / 2.40f;
+            scoreValue = def.scoreValue;
+            attackRange = def.isFlying ? 3.4f : 3.1f;
+            attackCooldown = def.attackCooldown;
+            origSpriteTint = Color.white;
 
             // Smooth Level 1 -> 100 scaling
             float lvlHpScale = 1f + Mathf.Max(0, campaignLevel - 1) * 0.055f;
             float lvlDmgScale = 1f + Mathf.Max(0, campaignLevel - 1) * 0.012f;
-            hp = Mathf.Round(hp * difficultyMult * lvlHpScale);
+            hp = Mathf.Round(def.baseHp * difficultyMult * lvlHpScale);
             maxHp = hp;
-            attackDamage = Mathf.Round(attackDamage * difficultyMult * lvlDmgScale);
+            attackDamage = Mathf.Round(def.attackDamage * difficultyMult * lvlDmgScale);
             acidTickDmg = Mathf.Clamp(Mathf.RoundToInt((3.5f + campaignLevel * 0.06f) * difficultyMult), 3, 9);
-            moveSpeed *= (1f + Mathf.Min(0.36f, campaignLevel * 0.0038f));
+            moveSpeed = def.moveSpeed * (1f + Mathf.Min(0.36f, campaignLevel * 0.0038f));
             cooldownTimer = Random.Range(0.25f, 0.75f);
-            acidCooldownTimer = Random.Range(1.6f, 3.6f);
+            acidCooldownTimer = Random.Range(1.7f, 3.8f);
 
-            BuildDoomSpriteDemon();
+            BuildRosterSpriteDemon(variantIdx, def);
         }
 
         /// <summary>Initialize one of the 10 unique Realm Final Bosses (Level 10, 20, ..., 100).</summary>
@@ -153,37 +225,34 @@ namespace DoomHellsAscension
                 profile.hasWings, profile.hasHalo, profile.hasShoulderCannons);
         }
 
-        private void BuildDoomSpriteDemon()
+        private void BuildRosterSpriteDemon(int variantIdx, DemonVariantDef def)
         {
-            float s = Scale;
-            if (cachedDoomDemonTex == null)
-            {
-                cachedDoomDemonTex = Resources.Load<Texture2D>("Enemies/doom_demon");
-                if (cachedDoomDemonTex != null) cachedDoomDemonTex.filterMode = FilterMode.Point;
-            }
+            Texture2D tex = GetRosterTexture(variantIdx);
+            float aspect = (tex != null && tex.height > 0) ? ((float)tex.width / tex.height) : 0.78f;
 
-            // Pivot for dynamic walking bounce, lunge lean, and stride squash/stretch
+            // Pivot for dynamic walking bounce / flying hover, lunge lean, and squash/stretch
             GameObject pivGo = new GameObject("DemonSpritePivot");
             pivGo.transform.SetParent(transform, false);
-            pivGo.transform.localPosition = Vector3.zero;
+            pivGo.transform.localPosition = new Vector3(0f, hoverBaseY, 0f);
             spritePivot = pivGo.transform;
 
-            // Ground Contact Shadow Disc so the demon sits firmly grounded on the arena tiles
+            // Ground Contact Shadow Disc
             GameObject shadow = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             shadow.name = "DemonShadow";
             Destroy(shadow.GetComponent<Collider>());
             shadow.transform.SetParent(transform, false);
             shadow.transform.localPosition = new Vector3(0f, 0.02f, 0f);
-            shadow.transform.localScale = new Vector3(1.18f * s, 0.01f, 1.18f * s);
-            shadow.GetComponent<Renderer>().material = CitadelWorldBuilder.MakeUnlitMat(new Color(0.05f, 0.03f, 0.03f, 0.85f));
+            float shScale = def.isFlying ? 1.35f : 1.15f * Scale;
+            shadow.transform.localScale = new Vector3(shScale, 0.01f, shScale);
+            shadow.GetComponent<Renderer>().material = CitadelWorldBuilder.MakeUnlitMat(new Color(0.05f, 0.02f, 0.02f, 0.82f));
 
-            // Transparent Camera-Facing DOOM Demon Sprite Quad (exact 265:360 aspect ratio!)
+            // Transparent Pixel-Art Camera-Facing Demon Sprite Quad (Exact Native Aspect Ratio!)
             GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quad.name = "DemonSpriteVisual";
             Destroy(quad.GetComponent<Collider>());
             quad.transform.SetParent(spritePivot, false);
-            baseSpriteH = 2.46f * s;
-            baseSpriteW = baseSpriteH * (265f / 360f);
+            baseSpriteH = def.heightWorld;
+            baseSpriteW = baseSpriteH * aspect;
             quad.transform.localPosition = new Vector3(0f, baseSpriteH * 0.5f, 0f);
             quad.transform.localScale = new Vector3(baseSpriteW, baseSpriteH, 1f);
             spriteQuad = quad.transform;
@@ -191,25 +260,26 @@ namespace DoomHellsAscension
             Shader sh = Shader.Find("Sprites/Default");
             if (sh == null) sh = Shader.Find("Unlit/Transparent");
             spriteMat = new Material(sh);
-            if (cachedDoomDemonTex != null) spriteMat.mainTexture = cachedDoomDemonTex;
+            if (tex != null) spriteMat.mainTexture = tex;
             spriteMat.color = origSpriteTint;
             quad.GetComponent<Renderer>().material = spriteMat;
 
-            // Invisible 3D Torso & Headshot Hitbox Colliders for crisp FPS gunplay & 1-tap headshots!
+            // Invisible 3D Torso & Headshot Hitbox Colliders scaled to exact sprite dimensions!
+            float hitW = Mathf.Clamp(baseSpriteW * 0.66f, 0.95f, 1.95f);
             GameObject bodyHit = new GameObject("Torso");
             bodyHit.transform.SetParent(transform, false);
             BoxCollider bc = bodyHit.AddComponent<BoxCollider>();
-            bc.center = new Vector3(0f, 1.05f * s, 0f);
-            bc.size = new Vector3(1.15f * s, 1.50f * s, 0.80f * s);
+            bc.center = new Vector3(0f, hoverBaseY + baseSpriteH * 0.42f, 0f);
+            bc.size = new Vector3(hitW, baseSpriteH * 0.62f, 0.85f);
 
             GameObject headHit = new GameObject("HeadHitbox");
             headHit.transform.SetParent(transform, false);
             BoxCollider hc = headHit.AddComponent<BoxCollider>();
-            hc.center = new Vector3(0f, 2.08f * s, 0f);
-            hc.size = new Vector3(0.68f * s, 0.62f * s, 0.68f * s);
+            hc.center = new Vector3(0f, hoverBaseY + baseSpriteH * 0.83f, 0f);
+            hc.size = new Vector3(Mathf.Max(0.68f, hitW * 0.62f), baseSpriteH * 0.28f, 0.72f);
 
-            // Floating 3D Health Bar above the demon
-            CreateHealthBar(2.68f * s, new Color(0.32f, 0.96f, 0.18f));
+            // Floating 3D Health Bar cleanly above the demon's head/wings
+            CreateHealthBar(hoverBaseY + baseSpriteH + 0.28f, new Color(0.95f, 0.22f, 0.18f));
         }
 
         private void BuildArticulated3DModel(Color armorCol, Color skinCol, Color glowCol,
@@ -221,33 +291,27 @@ namespace DoomHellsAscension
             origSkinColor = skinCol;
             Material glowMat = CitadelWorldBuilder.MakeEmissiveMat(glowCol, 2.6f);
 
-            // Legs
             leftLeg = CreatePart("LeftLeg", PrimitiveType.Cube, new Vector3(-0.22f * s, 0.42f * s, 0f), new Vector3(0.28f * s, 0.85f * s, 0.28f * s), armorMat, false).transform;
             rightLeg = CreatePart("RightLeg", PrimitiveType.Cube, new Vector3(0.22f * s, 0.42f * s, 0f), new Vector3(0.28f * s, 0.85f * s, 0.28f * s), armorMat, false).transform;
 
-            // Armored Torso + Body Collider
             CreatePart("Torso", PrimitiveType.Cube, new Vector3(0f, 1.32f * s, 0f), new Vector3(0.82f * s, 1.05f * s, 0.48f * s), skinMat, true);
             CreatePart("ChestPlate", PrimitiveType.Cube, new Vector3(0f, 1.44f * s, 0f), new Vector3(0.88f * s, 0.62f * s, 0.52f * s), armorMat, false);
             CreatePart("HellCore", PrimitiveType.Cube, new Vector3(0f, 1.42f * s, 0f), new Vector3(0.28f * s, 0.28f * s, 0.56f * s), glowMat, false);
 
-            // Head + Headshot Hitbox Collider!
             CreatePart("HeadHitbox", PrimitiveType.Cube, new Vector3(0f, 2.08f * s, 0f), new Vector3(0.48f * s, 0.48f * s, 0.48f * s), skinMat, true);
             CreatePart("EyeL", PrimitiveType.Cube, new Vector3(-0.11f * s, 2.12f * s, 0.25f * s), new Vector3(0.1f * s, 0.06f * s, 0.05f * s), glowMat, false);
             CreatePart("EyeR", PrimitiveType.Cube, new Vector3(0.11f * s, 2.12f * s, 0.25f * s), new Vector3(0.1f * s, 0.06f * s, 0.05f * s), glowMat, false);
 
-            // Horns (Bosses get grand curved crown horns)
-            GameObject hornL = CreatePart("HornL", PrimitiveType.Cylinder, new Vector3(-0.26f * s, 2.44f * s, 0f), new Vector3(0.09f * s, (isBoss ? 0.36f : 0.26f) * s, 0.09f * s), isBoss ? glowMat : armorMat, false);
+            GameObject hornL = CreatePart("HornL", PrimitiveType.Cylinder, new Vector3(-0.26f * s, 2.44f * s, 0f), new Vector3(0.09f * s, 0.36f * s, 0.09f * s), glowMat, false);
             hornL.transform.localRotation = Quaternion.Euler(0f, 0f, 26f);
-            GameObject hornR = CreatePart("HornR", PrimitiveType.Cylinder, new Vector3(0.26f * s, 2.44f * s, 0f), new Vector3(0.09f * s, (isBoss ? 0.36f : 0.26f) * s, 0.09f * s), isBoss ? glowMat : armorMat, false);
+            GameObject hornR = CreatePart("HornR", PrimitiveType.Cylinder, new Vector3(0.26f * s, 2.44f * s, 0f), new Vector3(0.09f * s, 0.36f * s, 0.09f * s), glowMat, false);
             hornR.transform.localRotation = Quaternion.Euler(0f, 0f, -26f);
 
-            // Articulated Arms & Hell-Blade
             leftArm = CreatePart("LeftArm", PrimitiveType.Cube, new Vector3(-0.58f * s, 1.35f * s, 0.1f * s), new Vector3(0.24f * s, 0.85f * s, 0.24f * s), skinMat, false).transform;
             rightArm = CreatePart("RightArm", PrimitiveType.Cube, new Vector3(0.58f * s, 1.35f * s, 0.1f * s), new Vector3(0.24f * s, 0.85f * s, 0.24f * s), skinMat, false).transform;
             GameObject blade = CreatePart("HellBlade", PrimitiveType.Cube, new Vector3(0f, -0.35f * s, 0.28f * s), new Vector3(0.08f * s, 0.14f * s, 0.65f * s), glowMat, false);
             blade.transform.SetParent(rightArm, false);
 
-            // UNIQUE BOSS 3D ACCESSORIES: Demon Wings, Orbiting Halo Crown, Twin Shoulder Cannons!
             if (withWings)
             {
                 GameObject wL = CreatePart("BossWingL", PrimitiveType.Cube, new Vector3(-0.92f * s, 1.65f * s, -0.32f * s), new Vector3(1.15f * s, 0.55f * s, 0.08f * s), armorMat, false);
@@ -282,7 +346,7 @@ namespace DoomHellsAscension
                 cR.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             }
 
-            CreateHealthBar((isBoss ? 3.05f : 2.82f) * s, isBoss ? glowCol : new Color(1f, 0.23f, 0.13f));
+            CreateHealthBar(3.05f * s, glowCol);
         }
 
         private void CreateHealthBar(float heightY, Color fillColor)
@@ -351,19 +415,13 @@ namespace DoomHellsAscension
             float dist = toPlayer.magnitude;
             Vector3 dir = dist > 0.01f ? toPlayer / dist : Vector3.forward;
 
-            // =========================================================================
-            // NON-BOSS DOOM SPRITE DEMON AI:
-            // Lively stalking stride + direct melee claw rush + Toxic Acid Spit stream!
-            // =========================================================================
             if (usesSpriteDemon)
             {
                 UpdateSpriteDemonAI(dt, dist, dir);
                 return;
             }
 
-            // =========================================================================
             // UNIQUE REALM FINAL BOSS 3D AI (Levels 10, 20, ..., 100)
-            // =========================================================================
             transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
 
             if (wingLeft != null && wingRight != null)
@@ -418,7 +476,7 @@ namespace DoomHellsAscension
 
         private void UpdateSpriteDemonAI(float dt, float dist, Vector3 dir)
         {
-            // Keep billboard facing camera horizontally just like classic DOOM / DOOM 64!
+            // Keep billboard facing camera horizontally cleanly
             if (Camera.main != null)
             {
                 Vector3 toCam = Camera.main.transform.position - transform.position;
@@ -431,24 +489,21 @@ namespace DoomHellsAscension
                 transform.rotation = Quaternion.LookRotation(-dir, Vector3.up);
             }
 
-            // Periodic weave direction shift so demons aggressively zig-zag while rushing
             weaveTimer -= dt;
             if (weaveTimer <= 0f)
             {
-                weaveTimer = Random.Range(1.1f, 2.5f);
+                weaveTimer = Random.Range(1.0f, 2.4f);
                 strafeDir *= -1f;
             }
 
             bool isMoving = false;
 
-            // 1. Active Forward Claw Lunge ("sila mismo mag aatake"!)
             if (lungeTimer > 0f)
             {
                 lungeTimer -= dt;
-                if (dist > 1.35f) MoveInArena(lungeDir * (moveSpeed * 2.1f) * dt);
+                if (dist > 1.35f) MoveInArena(lungeDir * (moveSpeed * 2.15f) * dt);
                 isMoving = true;
             }
-            // 2. Active Acid Spit Windup Telegraph (flashes toxic neon-green before spitting!)
             else if (acidWindupTimer > 0f)
             {
                 acidWindupTimer -= dt;
@@ -465,19 +520,17 @@ namespace DoomHellsAscension
             }
             else
             {
-                // 3. Aggressive Hunting & Weaving Pursuit Toward Player
                 if (dist > 2.0f)
                 {
                     Vector3 perp = new Vector3(-dir.z, 0f, dir.x) * strafeDir;
-                    float weaveWeight = dist > 5.5f ? 0.36f : 0.16f;
+                    float weaveWeight = isFlyingDemon ? 0.50f : (dist > 5.5f ? 0.36f : 0.16f);
                     Vector3 desiredMove = (dir + perp * weaveWeight).normalized;
-                    // Smooth obstacle avoidance around tactical cover blocks
-                    desiredMove = SteerAroundCover(desiredMove);
+                    if (!isFlyingDemon) desiredMove = SteerAroundCover(desiredMove);
                     MoveInArena(desiredMove * moveSpeed * dt);
                     isMoving = true;
                 }
 
-                // 4. Direct Melee Claw Attack when close to player!
+                // Direct Melee Weapon / Claw Rush Attack ("sila mismo mag aatake"!)
                 if (dist <= attackRange && cooldownTimer <= 0f)
                 {
                     cooldownTimer = attackCooldown;
@@ -487,32 +540,32 @@ namespace DoomHellsAscension
                         GameManager.Instance.SpawnBurstParticles(FPSPlayerController.Instance.transform.position - dir * 0.5f, new Color(1f, 0.14f, 0.08f), 10);
                     FPSPlayerController.Instance.TakeDamage(Mathf.RoundToInt(attackDamage), displayName);
                 }
-                // 5. Toxic Acid Spit Ability at Mid-Range (NOT round balls — spitting corrosive acid stream!)
+                // Toxic Acid Spit Ability at Mid-Range (NOT round balls — corrosive acid stream!)
                 else if (dist >= 4.2f && dist <= 18.5f && acidCooldownTimer <= 0f)
                 {
                     acidCooldownTimer = Random.Range(2.9f, 4.4f);
                     acidWindupTimer = 0.36f;
                     if (GameManager.Instance != null)
-                        GameManager.Instance.SpawnBurstParticles(transform.position + Vector3.up * (1.92f * Scale), new Color(0.32f, 1.0f, 0.16f), 8);
+                        GameManager.Instance.SpawnBurstParticles(transform.position + Vector3.up * (hoverBaseY + baseSpriteH * 0.78f), new Color(0.32f, 1.0f, 0.16f), 8);
                 }
             }
 
-            // =========================================================================
-            // LIVELY DOOM SPRITE MOVEMENT ANIMATION (Footstep hop, predatory sway,
-            // stride mirror flip, lunge scale-punch, acid spit inhale/snap!)
-            // =========================================================================
+            // LIVELY MOVEMENT ANIMATION (Running stride hop + sway, or soaring hover wing-bob for flyers!)
             if (spritePivot != null && spriteQuad != null)
             {
-                if (isMoving) walkPhase += dt * (moveSpeed * 1.48f);
-                else walkPhase += dt * 3.2f; // Subtle menacing breathing idle
+                walkPhase += dt * (isFlyingDemon ? 6.2f : (isMoving ? moveSpeed * 1.48f : 3.2f));
 
                 float stepSin = Mathf.Sin(walkPhase);
-                float hopY = isMoving ? Mathf.Abs(stepSin) * 0.18f * Scale : Mathf.Sin(walkPhase) * 0.03f * Scale;
-                float swayZ = isMoving ? stepSin * 7.5f : Mathf.Sin(walkPhase) * 2.0f;
-                float strideSign = (isMoving && Mathf.Cos(walkPhase * 0.5f) < 0f) ? -1f : 1f;
+                float hopY = isFlyingDemon
+                    ? hoverBaseY + Mathf.Sin(walkPhase) * 0.30f
+                    : (isMoving ? Mathf.Abs(stepSin) * 0.18f * Scale : Mathf.Sin(walkPhase) * 0.03f * Scale);
+                float swayZ = isFlyingDemon
+                    ? Mathf.Cos(walkPhase * 0.7f) * 9.5f
+                    : (isMoving ? stepSin * 7.5f : Mathf.Sin(walkPhase) * 2.0f);
+                float strideSign = (isMoving && !isFlyingDemon && Mathf.Cos(walkPhase * 0.5f) < 0f) ? -1f : 1f;
 
-                float scaleXMult = 1f + (isMoving ? Mathf.Abs(stepSin) * 0.06f : 0f);
-                float scaleYMult = 1f - (isMoving ? Mathf.Abs(stepSin) * 0.04f : Mathf.Sin(walkPhase) * 0.025f);
+                float scaleXMult = 1f + (isFlyingDemon ? Mathf.Sin(walkPhase * 2f) * 0.07f : (isMoving ? Mathf.Abs(stepSin) * 0.06f : 0f));
+                float scaleYMult = 1f - (isFlyingDemon ? Mathf.Sin(walkPhase * 2f) * 0.05f : (isMoving ? Mathf.Abs(stepSin) * 0.04f : Mathf.Sin(walkPhase) * 0.025f));
                 float lungeFwdZ = 0f;
 
                 if (lungeTimer > 0f)
@@ -520,20 +573,18 @@ namespace DoomHellsAscension
                     float lp = lungeTimer / 0.24f;
                     scaleXMult = 1.18f;
                     scaleYMult = 1.12f;
-                    swayZ = (strafeDir > 0 ? -12f : 12f) * lp;
-                    lungeFwdZ = -0.35f * lp; // Lunges forward toward camera!
+                    swayZ = (strafeDir > 0 ? -13f : 13f) * lp;
+                    lungeFwdZ = -0.38f * lp;
                 }
                 else if (acidWindupTimer > 0f)
                 {
-                    // Inhales & puffs chest right before spitting toxic acid
                     float wp = 1f - (acidWindupTimer / 0.36f);
-                    scaleXMult = 1f + wp * 0.14f;
+                    scaleXMult = 1f + wp * 0.15f;
                     scaleYMult = 1f - wp * 0.08f;
-                    hopY = 0.06f * wp;
+                    hopY += 0.06f * wp;
                 }
                 else if (hitFlashTimer > 0f)
                 {
-                    // Stagger recoil punch when shot
                     swayZ = 14f * (hitFlashTimer / 0.12f);
                     scaleYMult = 0.92f;
                 }
@@ -549,21 +600,16 @@ namespace DoomHellsAscension
             }
         }
 
-        /// <summary>
-        /// Spits a directional stream of 3 elongated, irregular toxic-green acid splash globs
-        /// (NOT round spheres!) with parabolic drop that corrode and drain player Health over time!
-        /// </summary>
         private void SpitAcidStream(Vector3 dir)
         {
             if (FPSPlayerController.Instance == null) return;
-            Vector3 mouthPos = transform.position + Vector3.up * (1.88f * Scale) + dir * 0.65f;
+            Vector3 mouthPos = transform.position + Vector3.up * (hoverBaseY + baseSpriteH * 0.78f) + dir * 0.65f;
             Vector3 targetPos = FPSPlayerController.Instance.transform.position - Vector3.up * 0.08f;
             float dist = Vector3.Distance(mouthPos, targetPos);
             float speed = 18.5f;
             float flightTime = Mathf.Clamp(dist / speed, 0.15f, 1.2f);
             float grav = 7.2f;
 
-            // Compute ballistic spit arc so acid lands right onto the player!
             Vector3 baseVel = (targetPos - mouthPos) / flightTime;
             baseVel.y += 0.5f * grav * flightTime;
 
@@ -571,7 +617,6 @@ namespace DoomHellsAscension
             if (GameManager.Instance != null)
                 GameManager.Instance.SpawnBurstParticles(mouthPos, acidCore, 10);
 
-            // Spit 3 elongated splashing acid streaks (stretched jagged droplets, NEVER round balls!)
             for (int i = 0; i < 3; i++)
             {
                 float spreadYaw = (i - 1) * 5.5f + Random.Range(-1.8f, 1.8f);
@@ -582,7 +627,6 @@ namespace DoomHellsAscension
                 spit.name = "DemonAcidSpit";
                 Destroy(spit.GetComponent<Collider>());
                 spit.transform.position = mouthPos + dir * (i * 0.24f);
-                // Thin elongated liquid spit splash shape aligned along velocity (NOT round!)
                 spit.transform.localScale = new Vector3(0.13f, 0.09f, 0.78f - i * 0.12f);
                 spit.transform.rotation = Quaternion.LookRotation(vel.normalized);
                 spit.GetComponent<Renderer>().material = CitadelWorldBuilder.MakeEmissiveMat(
@@ -606,7 +650,6 @@ namespace DoomHellsAscension
             probe.y = 1.0f;
             foreach (var b in GameManager.Instance.worldBuilder.RadarObstacles)
             {
-                // Ignore outer perimeter walls; only steer around inner tactical cover blocks
                 if (b.size.x > 20f || b.size.z > 20f) continue;
                 Bounds expanded = new Bounds(b.center, b.size + new Vector3(1.5f, 2f, 1.5f));
                 if (expanded.Contains(probe))
@@ -622,37 +665,25 @@ namespace DoomHellsAscension
         {
             switch (bossProfile.pattern)
             {
-                case BossAttackPattern.Fan3: // Lvl 10 Pyroclast
-                    FireFan(dir, 3, 24f);
-                    break;
-                case BossAttackPattern.Fan5Mortar: // Lvl 20 Ignis Rex
-                    FireFan(dir, 5, 40f);
-                    break;
-                case BossAttackPattern.IceBlinkBurst: // Lvl 30 Glacieron
-                    FireFan(dir, 3, 14f);
-                    break;
-                case BossAttackPattern.Radial8Nova: // Lvl 40 Pestilor
-                    FireRadialRing(8, Time.time * 25f);
-                    break;
-                case BossAttackPattern.VoidTwinSpiral: // Lvl 50 Umbrathor
+                case BossAttackPattern.Fan3: FireFan(dir, 3, 24f); break;
+                case BossAttackPattern.Fan5Mortar: FireFan(dir, 5, 40f); break;
+                case BossAttackPattern.IceBlinkBurst: FireFan(dir, 3, 14f); break;
+                case BossAttackPattern.Radial8Nova: FireRadialRing(8, Time.time * 25f); break;
+                case BossAttackPattern.VoidTwinSpiral:
                     FireFan(dir, 4, 28f);
                     if (BossPhase >= 2) FireRadialRing(6, Time.time * 40f);
                     break;
-                case BossAttackPattern.GatlingStream: // Lvl 60 Ferrum Titan
+                case BossAttackPattern.GatlingStream:
                     gatlingBurstRemaining = BossPhase >= 2 ? 6f : 4f;
                     gatlingBurstTick = 0f;
                     break;
-                case BossAttackPattern.BloodSeraph7: // Lvl 70 Sanguinus
-                    FireFan(dir, 7, 52f);
-                    break;
-                case BossAttackPattern.StormHyperVolley: // Lvl 80 Fulguron
-                    FireFan(dir, 5, 24f);
-                    break;
-                case BossAttackPattern.SolarRing10: // Lvl 90 Astralis
+                case BossAttackPattern.BloodSeraph7: FireFan(dir, 7, 52f); break;
+                case BossAttackPattern.StormHyperVolley: FireFan(dir, 5, 24f); break;
+                case BossAttackPattern.SolarRing10:
                     FireRadialRing(10, Time.time * 30f);
                     FireFan(dir, 3, 18f);
                     break;
-                case BossAttackPattern.MalakorApocalypse: // Lvl 100 Archon Malakor (3 Phases!)
+                case BossAttackPattern.MalakorApocalypse:
                     if (BossPhase == 1) FireFan(dir, 5, 38f);
                     else if (BossPhase == 2) { FireRadialRing(9, Time.time * 35f); FireFan(dir, 3, 20f); }
                     else { FireRadialRing(12, Time.time * 50f); FireFan(dir, 5, 32f); }
@@ -723,11 +754,10 @@ namespace DoomHellsAscension
             hp -= amount;
             hitFlashTimer = 0.12f;
             if (skinMat != null) skinMat.color = Color.white;
-            if (spriteMat != null) spriteMat.color = new Color(1.4f, 0.45f, 0.45f, 1f);
+            if (spriteMat != null) spriteMat.color = new Color(1.45f, 0.42f, 0.42f, 1f);
 
             if (GameManager.Instance != null) GameManager.Instance.AddResonance(resonanceBonus);
 
-            // Multi-phase Boss Transitions!
             if (isBoss && bossProfile != null && hp > 0f)
             {
                 float ratio = hp / maxHp;
@@ -771,8 +801,8 @@ namespace DoomHellsAscension
                 if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayHit(true, isHeadshot, streak);
                 if (GameManager.Instance != null)
                 {
-                    Color deathCol = isBoss ? projColor : new Color(0.36f, 0.96f, 0.18f);
-                    GameManager.Instance.SpawnBurstParticles(transform.position + Vector3.up * 1.4f, deathCol, isBoss ? 42 : 22);
+                    Color deathCol = isBoss ? projColor : new Color(0.92f, 0.18f, 0.16f);
+                    GameManager.Instance.SpawnBurstParticles(transform.position + Vector3.up * (hoverBaseY + 1.3f), deathCol, isBoss ? 42 : 22);
                     GameManager.Instance.OnEnemyKilled(this, isHeadshot);
                 }
                 Destroy(gameObject);
