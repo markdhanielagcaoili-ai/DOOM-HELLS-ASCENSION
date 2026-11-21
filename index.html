@@ -3,24 +3,246 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>DOOM: HELL'S ASCENSION — Unity 6 Tactical FPS</title>
+  <title>DOOM: HELL'S ASCENSION — Cinematic Hero & Unity 6 Tactical FPS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Oswald:wght@600;700&display=swap" rel="stylesheet" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #060506;
-      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-      color: #f0e6d2;
+      background: #040304;
+      font-family: "Oswald", "Segoe UI", system-ui, sans-serif;
+      color: #f3e8e2;
       user-select: none;
     }
+
+    /* =====================================================================
+       FULL-VIEWPORT 16:9 HARDWARE-ACCELERATED CINEMATIC HERO SECTION
+       ===================================================================== */
+    #hero-stage {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #040304;
+      z-index: 30;
+      transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.85s ease;
+    }
+    #hero-stage.dismissed {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* 60fps Cinematic Shot Renderer & Atmospheric Ember/Smoke Canvas */
+    #cinematic-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      will-change: transform;
+    }
+
+    /* Gritty Filmic Vignette & Crimson Contrast Grade */
+    .hero-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 50% 48%, rgba(0, 0, 0, 0) 42%, rgba(4, 2, 3, 0.72) 100%),
+        linear-gradient(180deg, rgba(6, 2, 3, 0.56) 0%, rgba(0, 0, 0, 0) 26%, rgba(0, 0, 0, 0) 74%, rgba(5, 2, 3, 0.84) 100%);
+      z-index: 2;
+    }
+
+    /* =====================================================================
+       CHISELED METALLIC BLOOD-RED & GLOWING CRIMSON TITLE TYPOGRAPHY
+       Illuminates cleanly across the upper-center sky ONLY during wide pullback
+       (Never obstructs the warrior's face during the opening close-up!)
+       ===================================================================== */
+    #hero-title-wrap {
+      position: absolute;
+      top: clamp(22px, 5.2vh, 66px);
+      left: 50%;
+      width: min(940px, 92vw);
+      transform: translate3d(-50%, -24px, 0) scale(0.92);
+      opacity: 0;
+      z-index: 5;
+      pointer-events: none;
+      will-change: transform, opacity, filter;
+      filter: blur(10px) brightness(0.4);
+      transition:
+        opacity 1.55s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 1.75s cubic-bezier(0.16, 1, 0.3, 1),
+        filter 1.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #hero-title-wrap.revealed {
+      opacity: 1;
+      transform: translate3d(-50%, 0, 0) scale(1);
+      filter: blur(0px) brightness(1);
+    }
+
+    .title-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+      filter:
+        drop-shadow(0 10px 22px rgba(0, 0, 0, 0.96))
+        drop-shadow(0 0 28px rgba(220, 38, 38, 0.65))
+        drop-shadow(0 0 64px rgba(239, 68, 68, 0.36));
+      animation: titleEmberPulse 4.2s ease-in-out infinite;
+    }
+    @keyframes titleEmberPulse {
+      0%, 100% {
+        filter:
+          drop-shadow(0 10px 22px rgba(0, 0, 0, 0.96))
+          drop-shadow(0 0 24px rgba(220, 38, 38, 0.62))
+          drop-shadow(0 0 56px rgba(239, 68, 68, 0.34));
+      }
+      50% {
+        filter:
+          drop-shadow(0 12px 26px rgba(0, 0, 0, 0.98))
+          drop-shadow(0 0 36px rgba(239, 68, 68, 0.88))
+          drop-shadow(0 0 82px rgba(220, 38, 38, 0.52));
+      }
+    }
+
+    .svg-main-doom {
+      font-family: "Cinzel", Impact, "Arial Black", serif;
+      font-weight: 900;
+      letter-spacing: 0.22em;
+    }
+    .svg-sub-ascension {
+      font-family: "Oswald", "Arial Narrow", Impact, sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.44em;
+    }
+
+    /* Animated Crimson Ember Sweep Line under Title */
+    .title-flame-rule {
+      width: min(560px, 68vw);
+      height: 2px;
+      margin: 6px auto 0;
+      background: linear-gradient(90deg, rgba(220, 38, 38, 0) 0%, #dc2626 24%, #ff6b4a 50%, #dc2626 76%, rgba(220, 38, 38, 0) 100%);
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.85);
+      opacity: 0.92;
+    }
+
+    /* Minimal Bottom Cinematic Action Bar (Zero Clutter) */
+    #hero-cta-wrap {
+      position: absolute;
+      bottom: clamp(24px, 4.8vh, 52px);
+      left: 50%;
+      transform: translate3d(-50%, 18px, 0);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      z-index: 6;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1.1s ease, transform 1.1s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #hero-cta-wrap.visible {
+      opacity: 1;
+      transform: translate3d(-50%, 0, 0);
+      pointer-events: auto;
+    }
+
+    .btn-ascend {
+      position: relative;
+      appearance: none;
+      border: 1px solid rgba(239, 68, 68, 0.78);
+      background: linear-gradient(180deg, rgba(185, 28, 28, 0.88) 0%, rgba(110, 14, 18, 0.94) 100%);
+      color: #fff3ed;
+      font-family: "Oswald", sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      padding: 13px 38px;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow:
+        0 10px 28px rgba(0, 0, 0, 0.85),
+        0 0 24px rgba(220, 38, 38, 0.45),
+        inset 0 1px 0 rgba(255, 180, 160, 0.45);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    .btn-ascend:hover {
+      transform: translateY(-2px) scale(1.02);
+      background: linear-gradient(180deg, rgba(220, 38, 38, 0.96) 0%, rgba(145, 18, 22, 0.98) 100%);
+      box-shadow:
+        0 14px 34px rgba(0, 0, 0, 0.9),
+        0 0 36px rgba(239, 68, 68, 0.75),
+        inset 0 1px 0 rgba(255, 220, 200, 0.65);
+    }
+    .btn-ascend:disabled {
+      cursor: wait;
+      opacity: 0.88;
+    }
+
+    .btn-replay {
+      appearance: none;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      background: rgba(12, 7, 8, 0.72);
+      color: #e8c7be;
+      font-family: "Oswald", sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      padding: 13px 18px;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    }
+    .btn-replay:hover {
+      border-color: rgba(239, 68, 68, 0.9);
+      color: #ffffff;
+      background: rgba(140, 20, 24, 0.42);
+    }
+
+    /* Discreet Skip Trigger During Opening 8s */
+    #skip-intro-btn {
+      position: absolute;
+      right: 22px;
+      bottom: 20px;
+      z-index: 7;
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(8, 5, 6, 0.55);
+      color: rgba(235, 212, 204, 0.78);
+      font-family: "Oswald", sans-serif;
+      font-size: 0.74rem;
+      letter-spacing: 0.2em;
+      padding: 6px 14px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 0.4s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+    #skip-intro-btn:hover {
+      border-color: rgba(239, 68, 68, 0.75);
+      color: #ffffff;
+    }
+    #skip-intro-btn.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* =====================================================================
+       UNITY 6 WEBGL FULLSCREEN GAME CONTAINER (PRELOADED SEAMLESSLY BEHIND)
+       ===================================================================== */
     #unity-container {
       position: fixed;
       inset: 0;
       width: 100vw;
       height: 100vh;
       background: #060506;
+      z-index: 10;
     }
     #unity-canvas {
       width: 100%;
@@ -29,69 +251,14 @@
       background: #060506;
       outline: none;
     }
-    #loading-overlay {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(circle at 50% 42%, rgba(165, 68, 16, 0.34), rgba(6, 5, 6, 0.98) 68%);
-      z-index: 20;
-      transition: opacity 0.45s ease;
-    }
-    #loading-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-    .brand-title {
-      font-size: clamp(2.8rem, 7vw, 5.2rem);
-      font-weight: 900;
-      letter-spacing: 0.42em;
-      padding-left: 0.42em;
-      background: linear-gradient(180deg, #fff1be 0%, #d8b35e 52%, #8e6622 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.9));
-      margin-bottom: 6px;
-    }
-    .brand-sub {
-      font-size: 0.95rem;
-      font-weight: 700;
-      letter-spacing: 0.36em;
-      color: #e2c98d;
-      margin-bottom: 34px;
-    }
-    .bar-track {
-      width: min(440px, 80vw);
-      height: 10px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(218, 178, 92, 0.45);
-      border-radius: 2px;
-      overflow: hidden;
-      margin-bottom: 12px;
-    }
-    .bar-fill {
-      width: 0%;
-      height: 100%;
-      background: linear-gradient(90deg, #c93818 0%, #f0b949 100%);
-      transition: width 0.12s linear;
-    }
-    #loading-text {
-      font-size: 0.82rem;
-      letter-spacing: 0.16em;
-      color: #cbb894;
-      text-transform: uppercase;
-    }
     #fs-btn {
       position: fixed;
       right: 14px;
       bottom: 14px;
       z-index: 15;
       background: rgba(14, 11, 10, 0.82);
-      border: 1px solid rgba(220, 180, 92, 0.55);
-      color: #f4d88c;
+      border: 1px solid rgba(220, 38, 38, 0.65);
+      color: #fca5a5;
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -100,7 +267,7 @@
       transition: opacity 0.2s ease, background 0.2s ease;
     }
     #fs-btn:hover {
-      background: rgba(180, 118, 32, 0.45);
+      background: rgba(185, 28, 28, 0.45);
     }
     #fs-btn.hidden {
       opacity: 0;
@@ -109,64 +276,425 @@
   </style>
 </head>
 <body>
+  <!-- =====================================================================
+       LIVE UNITY 6 WEBGL GAME CANVAS (PRELOADS SILENTLY BEHIND HERO)
+       ===================================================================== -->
   <div id="unity-container">
     <canvas id="unity-canvas" tabindex="-1"></canvas>
   </div>
-
-  <div id="loading-overlay">
-    <div class="brand-title">DOOM</div>
-    <div class="brand-sub">HELL'S ASCENSION</div>
-    <div class="bar-track"><div id="bar-fill" class="bar-fill"></div></div>
-    <div id="loading-text">LOADING UNITY 6 ENGINE... 0%</div>
-  </div>
-
   <button id="fs-btn" title="Toggle Fullscreen">⛶ FULLSCREEN</button>
+
+  <!-- =====================================================================
+       CINEMATIC 12-SECOND 60FPS HERO SECTION (ZERO WATERMARKS, RED TITLE)
+       ===================================================================== -->
+  <section id="hero-stage" aria-label="DOOM Hell's Ascension Hero">
+    <canvas id="cinematic-canvas"></canvas>
+    <div class="hero-vignette"></div>
+
+    <!-- Chiseled Metallic Blood-Red & Glowing Crimson SVG Title Typography -->
+    <div id="hero-title-wrap">
+      <svg class="title-svg" viewBox="0 0 1200 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DOOM HELL'S ASCENSION">
+        <defs>
+          <!-- Deep Blood-Red to Glowing Fiery Crimson Metallic Gradient -->
+          <linearGradient id="doomRedMetal" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ff857a" />
+            <stop offset="16%" stop-color="#ef4444" />
+            <stop offset="48%" stop-color="#dc2626" />
+            <stop offset="76%" stop-color="#991b1b" />
+            <stop offset="100%" stop-color="#450a0a" />
+          </linearGradient>
+
+          <!-- Chiseled Molten Ember Bevel Stroke -->
+          <linearGradient id="doomBevelRim" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fecaca" />
+            <stop offset="30%" stop-color="#ef4444" />
+            <stop offset="65%" stop-color="#7f1d1d" />
+            <stop offset="100%" stop-color="#f87171" />
+          </linearGradient>
+
+          <!-- Subtitle Crimson Metallic Gradient -->
+          <linearGradient id="subCrimsonMetal" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fca5a5" />
+            <stop offset="45%" stop-color="#ef4444" />
+            <stop offset="100%" stop-color="#991b1b" />
+          </linearGradient>
+
+          <!-- Animated Specular Fire Sheen Sweep -->
+          <linearGradient id="sheenSweep" x1="-30%" y1="0%" x2="10%" y2="0%">
+            <stop offset="0%" stop-color="rgba(255,220,200,0)" />
+            <stop offset="50%" stop-color="rgba(255,215,195,0.42)" />
+            <stop offset="100%" stop-color="rgba(255,220,200,0)" />
+            <animate attributeName="x1" values="-40%;120%" dur="4.6s" repeatCount="indefinite" />
+            <animate attributeName="x2" values="0%;160%" dur="4.6s" repeatCount="indefinite" />
+          </linearGradient>
+        </defs>
+
+        <!-- Heavy Chiseled Drop Shadow Layer -->
+        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom"
+              fill="#140203" stroke="#090102" stroke-width="10" stroke-linejoin="miter"
+              transform="translate(0, 7)">DOOM</text>
+
+        <!-- Main Chiseled Blood-Red Metallic DOOM Layer -->
+        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom"
+              fill="url(#doomRedMetal)" stroke="url(#doomBevelRim)" stroke-width="3.2" stroke-linejoin="miter">DOOM</text>
+
+        <!-- Animated Specular Metallic Highlight Sweep -->
+        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom"
+              fill="url(#sheenSweep)">DOOM</text>
+
+        <!-- Subtitle Shadow + Glowing Fiery Crimson HELL'S ASCENSION -->
+        <text x="600" y="202" text-anchor="middle" font-size="40" class="svg-sub-ascension"
+              fill="#120203" stroke="#080102" stroke-width="5" transform="translate(0, 3)">HELL'S ASCENSION</text>
+        <text x="600" y="202" text-anchor="middle" font-size="40" class="svg-sub-ascension"
+              fill="url(#subCrimsonMetal)" stroke="rgba(254, 202, 202, 0.48)" stroke-width="1">HELL'S ASCENSION</text>
+      </svg>
+      <div class="title-flame-rule"></div>
+    </div>
+
+    <!-- Clean Minimal Launch Controls (Illuminates during the Wide Rooftop Shot) -->
+    <div id="hero-cta-wrap">
+      <button id="play-game-btn" class="btn-ascend" disabled>LOADING ENGINE... 0%</button>
+      <button id="replay-hero-btn" class="btn-replay" title="Replay 12-Second Cinematic">↻ REPLAY</button>
+    </div>
+
+    <button id="skip-intro-btn">SKIP TO TITLE ▸</button>
+  </section>
 
   <script src="Build/WebGLBuild.loader.js"></script>
   <script>
-    const canvas = document.querySelector("#unity-canvas");
-    const overlay = document.querySelector("#loading-overlay");
-    const barFill = document.querySelector("#bar-fill");
-    const loadText = document.querySelector("#loading-text");
-    const fsBtn = document.querySelector("#fs-btn");
+    (() => {
+      // =========================================================================
+      // 1. 60FPS 12-SECOND CINEMATIC HERO CHOREOGRAPHY ENGINE
+      // Matches video_1.mp4 framing, head-turn pacing, and wide rooftop pullback:
+      //   0.0s - 3.0s : Dramatic front close-up portrait in dark smoke + embers
+      //   2.6s - 6.0s : Warrior turns head/shoulders left as bokeh skyline emerges
+      //   5.5s - 9.0s : Sweeping over-the-shoulder rooftop ledge pullback
+      //   8.3s - 12.0s+: Wide apocalyptic crimson metropolis + RED TITLE REVEAL
+      // =========================================================================
+      const heroStage = document.getElementById("hero-stage");
+      const cineCanvas = document.getElementById("cinematic-canvas");
+      const ctx = cineCanvas.getContext("2d", { alpha: false });
+      const titleWrap = document.getElementById("hero-title-wrap");
+      const ctaWrap = document.getElementById("hero-cta-wrap");
+      const playBtn = document.getElementById("play-game-btn");
+      const replayBtn = document.getElementById("replay-hero-btn");
+      const skipBtn = document.getElementById("skip-intro-btn");
 
-    const config = {
-      arguments: [],
-      dataUrl: "Build/WebGLBuild.data",
-      frameworkUrl: "Build/WebGLBuild.framework.js",
-      codeUrl: "Build/WebGLBuild.wasm",
-      streamingAssetsUrl: "StreamingAssets",
-      companyName: "Markdhaniel Agcaoili",
-      productName: "DOOM: HELL'S ASCENSION",
-      productVersion: "2.0",
-      matchWebGLToCanvasSize: true
-    };
+      const shotPaths = [
+        "assets/hero/shot1_front.jpg",
+        "assets/hero/shot2_turn.jpg",
+        "assets/hero/shot3_pullback.jpg",
+        "assets/hero/shot4_wide.jpg"
+      ];
+      const shots = shotPaths.map((src) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = src;
+        return img;
+      });
 
-    createUnityInstance(canvas, config, (progress) => {
-      const pct = Math.min(100, Math.round(progress * 100));
-      barFill.style.width = pct + "%";
-      loadText.textContent = pct >= 90
-        ? "INITIALIZING CITADEL ARENA... " + pct + "%"
-        : "LOADING UNITY 6 ENGINE... " + pct + "%";
-    }).then((unityInstance) => {
-      barFill.style.width = "100%";
-      overlay.classList.add("hidden");
+      let cw = 1920, ch = 1080;
+      function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        cw = Math.max(1, Math.floor(window.innerWidth * dpr));
+        ch = Math.max(1, Math.floor(window.innerHeight * dpr));
+        cineCanvas.width = cw;
+        cineCanvas.height = ch;
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      // Subtle interactive mouse parallax depth
+      let targetMX = 0, targetMY = 0, curMX = 0, curMY = 0;
+      window.addEventListener("mousemove", (e) => {
+        targetMX = (e.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
+        targetMY = (e.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
+      });
+
+      // Volumetric Dark-Crimson Smoke Plumes & Fiery Glowing Embers (60fps)
+      const smokePuffs = Array.from({ length: 16 }, (_, i) => ({
+        x: Math.random(),
+        y: 0.18 + Math.random() * 0.82,
+        r: 0.16 + Math.random() * 0.24,
+        vx: (i % 2 === 0 ? 1 : -1) * (0.008 + Math.random() * 0.014),
+        vy: -(0.004 + Math.random() * 0.010),
+        alpha: 0.06 + Math.random() * 0.10,
+        crimson: i % 3 !== 0,
+        phase: Math.random() * Math.PI * 2
+      }));
+
+      const embers = Array.from({ length: 90 }, () => ({
+        x: Math.random(),
+        y: Math.random(),
+        vx: 0.012 + Math.random() * 0.036,
+        vy: -(0.045 + Math.random() * 0.115),
+        size: 1.4 + Math.random() * 3.8,
+        phase: Math.random() * Math.PI * 2,
+        hot: Math.random() > 0.35
+      }));
+
+      const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+      const smooth = (t) => t * t * (3 - 2 * t);
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      // Draws an image with 16:9 cover fit + camera zoom/pan + subtle parallax
+      function drawShotLayer(img, alpha, scale, panXNorm, panYNorm) {
+        if (!img || !img.complete || img.naturalWidth === 0 || alpha <= 0.002) return;
+        const imgAspect = img.naturalWidth / img.naturalHeight;
+        const canAspect = cw / ch;
+        let baseW, baseH;
+        if (canAspect > imgAspect) {
+          baseW = cw;
+          baseH = cw / imgAspect;
+        } else {
+          baseH = ch;
+          baseW = ch * imgAspect;
+        }
+        const drawW = baseW * scale;
+        const drawH = baseH * scale;
+        const dx = (cw - drawW) * 0.5 + panXNorm * cw - curMX * 14;
+        const dy = (ch - drawH) * 0.5 + panYNorm * ch - curMY * 9;
+
+        ctx.save();
+        ctx.globalAlpha = clamp01(alpha);
+        ctx.drawImage(img, dx, dy, drawW, drawH);
+        ctx.restore();
+      }
+
+      let heroStartTime = performance.now();
+      let heroActive = true;
+      let titleShown = false;
+      let ctaShown = false;
+      let lastFrameTs = heroStartTime;
+
+      function resetCinematic(jumpToWide = false) {
+        heroStartTime = performance.now() - (jumpToWide ? 9400 : 0);
+        if (!jumpToWide) {
+          titleShown = false;
+          ctaShown = false;
+          titleWrap.classList.remove("revealed");
+          ctaWrap.classList.remove("visible");
+          skipBtn.classList.remove("hidden");
+        }
+      }
+
+      replayBtn.addEventListener("click", () => resetCinematic(false));
+      skipBtn.addEventListener("click", () => resetCinematic(true));
+
+      function renderHero(now) {
+        if (!heroActive) return;
+        requestAnimationFrame(renderHero);
+
+        const dt = Math.min(0.05, (now - lastFrameTs) / 1000);
+        lastFrameTs = now;
+        const elapsed = (now - heroStartTime) / 1000; // Seconds into the 12s cinematic
+
+        curMX += (targetMX - curMX) * Math.min(1, dt * 4.5);
+        curMY += (targetMY - curMY) * Math.min(1, dt * 4.5);
+
+        ctx.fillStyle = "#040304";
+        ctx.fillRect(0, 0, cw, ch);
+
+        // -----------------------------------------------------------------
+        // EXACT 12-SECOND MULTI-SHOT CAMERA CHOREOGRAPHY
+        // -----------------------------------------------------------------
+        // Shot 1 (0.0s -> 3.6s): Front Close-Up Portrait, slow intense push-in
+        const s1FadeOut = smooth(clamp01((elapsed - 2.3) / 1.35));
+        const s1Alpha = 1 - s1FadeOut;
+        const s1Prog = clamp01(elapsed / 3.6);
+        drawShotLayer(
+          shots[0],
+          s1Alpha,
+          lerp(1.02, 1.11, s1Prog),
+          lerp(0.0, 0.022, s1Prog),
+          lerp(0.008, -0.006, s1Prog)
+        );
+
+        // Shot 2 (2.2s -> 6.6s): Head-Turn Left Profile + Rightward Arc
+        const s2In = smooth(clamp01((elapsed - 2.2) / 1.35));
+        const s2Out = smooth(clamp01((elapsed - 5.2) / 1.45));
+        const s2Alpha = s2In * (1 - s2Out);
+        const s2Prog = clamp01((elapsed - 2.2) / 4.4);
+        drawShotLayer(
+          shots[1],
+          s2Alpha,
+          lerp(1.12, 1.03, easeOutCubic(s2Prog)),
+          lerp(-0.024, 0.018, s2Prog),
+          lerp(-0.004, 0.010, s2Prog)
+        );
+
+        // Shot 3 (5.1s -> 9.6s): Sweeping Over-The-Shoulder Rooftop Pullback
+        const s3In = smooth(clamp01((elapsed - 5.1) / 1.45));
+        const s3Out = smooth(clamp01((elapsed - 8.0) / 1.55));
+        const s3Alpha = s3In * (1 - s3Out);
+        const s3Prog = clamp01((elapsed - 5.1) / 4.5);
+        drawShotLayer(
+          shots[2],
+          s3Alpha,
+          lerp(1.20, 1.03, easeOutCubic(s3Prog)),
+          lerp(0.014, -0.006, s3Prog),
+          lerp(0.024, -0.004, s3Prog)
+        );
+
+        // Shot 4 (7.9s -> 12.0s+): Colossal Wide Apocalyptic Metropolis Reveal & Living Hold
+        const s4In = smooth(clamp01((elapsed - 7.9) / 1.6));
+        const s4Pull = easeOutCubic(clamp01((elapsed - 7.9) / 4.3));
+        const idleBreath = elapsed > 12.0 ? Math.sin((elapsed - 12.0) * 0.45) * 0.012 : 0;
+        const idlePan = elapsed > 12.0 ? Math.sin((elapsed - 12.0) * 0.28) * 0.008 : 0;
+        drawShotLayer(
+          shots[3],
+          s4In,
+          lerp(1.18, 1.03, s4Pull) + idleBreath,
+          idlePan,
+          lerp(0.032, 0.0, s4Pull)
+        );
+
+        // -----------------------------------------------------------------
+        // LIVE VOLUMETRIC CRIMSON FOG & SMOKE PLUMES (60FPS)
+        // -----------------------------------------------------------------
+        const cityIntensity = clamp01((elapsed - 4.5) / 4.5);
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        for (let i = 0; i < smokePuffs.length; i++) {
+          const p = smokePuffs[i];
+          p.x = (p.x + p.vx * dt + 1.4) % 1.4 - 0.2;
+          p.y = (p.y + p.vy * dt + 1.3) % 1.3 - 0.15;
+          const px = p.x * cw;
+          const py = p.y * ch;
+          const rad = p.r * Math.max(cw, ch);
+          const pulse = 0.78 + 0.22 * Math.sin(elapsed * 0.9 + p.phase);
+          const a = p.alpha * pulse * (0.65 + 0.55 * cityIntensity);
+          const g = ctx.createRadialGradient(px, py, 0, px, py, rad);
+          if (p.crimson) {
+            g.addColorStop(0, `rgba(185, 28, 28, ${a.toFixed(3)})`);
+            g.addColorStop(0.55, `rgba(110, 16, 18, ${(a * 0.45).toFixed(3)})`);
+            g.addColorStop(1, "rgba(0, 0, 0, 0)");
+          } else {
+            g.addColorStop(0, `rgba(90, 26, 20, ${(a * 0.7).toFixed(3)})`);
+            g.addColorStop(1, "rgba(0, 0, 0, 0)");
+          }
+          ctx.fillStyle = g;
+          ctx.fillRect(px - rad, py - rad, rad * 2, rad * 2);
+        }
+
+        // Subtle volcanic crimson glow horizon pulse in wide shot
+        if (s4In > 0.05) {
+          const hPulse = 0.14 + 0.06 * Math.sin(elapsed * 1.9);
+          const hg = ctx.createRadialGradient(cw * 0.42, ch * 0.62, 0, cw * 0.42, ch * 0.62, cw * 0.52);
+          hg.addColorStop(0, `rgba(239, 68, 68, ${(hPulse * s4In).toFixed(3)})`);
+          hg.addColorStop(0.5, `rgba(185, 28, 28, ${(hPulse * 0.35 * s4In).toFixed(3)})`);
+          hg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          ctx.fillStyle = hg;
+          ctx.fillRect(0, 0, cw, ch);
+        }
+
+        // -----------------------------------------------------------------
+        // LIVE RISING FIERY EMBERS (60FPS)
+        // -----------------------------------------------------------------
+        for (let i = 0; i < embers.length; i++) {
+          const e = embers[i];
+          e.x += (e.vx + Math.sin(elapsed * 2.1 + e.phase) * 0.015) * dt;
+          e.y += e.vy * dt;
+          if (e.y < -0.05) { e.y = 1.06; e.x = Math.random(); }
+          if (e.x > 1.06) e.x = -0.05;
+          if (e.x < -0.06) e.x = 1.05;
+
+          const ex = e.x * cw;
+          const ey = e.y * ch;
+          const flicker = 0.45 + 0.55 * Math.sin(elapsed * 6.5 + e.phase);
+          const r = e.size * (cw / 1920) * (0.85 + 0.3 * flicker);
+          const eg = ctx.createRadialGradient(ex, ey, 0, ex, ey, r * 3.2);
+          if (e.hot) {
+            eg.addColorStop(0, `rgba(255, 224, 178, ${(0.95 * flicker).toFixed(3)})`);
+            eg.addColorStop(0.35, `rgba(239, 68, 68, ${(0.75 * flicker).toFixed(3)})`);
+            eg.addColorStop(1, "rgba(220, 38, 38, 0)");
+          } else {
+            eg.addColorStop(0, `rgba(249, 115, 22, ${(0.85 * flicker).toFixed(3)})`);
+            eg.addColorStop(0.45, `rgba(185, 28, 28, ${(0.45 * flicker).toFixed(3)})`);
+            eg.addColorStop(1, "rgba(153, 27, 27, 0)");
+          }
+          ctx.fillStyle = eg;
+          ctx.beginPath();
+          ctx.arc(ex, ey, r * 3.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // -----------------------------------------------------------------
+        // RED "DOOM HELL'S ASCENSION" TITLE REVEAL DURING WIDE PULLBACK
+        // (Strictly AFTER the opening close-up so warrior's face stays 100% clear!)
+        // -----------------------------------------------------------------
+        if (!titleShown && elapsed >= 8.25) {
+          titleShown = true;
+          titleWrap.classList.add("revealed");
+          skipBtn.classList.add("hidden");
+        }
+        if (!ctaShown && elapsed >= 9.35) {
+          ctaShown = true;
+          ctaWrap.classList.add("visible");
+        }
+      }
+
+      requestAnimationFrame(renderHero);
+
+      // =========================================================================
+      // 2. SEAMLESS BACKGROUND UNITY 6 WEBGL PRELOADER & LAUNCH HANDOFF
+      // =========================================================================
+      const unityCanvas = document.querySelector("#unity-canvas");
+      const fsBtn = document.querySelector("#fs-btn");
+      let unityReady = false;
+      let unityInst = null;
+
+      const config = {
+        arguments: [],
+        dataUrl: "Build/WebGLBuild.data",
+        frameworkUrl: "Build/WebGLBuild.framework.js",
+        codeUrl: "Build/WebGLBuild.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Markdhaniel Agcaoili",
+        productName: "DOOM: HELL'S ASCENSION",
+        productVersion: "2.1",
+        matchWebGLToCanvasSize: true
+      };
+
+      createUnityInstance(unityCanvas, config, (progress) => {
+        const pct = Math.min(100, Math.round(progress * 100));
+        if (!unityReady) {
+          playBtn.textContent = pct >= 90
+            ? "INITIALIZING CITADEL... " + pct + "%"
+            : "LOADING ENGINE... " + pct + "%";
+        }
+      }).then((instance) => {
+        unityInst = instance;
+        unityReady = true;
+        playBtn.disabled = false;
+        playBtn.textContent = "▶ ENTER CITADEL";
+      }).catch((err) => {
+        playBtn.textContent = "ENGINE ERROR";
+        console.error(err);
+      });
+
+      playBtn.addEventListener("click", () => {
+        if (!unityReady) return;
+        heroStage.classList.add("dismissed");
+        setTimeout(() => { heroActive = false; }, 900);
+      });
+
       fsBtn.addEventListener("click", () => {
         if (!document.fullscreenElement) {
-          unityInstance.SetFullscreen(1);
+          if (unityInst) unityInst.SetFullscreen(1);
+          else document.documentElement.requestFullscreen?.().catch(() => {});
         } else {
           document.exitFullscreen().catch(() => {});
         }
       });
-    }).catch((err) => {
-      loadText.textContent = "LOAD ERROR: " + err;
-      loadText.style.color = "#ff6b4a";
-    });
 
-    document.addEventListener("pointerlockchange", () => {
-      if (document.pointerLockElement) fsBtn.classList.add("hidden");
-      else fsBtn.classList.remove("hidden");
-    });
+      document.addEventListener("pointerlockchange", () => {
+        if (document.pointerLockElement) fsBtn.classList.add("hidden");
+        else fsBtn.classList.remove("hidden");
+      });
+    })();
   </script>
 </body>
 </html>
