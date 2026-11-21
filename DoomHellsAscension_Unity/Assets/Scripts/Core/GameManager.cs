@@ -62,19 +62,26 @@ namespace DoomHellsAscension
             public Color color;
         }
 
-        // Procedural UI Textures & Cached GUIStyles (Zero per-frame allocations)
+        // Procedural UI Textures, Cinematic Hero Keyframes & Cached GUIStyles (Zero per-frame allocations)
         private Texture2D whiteTex;
         private Texture2D blackHeroBgTex;
         private Texture2D fullRifleTex;
         private Texture2D softGlowTex;
         private Texture2D glassShardTex;
         private Texture2D bulletCraterTex;
+        private Texture2D[] heroShots;
+        private float heroIntroStartTime;
         private MenuParticle[] menuShards;
         private MenuParticle[] menuEmbers;
         private MenuParticle[] menuTracers;
         private GUIStyle titleBrassStyle;
+        private GUIStyle titleCrimsonStyle;
+        private GUIStyle titleCrimsonRimStyle;
+        private GUIStyle titleCrimsonGlowStyle;
         private GUIStyle titleShadowStyle;
         private GUIStyle subtitleStyle;
+        private GUIStyle subtitleCrimsonStyle;
+        private GUIStyle subtitleShadowStyle;
         private GUIStyle headerStyle;
         private GUIStyle centerHeadStyle;
         private GUIStyle cardTitleSelStyle;
@@ -108,6 +115,14 @@ namespace DoomHellsAscension
             softGlowTex = GenerateSoftGlowTexture();
             glassShardTex = GenerateGlassShardTexture();
             bulletCraterTex = GenerateBulletCraterTexture();
+            heroShots = new Texture2D[4]
+            {
+                Resources.Load<Texture2D>("Hero/shot1_front"),
+                Resources.Load<Texture2D>("Hero/shot2_turn"),
+                Resources.Load<Texture2D>("Hero/shot3_pullback"),
+                Resources.Load<Texture2D>("Hero/shot4_wide")
+            };
+            heroIntroStartTime = Time.unscaledTime;
             InitMenuParticles();
         }
 
@@ -1164,8 +1179,17 @@ namespace DoomHellsAscension
             };
             titleBrassStyle.normal.textColor = new Color(0.91f, 0.78f, 0.45f);
 
-            titleShadowStyle = new GUIStyle(titleBrassStyle);
-            titleShadowStyle.normal.textColor = new Color(0f, 0f, 0f, 0.92f);
+            titleCrimsonStyle = new GUIStyle(titleBrassStyle) { fontSize = 88 };
+            titleCrimsonStyle.normal.textColor = new Color(0.92f, 0.19f, 0.19f, 1f); // #eb3030 / #dc2626 blood-red crimson
+
+            titleCrimsonRimStyle = new GUIStyle(titleCrimsonStyle);
+            titleCrimsonRimStyle.normal.textColor = new Color(1.0f, 0.70f, 0.65f, 0.85f);
+
+            titleCrimsonGlowStyle = new GUIStyle(titleCrimsonStyle);
+            titleCrimsonGlowStyle.normal.textColor = new Color(0.94f, 0.22f, 0.22f, 0.48f);
+
+            titleShadowStyle = new GUIStyle(titleCrimsonStyle);
+            titleShadowStyle.normal.textColor = new Color(0.06f, 0.01f, 0.01f, 0.96f);
 
             subtitleStyle = new GUIStyle(GUI.skin.label)
             {
@@ -1174,6 +1198,12 @@ namespace DoomHellsAscension
                 alignment = TextAnchor.MiddleCenter
             };
             subtitleStyle.normal.textColor = new Color(0.96f, 0.86f, 0.64f);
+
+            subtitleCrimsonStyle = new GUIStyle(subtitleStyle) { fontSize = 23 };
+            subtitleCrimsonStyle.normal.textColor = new Color(0.96f, 0.30f, 0.28f, 1f);
+
+            subtitleShadowStyle = new GUIStyle(subtitleCrimsonStyle);
+            subtitleShadowStyle.normal.textColor = new Color(0.05f, 0.01f, 0.01f, 0.95f);
 
             headerStyle = new GUIStyle(GUI.skin.label)
             {
@@ -1325,73 +1355,106 @@ namespace DoomHellsAscension
             GUI.matrix = prevMatrix;
         }
 
+        private void DrawHeroShotLayer(Texture2D tex, float sw, float sh, float alpha, float scale, float panXNorm, float panYNorm)
+        {
+            if (tex == null || alpha <= 0.002f) return;
+            float imgAspect = (float)tex.width / Mathf.Max(1, tex.height);
+            float canAspect = sw / Mathf.Max(1f, sh);
+            float baseW, baseH;
+            if (canAspect > imgAspect)
+            {
+                baseW = sw;
+                baseH = sw / imgAspect;
+            }
+            else
+            {
+                baseH = sh;
+                baseW = sh * imgAspect;
+            }
+            float drawW = baseW * scale;
+            float drawH = baseH * scale;
+            float dx = (sw - drawW) * 0.5f + panXNorm * sw;
+            float dy = (sh - drawH) * 0.5f + panYNorm * sh;
+            Color prev = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
+            GUI.DrawTexture(new Rect(dx, dy, drawW, drawH), tex, ScaleMode.StretchToFill);
+            GUI.color = prev;
+        }
+
         private void DrawBlackLandingMenu(float sw, float sh)
         {
             float t = Time.unscaledTime;
+            float elapsed = Mathf.Max(0f, t - heroIntroStartTime);
             Color savedCol = GUI.color;
+            bool hasCinematic = heroShots != null && heroShots.Length == 4 && heroShots[0] != null && heroShots[3] != null;
 
-            // 0. Animated Breathing Dark Studio Backdrop
-            float bgZoom = 1.04f + Mathf.Sin(t * 0.45f) * 0.025f;
-            float bgW = sw * bgZoom;
-            float bgH = sh * bgZoom;
-            float bgPanX = Mathf.Sin(t * 0.32f) * 18f;
-            float bgPanY = Mathf.Cos(t * 0.27f) * 10f;
-            GUI.DrawTexture(new Rect((sw - bgW) * 0.5f + bgPanX, (sh - bgH) * 0.5f + bgPanY, bgW, bgH), blackHeroBgTex, ScaleMode.ScaleAndCrop);
+            // Pitch-black studio canvas base
+            DrawRect(new Rect(0, 0, sw, sh), new Color(0.016f, 0.012f, 0.016f, 1f));
 
-            // 2. Bottom Tactical Command Deck Dimensions (computed early so animated hero centers cleanly above it)
-            float deckW = Mathf.Min(1140f, sw - 64f);
-            float deckH = 224f;
-            float deckX = (sw - deckW) * 0.5f;
-            float deckY = sh - deckH - 20f;
-            float subY = deckY - 38f;
-            float titleY = subY - 82f;
-
-            // 0B. LIVE ANIMATED VOLUMETRIC SWEEPING LIGHT BEAMS & PULSING HELLFIRE AURA
-            Matrix4x4 baseMat = GUI.matrix;
-            float heroMidY = (40f + titleY) * 0.5f + 6f;
-            if (softGlowTex != null)
+            if (hasCinematic)
             {
-                // Sweeping diagonal spotlight / smoke beams
-                for (int b = 0; b < 3; b++)
-                {
-                    float sweepX = sw * (0.20f + b * 0.30f) + Mathf.Sin(t * (0.42f + b * 0.16f) + b * 2.1f) * 150f;
-                    float beamAng = -24f + Mathf.Sin(t * (0.35f + b * 0.12f) + b) * 14f;
-                    ApplyVirtualRotation(baseMat, beamAng, new Vector2(sweepX, sh * 0.32f));
-                    GUI.color = (b == 1)
-                        ? new Color(1.0f, 0.56f, 0.16f, 0.16f + 0.06f * Mathf.Sin(t * 1.4f))
-                        : new Color(0.85f, 0.65f, 0.32f, 0.11f + 0.04f * Mathf.Cos(t * 1.1f + b));
-                    GUI.DrawTexture(new Rect(sweepX - 95f, -120f, 190f, sh * 1.25f), softGlowTex);
-                    GUI.matrix = baseMat;
-                }
+                // =========================================================================
+                // 12-SECOND 60FPS CINEMATIC DOOM HUMAN WARRIOR HERO SEQUENCE (ZERO WATERMARKS)
+                // 0.0s - 3.6s : Front Close-Up Portrait (Battle-scarred human warrior)
+                // 2.2s - 6.6s : Head-Turn Left Profile + Emerging Fiery Bokeh Metropolis
+                // 5.1s - 9.6s : Over-The-Shoulder Rooftop Ledge Pullback
+                // 7.9s - 12s+ : Colossal Wide Crimson Metropolis + Red Title Reveal
+                // =========================================================================
+                float s1FadeOut = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 2.3f) / 1.35f));
+                float s1Prog = Mathf.Clamp01(elapsed / 3.6f);
+                DrawHeroShotLayer(heroShots[0], sw, sh, 1f - s1FadeOut,
+                    Mathf.Lerp(1.02f, 1.11f, s1Prog), Mathf.Lerp(0f, 0.022f, s1Prog), Mathf.Lerp(0.008f, -0.006f, s1Prog));
 
-                // Pulsing fiery radial aura directly behind the complete rifle
-                float auraPulse = 1.0f + Mathf.Sin(t * 2.1f) * 0.10f;
-                float auraW = 780f * auraPulse;
-                float auraH = 380f * auraPulse;
-                float auraCx = sw * 0.50f + Mathf.Sin(t * 0.7f) * 24f;
-                float auraCy = heroMidY;
-                GUI.color = new Color(1.0f, 0.44f, 0.10f, 0.45f + 0.12f * Mathf.Sin(t * 2.1f));
-                GUI.DrawTexture(new Rect(auraCx - auraW * 0.5f, auraCy - auraH * 0.5f, auraW, auraH), softGlowTex);
-                GUI.color = new Color(1.0f, 0.80f, 0.32f, 0.26f + 0.08f * Mathf.Cos(t * 2.7f));
-                GUI.DrawTexture(new Rect(auraCx - auraW * 0.32f, auraCy - auraH * 0.32f, auraW * 0.64f, auraH * 0.64f), softGlowTex);
+                float s2In = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 2.2f) / 1.35f));
+                float s2Out = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 5.2f) / 1.45f));
+                float s2Prog = Mathf.Clamp01((elapsed - 2.2f) / 4.4f);
+                float s2Ease = 1f - Mathf.Pow(1f - s2Prog, 3f);
+                DrawHeroShotLayer(heroShots[1], sw, sh, s2In * (1f - s2Out),
+                    Mathf.Lerp(1.12f, 1.03f, s2Ease), Mathf.Lerp(-0.024f, 0.018f, s2Prog), Mathf.Lerp(-0.004f, 0.010f, s2Prog));
+
+                float s3In = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 5.1f) / 1.45f));
+                float s3Out = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 8.0f) / 1.55f));
+                float s3Prog = Mathf.Clamp01((elapsed - 5.1f) / 4.5f);
+                float s3Ease = 1f - Mathf.Pow(1f - s3Prog, 3f);
+                DrawHeroShotLayer(heroShots[2], sw, sh, s3In * (1f - s3Out),
+                    Mathf.Lerp(1.20f, 1.03f, s3Ease), Mathf.Lerp(0.014f, -0.006f, s3Prog), Mathf.Lerp(0.024f, -0.004f, s3Prog));
+
+                float s4In = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 7.9f) / 1.60f));
+                float s4Prog = Mathf.Clamp01((elapsed - 7.9f) / 4.3f);
+                float s4Ease = 1f - Mathf.Pow(1f - s4Prog, 3f);
+                float idleBreath = elapsed > 12f ? Mathf.Sin((elapsed - 12f) * 0.45f) * 0.012f : 0f;
+                float idlePan = elapsed > 12f ? Mathf.Sin((elapsed - 12f) * 0.28f) * 0.008f : 0f;
+                DrawHeroShotLayer(heroShots[3], sw, sh, s4In,
+                    Mathf.Lerp(1.18f, 1.03f, s4Ease) + idleBreath, idlePan, Mathf.Lerp(0.032f, 0f, s4Ease));
+
+                // Live Volumetric Crimson Smoke & Fiery Horizon Glow Overlay
+                if (softGlowTex != null)
+                {
+                    float cityGlow = Mathf.Clamp01((elapsed - 4.5f) / 4.5f);
+                    for (int b = 0; b < 4; b++)
+                    {
+                        float sx = ((sw * (0.15f + b * 0.26f) + t * (16f + b * 7f) * (b % 2 == 0 ? 1f : -1f)) % (sw + 380f));
+                        if (sx < -190f) sx += sw + 380f;
+                        float sy = sh * (0.36f + (b % 2) * 0.26f) + Mathf.Sin(t * 0.6f + b) * 28f;
+                        float rad = 320f + b * 55f;
+                        GUI.color = new Color(0.86f, 0.14f, 0.12f, (0.10f + 0.06f * cityGlow) * (0.75f + 0.25f * Mathf.Sin(t + b)));
+                        GUI.DrawTexture(new Rect(sx - rad, sy - rad * 0.65f, rad * 2f, rad * 1.3f), softGlowTex);
+                    }
+                    if (s4In > 0.05f)
+                    {
+                        float hPulse = (0.16f + 0.06f * Mathf.Sin(t * 1.9f)) * s4In;
+                        GUI.color = new Color(0.94f, 0.24f, 0.22f, hPulse);
+                        GUI.DrawTexture(new Rect(sw * 0.08f, sh * 0.28f, sw * 0.84f, sh * 0.65f), softGlowTex);
+                    }
+                }
+            }
+            else
+            {
+                // Fallback procedural backdrop if Hero resources are missing
+                GUI.DrawTexture(new Rect(0, 0, sw, sh), blackHeroBgTex, ScaleMode.ScaleAndCrop);
             }
 
-            // 0C. LIVE SUPERSONIC BALLISTIC TRACER STREAKS ZIPPING ACROSS BACKGROUND
-            if (menuTracers != null)
-            {
-                for (int i = 0; i < menuTracers.Length; i++)
-                {
-                    MenuParticle tr = menuTracers[i];
-                    float tx = ((tr.x + t * tr.vx) % (sw + 520f)) - 260f;
-                    float ty = tr.y + Mathf.Sin(t * 0.8f + tr.phase) * 18f;
-                    ApplyVirtualRotation(baseMat, tr.angle, new Vector2(tx, ty));
-                    GUI.color = new Color(tr.color.r, tr.color.g, tr.color.b, tr.alpha * (0.6f + 0.4f * Mathf.Sin(t * 4f + tr.phase)));
-                    GUI.DrawTexture(new Rect(tx - tr.size * 0.5f, ty - 1.2f, tr.size, 2.4f), whiteTex);
-                    GUI.matrix = baseMat;
-                }
-            }
-
-            // 0D. LIVE RISING & SWIRLING HELLFIRE EMBERS
+            // LIVE RISING FIERY CRIMSON EMBERS (Always active across all 4 shots!)
             if (menuEmbers != null && softGlowTex != null)
             {
                 for (int i = 0; i < menuEmbers.Length; i++)
@@ -1401,84 +1464,80 @@ namespace DoomHellsAscension
                     if (ex < -20f) ex += sw + 40f;
                     float ey = (em.y + t * em.vy) % (sh + 40f);
                     if (ey < -20f) ey += sh + 40f;
-                    float flicker = 0.55f + 0.45f * Mathf.Sin(t * 5.2f + em.phase);
-                    float esz = em.size * (0.85f + 0.30f * flicker);
-                    GUI.color = new Color(em.color.r, em.color.g, em.color.b, em.alpha * flicker);
+                    float flicker = 0.50f + 0.50f * Mathf.Sin(t * 5.6f + em.phase);
+                    float esz = em.size * (0.85f + 0.35f * flicker);
+                    GUI.color = new Color(0.98f, i % 3 == 0 ? 0.55f : 0.26f, 0.16f, em.alpha * flicker);
                     GUI.DrawTexture(new Rect(ex - esz, ey - esz, esz * 2f, esz * 2f), softGlowTex);
                 }
             }
-
-            // 0E. LIVE FLOATING & ROTATING SHATTERED GLASS SHARDS (BULLET-TIME DEBRIS)
-            if (menuShards != null && glassShardTex != null)
-            {
-                for (int i = 0; i < menuShards.Length; i++)
-                {
-                    MenuParticle s = menuShards[i];
-                    float sx = (s.x + t * s.vx + Mathf.Sin(t * 0.9f + s.phase) * 22f) % (sw + 80f);
-                    if (sx < -40f) sx += sw + 80f;
-                    float sy = (s.y + t * s.vy) % (deckY + 40f);
-                    if (sy < -40f) sy += deckY + 40f;
-                    float rot = s.angle + t * s.spin;
-                    float glint = 0.55f + 0.45f * Mathf.Abs(Mathf.Sin(t * 2.2f + s.phase));
-                    ApplyVirtualRotation(baseMat, rot, new Vector2(sx, sy));
-                    GUI.color = new Color(s.color.r, s.color.g, s.color.b, s.alpha * glint);
-                    GUI.DrawTexture(new Rect(sx - s.size * 0.5f, sy - s.size * 0.5f, s.size, s.size), glassShardTex);
-                    GUI.matrix = baseMat;
-                }
-            }
-
-            // 0F. COMPLETE, FULL-LENGTH ANIMATED TACTICAL ASSAULT RIFLE HERO (Stock -> Receiver -> Mag -> Optic -> Barrel -> Muzzle!)
-            if (fullRifleTex != null)
-            {
-                float rifleW = Mathf.Min(820f, sw * 0.68f);
-                float rifleH = rifleW * (340f / 1024f);
-                float floatY = Mathf.Sin(t * 1.55f) * 7.5f;
-                float floatX = Mathf.Cos(t * 0.85f) * 6.0f;
-                float tiltDeg = -5.5f + Mathf.Sin(t * 1.05f) * 2.2f;
-                Vector2 riflePivot = new Vector2(sw * 0.50f + floatX, heroMidY + floatY);
-                Rect rifleRect = new Rect(riflePivot.x - rifleW * 0.5f, riflePivot.y - rifleH * 0.5f, rifleW, rifleH);
-
-                // Soft grounded shadow behind the floating full rifle
-                ApplyVirtualRotation(baseMat, tiltDeg, riflePivot);
-                GUI.color = new Color(0f, 0f, 0f, 0.56f);
-                GUI.DrawTexture(new Rect(rifleRect.x + 10f, rifleRect.y + 14f, rifleRect.width, rifleRect.height), fullRifleTex);
-
-                // Crisp full metallic rifle pass
-                GUI.color = Color.white;
-                GUI.DrawTexture(rifleRect, fullRifleTex);
-
-                // Animated muzzle heat-glint pulse at the compensator tip
-                if (softGlowTex != null)
-                {
-                    float mPulse = 0.28f + 0.25f * Mathf.Sin(t * 4.2f);
-                    GUI.color = new Color(1f, 0.62f, 0.18f, mPulse);
-                    GUI.DrawTexture(new Rect(rifleRect.xMax - 54f, rifleRect.y + rifleRect.height * 0.28f, 64f, 64f), softGlowTex);
-                }
-                GUI.matrix = baseMat;
-            }
             GUI.color = savedCol;
 
-            // 1. Top Telemetry Strip (Always fully visible, never clipped!)
-            DrawRect(new Rect(0, 0, sw, 40), new Color(0.04f, 0.03f, 0.03f, 0.90f));
-            DrawRect(new Rect(0, 39, sw, 1), new Color(0.84f, 0.70f, 0.36f, 0.35f));
-            GUI.Label(new Rect(20, 9, sw - 210, 24), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC BLACK-OPS FPS  //  MARKDHANIEL G. AGCAOILI", smallMonoStyle);
+            // Cinematic Top/Bottom Dark Gritty Vignette Bars
+            DrawRect(new Rect(0, 0, sw, 42), new Color(0.02f, 0.01f, 0.01f, 0.62f));
+            DrawRect(new Rect(0, sh - 246f, sw, 246f), new Color(0.02f, 0.01f, 0.01f, Mathf.SmoothStep(0f, 0.52f, Mathf.Clamp01((elapsed - 8.2f) / 1.4f))));
+
+            // During Opening 8s Close-Up & Head-Turn: ZERO clutter blocking warrior's face (only discreet SKIP INTRO button)
+            float titleAlpha = hasCinematic ? Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 8.0f) / 1.35f)) : 1f;
+            float deckAlpha = hasCinematic ? Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 8.55f) / 1.10f)) : 1f;
+
+            if (hasCinematic && titleAlpha < 0.85f)
+            {
+                if (GUI.Button(new Rect(sw - 168f, sh - 46f, 148f, 30f), "SKIP INTRO ▸", buttonDarkStyle))
+                {
+                    heroIntroStartTime = t - 9.8f;
+                }
+                GUI.color = savedCol;
+                return;
+            }
+
+            // 1. Top Telemetry Strip (Reveals cleanly with wide shot)
+            GUI.color = new Color(1f, 1f, 1f, deckAlpha);
+            DrawRect(new Rect(0, 0, sw, 40), new Color(0.04f, 0.02f, 0.02f, 0.88f));
+            DrawRect(new Rect(0, 39, sw, 1), new Color(0.86f, 0.16f, 0.16f, 0.55f));
+            GUI.Label(new Rect(20, 9, sw - 360, 24), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC BLACK-OPS FPS  //  MARKDHANIEL G. AGCAOILI", smallMonoStyle);
+            if (GUI.Button(new Rect(sw - 322, 6, 144, 28), "↻ REPLAY INTRO", buttonDarkStyle))
+            {
+                heroIntroStartTime = t;
+            }
             if (GUI.Button(new Rect(sw - 170, 6, 154, 28), "ARMORY SHOP [B]", buttonBrassStyle)) ToggleShop();
 
-            // 3. Colossal Brushed-Brass DOOM Title & Subtitle positioned cleanly ABOVE the Command Deck!
-            GUI.Label(new Rect(4, titleY + 5, sw, 90), "D  O  O  M", titleShadowStyle);
-            GUI.Label(new Rect(0, titleY, sw, 90), "D  O  O  M", titleBrassStyle);
+            // 2. CHISELED GLOWING BLOOD-RED "DOOM HELL'S ASCENSION" TITLE IN UPPER-CENTER SKY!
+            float titleY = 50f + (1f - titleAlpha) * -18f;
+            float subY = titleY + 86f;
+            float emberPulse = 0.78f + 0.22f * Mathf.Sin(t * 2.6f);
 
-            // Organic circular jagged bullet-hole crater nicking the lower rim of the brass title
-            if (bulletCraterTex != null)
+            // Soft crimson neon glow backdrop behind title in the storm sky
+            if (softGlowTex != null)
             {
-                GUI.DrawTexture(new Rect(sw * 0.5f - 110f, titleY + 42f, 34f, 34f), bulletCraterTex);
+                GUI.color = new Color(0.86f, 0.14f, 0.14f, 0.34f * titleAlpha * emberPulse);
+                GUI.DrawTexture(new Rect(sw * 0.5f - 360f, titleY - 18f, 720f, 165f), softGlowTex);
             }
-            GUI.Label(new Rect(0, subY, sw, 30), "———  H E L L ' S   A S C E N S I O N ™  ———", subtitleStyle);
+
+            // Heavy dark shadow -> fiery crimson outer glow -> chiseled highlight rim -> deep blood-red core
+            GUI.color = new Color(1f, 1f, 1f, titleAlpha);
+            GUI.Label(new Rect(4f, titleY + 6f, sw, 92f), "D  O  O  M", titleShadowStyle);
+            GUI.Label(new Rect(-2f, titleY + 2f, sw, 92f), "D  O  O  M", titleCrimsonGlowStyle);
+            GUI.Label(new Rect(2f, titleY - 2f, sw, 92f), "D  O  O  M", titleCrimsonGlowStyle);
+            GUI.Label(new Rect(-1f, titleY - 1f, sw, 92f), "D  O  O  M", titleCrimsonRimStyle);
+            GUI.Label(new Rect(0f, titleY, sw, 92f), "D  O  O  M", titleCrimsonStyle);
+
+            // Glowing Crimson Subtitle + Ember Divider Bar
+            GUI.Label(new Rect(2f, subY + 2f, sw, 32f), "H E L L ' S   A S C E N S I O N", subtitleShadowStyle);
+            GUI.Label(new Rect(0f, subY, sw, 32f), "H E L L ' S   A S C E N S I O N", subtitleCrimsonStyle);
+            DrawRect(new Rect(sw * 0.5f - 230f, subY + 36f, 460f, 2f), new Color(0.92f, 0.22f, 0.20f, 0.85f * titleAlpha * emberPulse));
+
+            // 3. Bottom Tactical Command Deck (Fades in cleanly below the wide rooftop hero)
+            if (deckAlpha <= 0.02f) { GUI.color = savedCol; return; }
+            GUI.color = new Color(1f, 1f, 1f, deckAlpha);
+            float deckW = Mathf.Min(1140f, sw - 64f);
+            float deckH = 224f;
+            float deckX = (sw - deckW) * 0.5f;
+            float deckY = sh - deckH - 20f;
 
             // 4. Sleek Tactical Command Deck (Zero overlaps at every window size!)
             Rect deckRect = new Rect(deckX, deckY, deckW, deckH);
-            DrawRect(deckRect, new Color(0.05f, 0.04f, 0.04f, 0.92f));
-            DrawRect(new Rect(deckX, deckY, deckW, 2), new Color(0.86f, 0.71f, 0.36f, 0.65f));
+            DrawRect(deckRect, new Color(0.04f, 0.02f, 0.03f, 0.88f));
+            DrawRect(new Rect(deckX, deckY, deckW, 2), new Color(0.90f, 0.18f, 0.18f, 0.85f));
 
             // Row 1: 3 Equal Mode Cards
             float pad = 16f;
@@ -1559,13 +1618,15 @@ namespace DoomHellsAscension
             GUI.Label(new Rect(deckX + pad + 8f, deckY + 162f, deckW - pad * 2f - 16f, 44f),
                 "[WASD] Move  ·  [MOUSE] 3D Look  ·  [L-CLICK] Fire  ·  [R-CLICK] ADS / Operator Scope  ·  [1-5] Valorant Weapons\n[R] Tactical Reload  ·  [Y] Inspect  ·  [V] 3D Melee  ·  [X] Special Ability  ·  [SHIFT] Phase-Dash  ·  [Q/E] Overdrive  ·  [B] Shop",
                 controlsCenterStyle);
+
+            GUI.color = savedCol;
         }
 
         private void DrawModeCard(Rect r, GameModeType mode, string title, string desc)
         {
             bool sel = currentMode == mode;
-            DrawRect(r, sel ? new Color(0.42f, 0.26f, 0.08f, 0.72f) : new Color(0.11f, 0.10f, 0.12f, 0.85f));
-            if (sel) DrawRect(new Rect(r.x, r.y, r.width, 2f), new Color(1f, 0.82f, 0.32f, 0.95f));
+            DrawRect(r, sel ? new Color(0.42f, 0.08f, 0.08f, 0.78f) : new Color(0.09f, 0.07f, 0.09f, 0.86f));
+            if (sel) DrawRect(new Rect(r.x, r.y, r.width, 2f), new Color(0.94f, 0.24f, 0.22f, 0.98f));
             if (GUI.Button(r, "", GUIStyle.none)) currentMode = mode;
             GUI.Label(new Rect(r.x + 12f, r.y + 8f, r.width - 24f, 22f), title, sel ? cardTitleSelStyle : cardTitleStyle);
             GUI.Label(new Rect(r.x + 12f, r.y + 34f, r.width - 24f, 38f), desc, cardDescStyle);
@@ -1966,6 +2027,7 @@ namespace DoomHellsAscension
                 IsRunning = false;
                 IsPaused = false;
                 modalMode = "";
+                heroIntroStartTime = Time.unscaledTime - 9.8f;
                 selectedStartLevel = Mathf.Clamp(highestLevelUnlocked, 1, GameCatalog.MaxCampaignLevel);
                 if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(selectedStartLevel));
                 if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StopMusic();
