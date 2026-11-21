@@ -139,10 +139,11 @@ namespace DoomHellsAscension
             softGlowTex = GenerateSoftGlowTexture();
             glassShardTex = GenerateGlassShardTexture();
             bulletCraterTex = GenerateBulletCraterTexture();
-            pillRedTex = GenerateRoundedPillTexture(380, 74, 24, new Color(0.95f, 0.22f, 0.20f, 1f), new Color(0.68f, 0.08f, 0.09f, 1f), new Color(0.14f, 0.03f, 0.03f, 0.96f), new Color(1.0f, 0.62f, 0.56f, 0.55f));
-            pillRedHoverTex = GenerateRoundedPillTexture(380, 74, 24, new Color(1.0f, 0.30f, 0.26f, 1f), new Color(0.80f, 0.11f, 0.11f, 1f), new Color(0.24f, 0.03f, 0.03f, 0.98f), new Color(1.0f, 0.80f, 0.72f, 0.85f));
-            pillDarkTex = GenerateRoundedPillTexture(380, 66, 14, new Color(0.15f, 0.11f, 0.12f, 0.96f), new Color(0.05f, 0.04f, 0.05f, 0.98f), new Color(0.32f, 0.18f, 0.20f, 0.82f), new Color(0.55f, 0.26f, 0.28f, 0.25f));
-            pillDarkHoverTex = GenerateRoundedPillTexture(380, 66, 14, new Color(0.38f, 0.09f, 0.10f, 0.96f), new Color(0.16f, 0.04f, 0.05f, 0.98f), new Color(0.94f, 0.24f, 0.22f, 0.95f), new Color(1.0f, 0.55f, 0.50f, 0.45f));
+            pillRedTex = GenerateRoundedPillTexture(380, 74, 24, new Color(0.95f, 0.22f, 0.20f, 1f), new Color(0.68f, 0.08f, 0.09f, 1f), new Color(0.24f, 0.04f, 0.04f, 0.96f), new Color(1.0f, 0.62f, 0.56f, 0.55f));
+            pillRedHoverTex = GenerateRoundedPillTexture(380, 74, 24, new Color(1.0f, 0.30f, 0.26f, 1f), new Color(0.80f, 0.11f, 0.11f, 1f), new Color(0.32f, 0.05f, 0.05f, 0.98f), new Color(1.0f, 0.80f, 0.72f, 0.85f));
+            // Translucent deep volcanic crimson glass matching the red apocalyptic landing page (no flat black!)
+            pillDarkTex = GenerateRoundedPillTexture(380, 66, 14, new Color(0.32f, 0.07f, 0.07f, 0.84f), new Color(0.16f, 0.03f, 0.04f, 0.90f), new Color(0.76f, 0.20f, 0.18f, 0.78f), new Color(1.0f, 0.48f, 0.42f, 0.35f));
+            pillDarkHoverTex = GenerateRoundedPillTexture(380, 66, 14, new Color(0.56f, 0.12f, 0.12f, 0.92f), new Color(0.28f, 0.05f, 0.06f, 0.95f), new Color(0.98f, 0.28f, 0.24f, 0.96f), new Color(1.0f, 0.65f, 0.58f, 0.55f));
             closeRedTex = GenerateRoundedPillTexture(48, 48, 10, new Color(0.95f, 0.18f, 0.16f, 1f), new Color(0.72f, 0.07f, 0.07f, 1f), new Color(0.22f, 0.02f, 0.02f, 0.95f), new Color(1f, 0.6f, 0.55f, 0.55f));
             iconPlayTex = GeneratePlayIconTexture();
             iconShopTex = GenerateShopIconTexture();
@@ -1771,11 +1772,7 @@ namespace DoomHellsAscension
             }
             GUI.color = savedCol;
 
-            // Cinematic Top/Bottom Dark Gritty Vignette Bars
-            DrawRect(new Rect(0, 0, sw, 42), new Color(0.02f, 0.01f, 0.01f, 0.62f));
-            DrawRect(new Rect(0, sh - 246f, sw, 246f), new Color(0.02f, 0.01f, 0.01f, Mathf.SmoothStep(0f, 0.52f, Mathf.Clamp01((elapsed - 8.2f) / 1.4f))));
-
-            // During Opening 8s Close-Up & Head-Turn: ZERO clutter blocking warrior's face (only discreet SKIP INTRO button)
+            // During Opening 8s Close-Up & Head-Turn: ZERO black bars or clutter blocking the hero artwork
             float titleAlpha = hasCinematic ? Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 8.0f) / 1.35f)) : 1f;
             float deckAlpha = hasCinematic ? Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 8.55f) / 1.10f)) : 1f;
 
@@ -1789,10 +1786,10 @@ namespace DoomHellsAscension
                 return;
             }
 
-            // 1. Minimal Clean Top Bar (Only subtle header + Replay Intro)
+            // 1. Subtle Crimson-Tinted Top Header Strip matching landing palette (no solid black bar!)
             GUI.color = new Color(1f, 1f, 1f, deckAlpha);
-            DrawRect(new Rect(0, 0, sw, 38), new Color(0.03f, 0.01f, 0.02f, 0.80f));
-            DrawRect(new Rect(0, 37, sw, 1), new Color(0.88f, 0.16f, 0.16f, 0.50f));
+            DrawRect(new Rect(0, 0, sw, 38), new Color(0.16f, 0.03f, 0.03f, 0.52f));
+            DrawRect(new Rect(0, 37, sw, 1), new Color(0.90f, 0.20f, 0.18f, 0.45f));
             GUI.Label(new Rect(20, 8, sw - 220, 22), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC FPS", smallMonoStyle);
             if (GUI.Button(new Rect(sw - 164, 5, 148, 28), "↻ REPLAY INTRO", buttonDarkStyle))
             {

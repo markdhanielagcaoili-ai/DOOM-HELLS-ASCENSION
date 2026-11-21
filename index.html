@@ -52,8 +52,8 @@
       inset: 0;
       pointer-events: none;
       background:
-        radial-gradient(ellipse at 50% 48%, rgba(0, 0, 0, 0) 42%, rgba(4, 2, 3, 0.72) 100%),
-        linear-gradient(180deg, rgba(6, 2, 3, 0.56) 0%, rgba(0, 0, 0, 0) 26%, rgba(0, 0, 0, 0) 74%, rgba(5, 2, 3, 0.84) 100%);
+        radial-gradient(ellipse at 50% 48%, rgba(0, 0, 0, 0) 50%, rgba(28, 5, 6, 0.42) 100%),
+        linear-gradient(180deg, rgba(36, 6, 7, 0.34) 0%, rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 80%, rgba(34, 6, 7, 0.32) 100%);
       z-index: 2;
     }
 
@@ -195,26 +195,27 @@
         inset 0 2px 0 rgba(255, 220, 210, 0.72);
     }
 
-    /* Dark Obsidian-Crimson Secondary Pills (Armory Shop & Settings) */
+    /* Translucent Deep Crimson Pills matching the red apocalyptic landing page (no flat black!) */
     .pill-dark {
       height: 48px;
       border-radius: 10px;
-      border: 1.5px solid rgba(185, 45, 45, 0.45);
-      background: linear-gradient(180deg, rgba(32, 22, 24, 0.94) 0%, rgba(11, 8, 9, 0.97) 100%);
+      border: 1.5px solid rgba(220, 56, 52, 0.65);
+      background: linear-gradient(180deg, rgba(84, 16, 18, 0.82) 0%, rgba(40, 8, 10, 0.88) 100%);
+      backdrop-filter: blur(6px);
       color: #ffffff;
       box-shadow:
-        0 6px 18px rgba(0, 0, 0, 0.78),
-        inset 0 1px 0 rgba(255, 140, 140, 0.14);
+        0 6px 18px rgba(24, 3, 4, 0.65),
+        inset 0 1px 0 rgba(255, 160, 150, 0.25);
     }
     .pill-dark:last-of-type {
       border-radius: 10px 10px 18px 18px;
     }
     .pill-dark:hover {
       border-color: #ef4444;
-      background: linear-gradient(180deg, rgba(115, 20, 22, 0.92) 0%, rgba(44, 10, 12, 0.96) 100%);
+      background: linear-gradient(180deg, rgba(145, 24, 26, 0.92) 0%, rgba(72, 12, 14, 0.95) 100%);
       box-shadow:
-        0 8px 24px rgba(0, 0, 0, 0.85),
-        0 0 22px rgba(220, 38, 38, 0.48);
+        0 8px 24px rgba(24, 3, 4, 0.78),
+        0 0 24px rgba(220, 38, 38, 0.55);
     }
 
     .pill-icon {
@@ -250,11 +251,11 @@
       justify-content: space-between;
       padding: 4px 10px;
       border-radius: 6px;
-      background: rgba(10, 5, 6, 0.72);
-      border: 1px solid rgba(220, 38, 38, 0.28);
+      background: rgba(52, 10, 12, 0.72);
+      border: 1px solid rgba(220, 56, 52, 0.45);
       font-size: 0.72rem;
       letter-spacing: 0.14em;
-      color: #e2b8b2;
+      color: #f3cbc5;
     }
     .engine-dot {
       width: 7px;
@@ -561,9 +562,9 @@
       right: 14px;
       bottom: 14px;
       z-index: 15;
-      background: rgba(14, 11, 10, 0.82);
-      border: 1px solid rgba(220, 38, 38, 0.65);
-      color: #fca5a5;
+      background: rgba(68, 12, 14, 0.78);
+      border: 1px solid rgba(220, 52, 48, 0.72);
+      color: #ffd0ca;
       font-size: 12px;
       font-weight: 700;
       letter-spacing: 0.08em;
