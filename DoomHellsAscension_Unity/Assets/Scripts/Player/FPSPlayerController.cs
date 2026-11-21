@@ -27,6 +27,7 @@ namespace DoomHellsAscension
         public int maxShells = 64;
         public int cells = 200;
         public int maxCells = 400;
+        public float mouseSensitivity = 1.0f;
 
         public List<WeaponDef> weapons;
         public List<MeleeDef> melees;
@@ -219,7 +220,7 @@ namespace DoomHellsAscension
 
         private void HandleLook(float dt)
         {
-            float sens = IsSniperScoped ? 0.65f : (IsADS ? 1.35f : 2.3f);
+            float sens = (IsSniperScoped ? 0.65f : (IsADS ? 1.35f : 2.3f)) * Mathf.Clamp(mouseSensitivity, 0.35f, 3.0f);
             yaw += Input.GetAxis("Mouse X") * sens;
             pitch -= Input.GetAxis("Mouse Y") * sens;
 

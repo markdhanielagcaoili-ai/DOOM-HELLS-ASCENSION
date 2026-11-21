@@ -47,11 +47,20 @@ namespace DoomHellsAscension
             return (comboTimer > 0f) ? Mathf.Min(5, killStreakCount + 1) : 1;
         }
 
+        private enum MenuPopupState { None, ChooseMode, ChoosePlaystyle, Settings }
+
         private string modalMode = ""; // "", "pause", "stratum", "victory", "defeat"
         private string modalTitle = "";
         private string modalSub = "";
         private int shopCategory = 0; // 0=Guns, 1=Melee, 2=Abilities
         private Vector2 shopScroll;
+        private Vector2 modePopupScroll;
+        private MenuPopupState menuPopup = MenuPopupState.None;
+        private float popupOpenTime;
+        private float playHoverAnim;
+        private float shopHoverAnim;
+        private float settingsHoverAnim;
+        private bool audioMutedUi;
 
         private readonly List<string> killfeed = new List<string>();
         private readonly Queue<GameObject> decalQueue = new Queue<GameObject>();
@@ -69,6 +78,15 @@ namespace DoomHellsAscension
         private Texture2D softGlowTex;
         private Texture2D glassShardTex;
         private Texture2D bulletCraterTex;
+        private Texture2D pillRedTex;
+        private Texture2D pillRedHoverTex;
+        private Texture2D pillDarkTex;
+        private Texture2D pillDarkHoverTex;
+        private Texture2D closeRedTex;
+        private Texture2D iconPlayTex;
+        private Texture2D iconShopTex;
+        private Texture2D iconGearTex;
+        private Texture2D iconPinTex;
         private Texture2D[] heroShots;
         private float heroIntroStartTime;
         private MenuParticle[] menuShards;
@@ -82,6 +100,12 @@ namespace DoomHellsAscension
         private GUIStyle subtitleStyle;
         private GUIStyle subtitleCrimsonStyle;
         private GUIStyle subtitleShadowStyle;
+        private GUIStyle menuPillLabelStyle;
+        private GUIStyle menuPillPlayLabelStyle;
+        private GUIStyle popupHeaderStyle;
+        private GUIStyle popupCardTitleStyle;
+        private GUIStyle popupRowLabelStyle;
+        private GUIStyle popupRowSubStyle;
         private GUIStyle headerStyle;
         private GUIStyle centerHeadStyle;
         private GUIStyle cardTitleSelStyle;
@@ -115,6 +139,15 @@ namespace DoomHellsAscension
             softGlowTex = GenerateSoftGlowTexture();
             glassShardTex = GenerateGlassShardTexture();
             bulletCraterTex = GenerateBulletCraterTexture();
+            pillRedTex = GenerateRoundedPillTexture(380, 74, 24, new Color(0.95f, 0.22f, 0.20f, 1f), new Color(0.68f, 0.08f, 0.09f, 1f), new Color(0.14f, 0.03f, 0.03f, 0.96f), new Color(1.0f, 0.62f, 0.56f, 0.55f));
+            pillRedHoverTex = GenerateRoundedPillTexture(380, 74, 24, new Color(1.0f, 0.30f, 0.26f, 1f), new Color(0.80f, 0.11f, 0.11f, 1f), new Color(0.24f, 0.03f, 0.03f, 0.98f), new Color(1.0f, 0.80f, 0.72f, 0.85f));
+            pillDarkTex = GenerateRoundedPillTexture(380, 66, 14, new Color(0.15f, 0.11f, 0.12f, 0.96f), new Color(0.05f, 0.04f, 0.05f, 0.98f), new Color(0.32f, 0.18f, 0.20f, 0.82f), new Color(0.55f, 0.26f, 0.28f, 0.25f));
+            pillDarkHoverTex = GenerateRoundedPillTexture(380, 66, 14, new Color(0.38f, 0.09f, 0.10f, 0.96f), new Color(0.16f, 0.04f, 0.05f, 0.98f), new Color(0.94f, 0.24f, 0.22f, 0.95f), new Color(1.0f, 0.55f, 0.50f, 0.45f));
+            closeRedTex = GenerateRoundedPillTexture(48, 48, 10, new Color(0.95f, 0.18f, 0.16f, 1f), new Color(0.72f, 0.07f, 0.07f, 1f), new Color(0.22f, 0.02f, 0.02f, 0.95f), new Color(1f, 0.6f, 0.55f, 0.55f));
+            iconPlayTex = GeneratePlayIconTexture();
+            iconShopTex = GenerateShopIconTexture();
+            iconGearTex = GenerateGearIconTexture();
+            iconPinTex = GeneratePinIconTexture();
             heroShots = new Texture2D[4]
             {
                 Resources.Load<Texture2D>("Hero/shot1_front"),
@@ -154,6 +187,12 @@ namespace DoomHellsAscension
             if (Input.GetKeyDown(KeyCode.M) && RealisticGunAudio.Instance != null)
             {
                 RealisticGunAudio.Instance.ToggleAudio();
+            }
+            if (!IsRunning && Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (ShopOpen) ToggleShop();
+                else if (menuPopup == MenuPopupState.ChoosePlaystyle) OpenMenuPopup(MenuPopupState.ChooseMode);
+                else if (menuPopup != MenuPopupState.None) menuPopup = MenuPopupState.None;
             }
             if (IsRunning && (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P)))
             {
@@ -235,6 +274,7 @@ namespace DoomHellsAscension
             overdriveTimer = 0f;
             modalMode = "";
             ShopOpen = false;
+            menuPopup = MenuPopupState.None;
 
             if (FPSPlayerController.Instance != null)
             {
@@ -568,6 +608,7 @@ namespace DoomHellsAscension
             IsPaused = false;
             modalMode = "";
             ShopOpen = false;
+            menuPopup = MenuPopupState.None;
             LockCursor(true);
         }
 
@@ -698,6 +739,7 @@ namespace DoomHellsAscension
             tex.Apply();
             return tex;
         }
+
 
         /// <summary>
         /// Generates a complete, full-length high-resolution tactical demonic assault rifle sprite
@@ -1005,6 +1047,7 @@ namespace DoomHellsAscension
             return tex;
         }
 
+
         private Texture2D GenerateSoftGlowTexture()
         {
             int sz = 128;
@@ -1025,6 +1068,7 @@ namespace DoomHellsAscension
             tex.Apply();
             return tex;
         }
+
 
         private Texture2D GenerateGlassShardTexture()
         {
@@ -1056,6 +1100,7 @@ namespace DoomHellsAscension
             tex.Apply();
             return tex;
         }
+
 
         private void InitMenuParticles()
         {
@@ -1164,6 +1209,146 @@ namespace DoomHellsAscension
         }
 
         // =========================================================================
+        // PROCEDURAL ROUNDED-PILL BUTTONS & CRISP VECTOR-STYLE MENU ICONS
+        // =========================================================================
+        private Texture2D GenerateRoundedPillTexture(int w, int h, float radius, Color topCol, Color botCol, Color borderCol, Color innerHighlight)
+        {
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            Color[] px = new Color[w * h];
+            float halfW = w * 0.5f;
+            float halfH = h * 0.5f;
+            float r = Mathf.Min(radius, Mathf.Min(halfW, halfH) - 1f);
+
+            for (int y = 0; y < h; y++)
+            {
+                float v = y / (float)(h - 1); // 0 = bottom, 1 = top
+                for (int x = 0; x < w; x++)
+                {
+                    float qx = Mathf.Abs(x + 0.5f - halfW) - (halfW - r - 1f);
+                    float qy = Mathf.Abs(y + 0.5f - halfH) - (halfH - r - 1f);
+                    float dist = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) + Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f))
+                               + Mathf.Min(Mathf.Max(qx, qy), 0f) - r;
+
+                    if (dist > 1.0f)
+                    {
+                        px[y * w + x] = Color.clear;
+                    }
+                    else
+                    {
+                        float aa = Mathf.Clamp01(1.0f - dist);
+                        Color fill = Color.Lerp(botCol, topCol, Mathf.Pow(v, 0.85f));
+                        // Glossy top rim sheen
+                        if (dist > -4.5f && dist <= -2.2f && v > 0.55f)
+                            fill = Color.Lerp(fill, innerHighlight, innerHighlight.a * (v - 0.55f) * 2.2f);
+                        // Crisp outer rim border
+                        if (dist > -2.4f)
+                            fill = Color.Lerp(fill, borderCol, Mathf.Clamp01((dist + 2.4f) / 1.4f));
+                        fill.a *= aa;
+                        px[y * w + x] = fill;
+                    }
+                }
+            }
+            tex.SetPixels(px);
+            tex.Apply();
+            return tex;
+        }
+
+        private Texture2D GeneratePlayIconTexture()
+        {
+            int sz = 48;
+            Texture2D tex = new Texture2D(sz, sz, TextureFormat.RGBA32, false);
+            Color[] px = new Color[sz * sz];
+            Vector2 a = new Vector2(10f, 8f);
+            Vector2 b = new Vector2(10f, 40f);
+            Vector2 c = new Vector2(40f, 24f);
+            for (int y = 0; y < sz; y++)
+            {
+                for (int x = 0; x < sz; x++)
+                {
+                    if (PointInTriangle(new Vector2(x + 0.5f, y + 0.5f), a, b, c, out float ed))
+                        px[y * sz + x] = new Color(1f, 1f, 1f, Mathf.Clamp01(ed * 0.9f + 0.35f));
+                    else
+                        px[y * sz + x] = Color.clear;
+                }
+            }
+            tex.SetPixels(px);
+            tex.Apply();
+            return tex;
+        }
+
+        private Texture2D GenerateShopIconTexture()
+        {
+            int sz = 48;
+            Texture2D tex = new Texture2D(sz, sz, TextureFormat.RGBA32, false);
+            Color[] px = new Color[sz * sz];
+            for (int y = 0; y < sz; y++)
+            {
+                for (int x = 0; x < sz; x++)
+                {
+                    // Clean Armory Crate / Tactical Shopping Bag icon
+                    bool bagBody = (x >= 10 && x <= 38 && y >= 7 && y <= 31);
+                    bool stripe = (x >= 15 && x <= 33 && (y == 22 || y == 23 || y == 15 || y == 16));
+                    float hx = x - 24f, hy = y - 31f;
+                    float hr = Mathf.Sqrt(hx * hx + hy * hy);
+                    bool handle = (y >= 31 && hr >= 6.5f && hr <= 10.2f);
+                    if ((bagBody && !stripe) || handle)
+                        px[y * sz + x] = Color.white;
+                    else
+                        px[y * sz + x] = Color.clear;
+                }
+            }
+            tex.SetPixels(px);
+            tex.Apply();
+            return tex;
+        }
+
+        private Texture2D GenerateGearIconTexture()
+        {
+            int sz = 48;
+            Texture2D tex = new Texture2D(sz, sz, TextureFormat.RGBA32, false);
+            Color[] px = new Color[sz * sz];
+            Vector2 c = new Vector2(24f, 24f);
+            for (int y = 0; y < sz; y++)
+            {
+                for (int x = 0; x < sz; x++)
+                {
+                    Vector2 d = new Vector2(x + 0.5f, y + 0.5f) - c;
+                    float r = d.magnitude;
+                    float ang = Mathf.Atan2(d.y, d.x);
+                    float tooth = Mathf.Cos(ang * 8f) > 0.25f ? 3.8f : 0f;
+                    bool onGear = (r >= 6.5f && r <= 14.5f + tooth);
+                    px[y * sz + x] = onGear ? Color.white : Color.clear;
+                }
+            }
+            tex.SetPixels(px);
+            tex.Apply();
+            return tex;
+        }
+
+        private Texture2D GeneratePinIconTexture()
+        {
+            int sz = 48;
+            Texture2D tex = new Texture2D(sz, sz, TextureFormat.RGBA32, false);
+            Color[] px = new Color[sz * sz];
+            for (int y = 0; y < sz; y++)
+            {
+                for (int x = 0; x < sz; x++)
+                {
+                    float dx = x + 0.5f - 24f;
+                    float dy = y + 0.5f - 30f;
+                    float rTop = Mathf.Sqrt(dx * dx + dy * dy);
+                    bool head = (rTop <= 13.5f && rTop >= 5.2f);
+                    bool tip = (y >= 6 && y <= 27 && Mathf.Abs(dx) <= (y - 6f) * 0.62f && rTop >= 5.2f);
+                    px[y * sz + x] = (head || tip) ? Color.white : Color.clear;
+                }
+            }
+            tex.SetPixels(px);
+            tex.Apply();
+            return tex;
+        }
+
+        // =========================================================================
         // COMPLETE RESOLUTION-INDEPENDENT IMGUI RENDERER (1280x720 VIRTUAL CANVAS)
         // =========================================================================
         private void InitStyles()
@@ -1204,6 +1389,60 @@ namespace DoomHellsAscension
 
             subtitleShadowStyle = new GUIStyle(subtitleCrimsonStyle);
             subtitleShadowStyle.normal.textColor = new Color(0.05f, 0.01f, 0.01f, 0.95f);
+
+            menuPillPlayLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 27,
+                fontStyle = FontStyle.Bold,
+                wordWrap = false,
+                alignment = TextAnchor.MiddleLeft
+            };
+            menuPillPlayLabelStyle.normal.textColor = new Color(0.06f, 0.01f, 0.01f, 1f);
+
+            menuPillLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 22,
+                fontStyle = FontStyle.Bold,
+                wordWrap = false,
+                alignment = TextAnchor.MiddleLeft
+            };
+            menuPillLabelStyle.normal.textColor = Color.white;
+
+            popupHeaderStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 24,
+                fontStyle = FontStyle.Bold,
+                wordWrap = false,
+                alignment = TextAnchor.MiddleLeft
+            };
+            popupHeaderStyle.normal.textColor = new Color(0.96f, 0.24f, 0.22f, 1f);
+
+            popupCardTitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 18,
+                fontStyle = FontStyle.Bold,
+                wordWrap = false,
+                alignment = TextAnchor.MiddleLeft
+            };
+            popupCardTitleStyle.normal.textColor = Color.white;
+
+            popupRowLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 22,
+                fontStyle = FontStyle.Bold,
+                wordWrap = false,
+                alignment = TextAnchor.MiddleLeft
+            };
+            popupRowLabelStyle.normal.textColor = Color.white;
+
+            popupRowSubStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                wordWrap = false,
+                alignment = TextAnchor.MiddleLeft
+            };
+            popupRowSubStyle.normal.textColor = new Color(0.86f, 0.72f, 0.70f, 1f);
 
             headerStyle = new GUIStyle(GUI.skin.label)
             {
@@ -1490,30 +1729,28 @@ namespace DoomHellsAscension
                 return;
             }
 
-            // 1. Top Telemetry Strip (Reveals cleanly with wide shot)
+            // 1. Minimal Clean Top Bar (Only subtle header + Replay Intro)
             GUI.color = new Color(1f, 1f, 1f, deckAlpha);
-            DrawRect(new Rect(0, 0, sw, 40), new Color(0.04f, 0.02f, 0.02f, 0.88f));
-            DrawRect(new Rect(0, 39, sw, 1), new Color(0.86f, 0.16f, 0.16f, 0.55f));
-            GUI.Label(new Rect(20, 9, sw - 360, 24), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC BLACK-OPS FPS  //  MARKDHANIEL G. AGCAOILI", smallMonoStyle);
-            if (GUI.Button(new Rect(sw - 322, 6, 144, 28), "↻ REPLAY INTRO", buttonDarkStyle))
+            DrawRect(new Rect(0, 0, sw, 38), new Color(0.03f, 0.01f, 0.02f, 0.80f));
+            DrawRect(new Rect(0, 37, sw, 1), new Color(0.88f, 0.16f, 0.16f, 0.50f));
+            GUI.Label(new Rect(20, 8, sw - 220, 22), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC FPS", smallMonoStyle);
+            if (GUI.Button(new Rect(sw - 164, 5, 148, 28), "↻ REPLAY INTRO", buttonDarkStyle))
             {
+                menuPopup = MenuPopupState.None;
                 heroIntroStartTime = t;
             }
-            if (GUI.Button(new Rect(sw - 170, 6, 154, 28), "ARMORY SHOP [B]", buttonBrassStyle)) ToggleShop();
 
             // 2. CHISELED GLOWING BLOOD-RED "DOOM HELL'S ASCENSION" TITLE IN UPPER-CENTER SKY!
-            float titleY = 50f + (1f - titleAlpha) * -18f;
+            float titleY = 48f + (1f - titleAlpha) * -18f;
             float subY = titleY + 86f;
             float emberPulse = 0.78f + 0.22f * Mathf.Sin(t * 2.6f);
 
-            // Soft crimson neon glow backdrop behind title in the storm sky
             if (softGlowTex != null)
             {
                 GUI.color = new Color(0.86f, 0.14f, 0.14f, 0.34f * titleAlpha * emberPulse);
                 GUI.DrawTexture(new Rect(sw * 0.5f - 360f, titleY - 18f, 720f, 165f), softGlowTex);
             }
 
-            // Heavy dark shadow -> fiery crimson outer glow -> chiseled highlight rim -> deep blood-red core
             GUI.color = new Color(1f, 1f, 1f, titleAlpha);
             GUI.Label(new Rect(4f, titleY + 6f, sw, 92f), "D  O  O  M", titleShadowStyle);
             GUI.Label(new Rect(-2f, titleY + 2f, sw, 92f), "D  O  O  M", titleCrimsonGlowStyle);
@@ -1521,115 +1758,424 @@ namespace DoomHellsAscension
             GUI.Label(new Rect(-1f, titleY - 1f, sw, 92f), "D  O  O  M", titleCrimsonRimStyle);
             GUI.Label(new Rect(0f, titleY, sw, 92f), "D  O  O  M", titleCrimsonStyle);
 
-            // Glowing Crimson Subtitle + Ember Divider Bar
             GUI.Label(new Rect(2f, subY + 2f, sw, 32f), "H E L L ' S   A S C E N S I O N", subtitleShadowStyle);
             GUI.Label(new Rect(0f, subY, sw, 32f), "H E L L ' S   A S C E N S I O N", subtitleCrimsonStyle);
             DrawRect(new Rect(sw * 0.5f - 230f, subY + 36f, 460f, 2f), new Color(0.92f, 0.22f, 0.20f, 0.85f * titleAlpha * emberPulse));
 
-            // 3. Bottom Tactical Command Deck (Fades in cleanly below the wide rooftop hero)
             if (deckAlpha <= 0.02f) { GUI.color = savedCol; return; }
             GUI.color = new Color(1f, 1f, 1f, deckAlpha);
-            float deckW = Mathf.Min(1140f, sw - 64f);
-            float deckH = 224f;
-            float deckX = (sw - deckW) * 0.5f;
-            float deckY = sh - deckH - 20f;
 
-            // 4. Sleek Tactical Command Deck (Zero overlaps at every window size!)
-            Rect deckRect = new Rect(deckX, deckY, deckW, deckH);
-            DrawRect(deckRect, new Color(0.04f, 0.02f, 0.03f, 0.88f));
-            DrawRect(new Rect(deckX, deckY, deckW, 2), new Color(0.90f, 0.18f, 0.18f, 0.85f));
+            // =========================================================================
+            // 3. SLEEK VERTICAL 3-BUTTON RED MENU STACK (Pic 1 Layout: Play / Armory Shop / Settings)
+            // Replaces the old bottom bar so the armored warrior & metropolis stay clean & iconic!
+            // =========================================================================
+            float menuX = 56f;
+            float menuY = sh - 266f;
+            float menuW = 344f;
+            bool popupBlocking = (menuPopup != MenuPopupState.None);
 
-            // Row 1: 3 Equal Mode Cards
-            float pad = 16f;
-            float cardW = (deckW - pad * 4f) / 3f;
-            float cardH = 78f;
+            // Button 1: Glowing Blood-Red "Play" Pill (with hover-pop + click spring popup!)
+            if (DrawPillMenuButton(new Rect(menuX, menuY, menuW, 74f), "Play", iconPlayTex, true, ref playHoverAnim, !popupBlocking))
+            {
+                OpenMenuPopup(MenuPopupState.ChooseMode);
+            }
+
+            // Button 2: Sleek Dark Crimson-Bordered "Armory Shop" Pill
+            if (DrawPillMenuButton(new Rect(menuX, menuY + 86f, menuW, 64f), "Armory Shop", iconShopTex, false, ref shopHoverAnim, !popupBlocking))
+            {
+                menuPopup = MenuPopupState.None;
+                ToggleShop();
+            }
+
+            // Button 3: Sleek Dark Crimson-Bordered "Settings" Pill
+            if (DrawPillMenuButton(new Rect(menuX, menuY + 162f, menuW, 64f), "Settings", iconGearTex, false, ref settingsHoverAnim, !popupBlocking))
+            {
+                OpenMenuPopup(MenuPopupState.Settings);
+            }
+
+            // Subtle compact campaign progress badge under Settings pill
+            selectedStartLevel = Mathf.Clamp(selectedStartLevel, 1, highestLevelUnlocked);
+            GUI.Label(new Rect(menuX + 12f, menuY + 232f, menuW, 22f),
+                $"CAMPAIGN PROGRESS: LVL {selectedStartLevel} / UNLOCKED {highestLevelUnlocked} OF 100",
+                smallMonoStyle);
+
+            // =========================================================================
+            // 4. ANIMATED POP-UP PANELS (Pic 4 Choose Mode -> Pic 5 Choose Playstyle -> Settings)
+            // =========================================================================
+            if (menuPopup == MenuPopupState.ChooseMode)
+                DrawChooseModePopup(sw, sh);
+            else if (menuPopup == MenuPopupState.ChoosePlaystyle)
+                DrawChoosePlaystylePopup(sw, sh);
+            else if (menuPopup == MenuPopupState.Settings)
+                DrawSettingsPopup(sw, sh);
+
+            GUI.color = savedCol;
+        }
+
+        private void OpenMenuPopup(MenuPopupState state)
+        {
+            menuPopup = state;
+            popupOpenTime = Time.unscaledTime;
+            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayPickup();
+        }
+
+        private static float EaseOutBack(float t)
+        {
+            t = Mathf.Clamp01(t);
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            float p = t - 1f;
+            return 1f + c3 * p * p * p + c1 * p * p;
+        }
+
+        private bool DrawPillMenuButton(Rect baseRect, string label, Texture2D iconTex, bool isPrimaryRed, ref float hoverAnim, bool interactive)
+        {
+            bool hovered = interactive && baseRect.Contains(Event.current.mousePosition);
+            hoverAnim = Mathf.MoveTowards(hoverAnim, hovered ? 1f : 0f, Time.unscaledDeltaTime * 7.5f);
+
+            float popX = hoverAnim * 10f;
+            float popExpand = hoverAnim * 3.5f;
+            Rect r = new Rect(baseRect.x + popX - popExpand * 0.5f, baseRect.y - popExpand * 0.5f, baseRect.width + popExpand, baseRect.height + popExpand);
+
+            Texture2D bg = isPrimaryRed
+                ? (hovered ? pillRedHoverTex : pillRedTex)
+                : (hovered ? pillDarkHoverTex : pillDarkTex);
+
+            if (isPrimaryRed && softGlowTex != null)
+            {
+                Color prevC = GUI.color;
+                GUI.color = new Color(0.96f, 0.16f, 0.14f, 0.24f + hoverAnim * 0.26f);
+                GUI.DrawTexture(new Rect(r.x - 16f, r.y - 12f, r.width + 32f, r.height + 24f), softGlowTex);
+                GUI.color = prevC;
+            }
+
+            if (bg != null) GUI.DrawTexture(r, bg, ScaleMode.StretchToFill);
+            else DrawRect(r, isPrimaryRed ? new Color(0.86f, 0.16f, 0.16f, 0.96f) : new Color(0.10f, 0.08f, 0.09f, 0.95f));
+
+            // Left Icon + Crisp Vertical Divider "|" + Bold Title (Matching Pic 1!)
+            float iconSize = isPrimaryRed ? 34f : 28f;
+            Rect iconR = new Rect(r.x + 26f, r.y + (r.height - iconSize) * 0.5f, iconSize, iconSize);
+            Color prevCol = GUI.color;
+            if (iconTex != null)
+            {
+                GUI.color = isPrimaryRed ? new Color(0.06f, 0.01f, 0.01f, 0.95f) : Color.white;
+                GUI.DrawTexture(iconR, iconTex, ScaleMode.ScaleToFit);
+            }
+            // Crisp vertical divider line
+            GUI.color = isPrimaryRed ? new Color(1f, 0.88f, 0.84f, 0.72f) : new Color(0.75f, 0.70f, 0.72f, 0.65f);
+            GUI.DrawTexture(new Rect(r.x + 86f, r.y + 14f, 2f, r.height - 28f), whiteTex);
+            GUI.color = prevCol;
+
+            GUI.Label(new Rect(r.x + 114f, r.y, r.width - 126f, r.height), label, isPrimaryRed ? menuPillPlayLabelStyle : menuPillLabelStyle);
+
+            return interactive && GUI.Button(r, "", GUIStyle.none);
+        }
+
+        private void DrawPopupHeader(Rect panel, string titleText)
+        {
+            // Pic 4 & Pic 5 Signature Header: Crimson Icon + Bold Red Title + Arrow Line + Bright Red [X] Close Button!
+            Color prev = GUI.color;
+            if (iconPinTex != null)
+            {
+                GUI.color = new Color(0.95f, 0.22f, 0.20f, 1f);
+                GUI.DrawTexture(new Rect(panel.x + 20f, panel.y + 16f, 30f, 30f), iconPinTex, ScaleMode.ScaleToFit);
+            }
+            GUI.color = prev;
+
+            GUI.Label(new Rect(panel.x + 56f, panel.y + 14f, 235f, 34f), titleText, popupHeaderStyle);
+
+            // Horizontal crimson arrow bar ("─────────>")
+            float lineX = panel.x + 278f;
+            float lineW = Mathf.Max(24f, panel.width - 352f);
+            DrawRect(new Rect(lineX, panel.y + 30f, lineW, 2.5f), new Color(0.92f, 0.22f, 0.20f, 0.88f));
+            GUI.Label(new Rect(lineX + lineW - 4f, panel.y + 15f, 24f, 30f), ">", popupHeaderStyle);
+
+            // Red Rounded Square Close Button [X]
+            Rect closeR = new Rect(panel.xMax - 52f, panel.y + 14f, 36f, 36f);
+            if (closeRedTex != null) GUI.DrawTexture(closeR, closeRedTex, ScaleMode.StretchToFill);
+            else DrawRect(closeR, new Color(0.90f, 0.14f, 0.14f, 1f));
+            GUI.Label(closeR, "X", bannerStyle);
+            if (GUI.Button(closeR, "", GUIStyle.none))
+            {
+                menuPopup = MenuPopupState.None;
+            }
+        }
+
+        /// <summary>
+        /// STEP 1 POP-UP (Matches Pic 4 "Choose Spawn" Layout with Pic 3's 3 Modes in DOOM Crimson!)
+        /// Clicking any Mode card transitions smoothly into Step 2 ("Choose Playstyle": Easy / Medium / Hard)!
+        /// </summary>
+        private void DrawChooseModePopup(float sw, float sh)
+        {
+            float p = Mathf.Clamp01((Time.unscaledTime - popupOpenTime) / 0.28f);
+            float pop = EaseOutBack(p);
+
+            // Subtle dark backdrop dimmer (clicking outside closes popup)
+            DrawRect(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.56f * p));
+
+            float baseW = 540f;
+            float baseH = 590f;
+            float curW = baseW * Mathf.Lerp(0.84f, 1f, pop);
+            float curH = baseH * Mathf.Lerp(0.84f, 1f, pop);
+            float slideX = (1f - Mathf.Clamp01(p)) * 45f;
+            Rect panel = new Rect(sw * 0.5f - curW * 0.5f + 135f + slideX, sh * 0.5f - curH * 0.5f + 18f, curW, curH);
+
+            DrawRect(new Rect(panel.x - 2f, panel.y - 2f, panel.width + 4f, panel.height + 4f), new Color(0.86f, 0.16f, 0.16f, 0.65f * p));
+            DrawRect(panel, new Color(0.06f, 0.04f, 0.05f, 0.96f * p));
+
+            DrawPopupHeader(panel, "Choose Mode");
+
             selectedStartLevel = Mathf.Clamp(selectedStartLevel, 1, highestLevelUnlocked);
             StratumDef previewRealm = GetRealmForLevel(selectedStartLevel);
             string campDesc = selectedStartLevel < GameCatalog.MaxCampaignLevel
                 ? $"Clear Level {selectedStartLevel} to unlock Level {selectedStartLevel + 1} · Boss: {previewRealm.boss.bossName} (Lvl {previewRealm.boss.bossLevel})"
                 : $"FINAL SHOWDOWN: Defeat {previewRealm.boss.bossName} (Level 100 Final Boss)!";
-            DrawModeCard(new Rect(deckX + pad, deckY + 14f, cardW, cardH), GameModeType.Campaign,
-                $"OP // 01  CAMPAIGN (LVL {selectedStartLevel} / UNLOCKED {highestLevelUnlocked})",
-                campDesc);
-            DrawModeCard(new Rect(deckX + pad * 2f + cardW, deckY + 14f, cardW, cardH), GameModeType.EndlessHorde,
-                "OP // 02  ENDLESS HORDE",
-                "Infinite Escalating Waves · Unique Realm Boss every 3rd Wave");
-            DrawModeCard(new Rect(deckX + pad * 3f + cardW * 2f, deckY + 14f, cardW, cardH), GameModeType.PurgatoryBlitz,
-                "OP // 03  PURGATORY BLITZ",
-                "150s Doomsday Clock (+2.5s / Kill) across unlocked levels");
 
-            // Row 2: Threat + Strictly Locked Level Selector on Left | Launch & Shop Buttons on Right (Zero Overlap!)
-            float rowY = deckY + 106f;
-            GUI.Label(new Rect(deckX + pad, rowY + 8f, 62f, 24f), "THREAT:", smallMonoStyle);
-            if (GUI.Button(new Rect(deckX + 78f, rowY + 2f, 74f, 34f), DifficultyMult < 0.9f ? "[INIT]" : "INIT", buttonDarkStyle)) DifficultyMult = 0.75f;
-            if (GUI.Button(new Rect(deckX + 156f, rowY + 2f, 82f, 34f), (DifficultyMult >= 0.9f && DifficultyMult <= 1.1f) ? "[WARDEN]" : "WARDEN", buttonDarkStyle)) DifficultyMult = 1.0f;
-            if (GUI.Button(new Rect(deckX + 242f, rowY + 2f, 82f, 34f), DifficultyMult > 1.1f ? "[NGHTM]" : "NGHTM", buttonDarkStyle)) DifficultyMult = 1.35f;
+            Rect viewRect = new Rect(panel.x + 16f, panel.y + 62f, panel.width - 32f, panel.height - 80f);
+            float innerW = viewRect.width - 18f;
+            float cardH = 166f;
+            float gap = 12f;
+            Rect contentRect = new Rect(0f, 0f, innerW, cardH * 3f + gap * 2f + 8f);
 
-            // Strictly Sequential Level Selector: ONLY unlocked levels (1 .. highestLevelUnlocked) can be selected!
-            float lvlX = deckX + 338f;
-            GUI.enabled = selectedStartLevel > 1;
-            if (GUI.Button(new Rect(lvlX, rowY + 2f, 30f, 34f), "<", buttonDarkStyle))
+            modePopupScroll = GUI.BeginScrollView(viewRect, modePopupScroll, contentRect);
+
+            if (DrawVisualModeCard(new Rect(0f, 0f, innerW, cardH),
+                $"> OP // 01  CAMPAIGN (LVL {selectedStartLevel} / UNLOCKED {highestLevelUnlocked})",
+                campDesc,
+                (heroShots != null && heroShots.Length > 3) ? heroShots[3] : blackHeroBgTex,
+                currentMode == GameModeType.Campaign))
             {
-                selectedStartLevel = Mathf.Max(1, selectedStartLevel - 1);
-                if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(selectedStartLevel));
+                currentMode = GameModeType.Campaign;
+                OpenMenuPopup(MenuPopupState.ChoosePlaystyle);
             }
-            GUI.enabled = true;
 
-            DrawRect(new Rect(lvlX + 34f, rowY + 2f, 92f, 34f), new Color(0.14f, 0.11f, 0.08f, 0.95f));
-            GUI.Label(new Rect(lvlX + 34f, rowY + 6f, 92f, 26f),
-                selectedStartLevel % 10 == 0 ? $"BOSS {selectedStartLevel}" : $"LVL {selectedStartLevel}/100",
-                controlsCenterStyle);
-
-            GUI.enabled = selectedStartLevel < highestLevelUnlocked;
-            if (GUI.Button(new Rect(lvlX + 130f, rowY + 2f, 30f, 34f), ">", buttonDarkStyle))
+            if (DrawVisualModeCard(new Rect(0f, cardH + gap, innerW, cardH),
+                "> OP // 02  ENDLESS HORDE",
+                "Infinite Escalating Waves · Unique Realm Boss every 3rd Wave",
+                (heroShots != null && heroShots.Length > 2) ? heroShots[2] : blackHeroBgTex,
+                currentMode == GameModeType.EndlessHorde))
             {
-                selectedStartLevel = Mathf.Min(highestLevelUnlocked, selectedStartLevel + 1);
-                if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(selectedStartLevel));
+                currentMode = GameModeType.EndlessHorde;
+                OpenMenuPopup(MenuPopupState.ChoosePlaystyle);
             }
-            GUI.enabled = true;
 
-            if (highestLevelUnlocked <= 1)
+            if (DrawVisualModeCard(new Rect(0f, (cardH + gap) * 2f, innerW, cardH),
+                "> OP // 03  PURGATORY BLITZ",
+                "150s Doomsday Clock (+2.5s / Kill) across unlocked levels",
+                (heroShots != null && heroShots.Length > 1) ? heroShots[1] : blackHeroBgTex,
+                currentMode == GameModeType.PurgatoryBlitz))
             {
-                DrawRect(new Rect(lvlX + 166f, rowY + 2f, 114f, 34f), new Color(0.12f, 0.08f, 0.08f, 0.92f));
-                GUI.Label(new Rect(lvlX + 166f, rowY + 6f, 114f, 26f), "LVL 2 LOCKED", controlsCenterStyle);
+                currentMode = GameModeType.PurgatoryBlitz;
+                OpenMenuPopup(MenuPopupState.ChoosePlaystyle);
+            }
+
+            GUI.EndScrollView();
+        }
+
+        private bool DrawVisualModeCard(Rect r, string title, string desc, Texture2D thumb, bool isSelected)
+        {
+            bool hov = r.Contains(Event.current.mousePosition);
+            bool lit = hov || isSelected;
+
+            // Pic 4 Signature Framed Card: Glowing Crimson Border + Header Strip + Preview Image + Subtitle Strip!
+            Color frameCol = lit ? new Color(0.84f, 0.14f, 0.14f, 0.96f) : new Color(0.14f, 0.10f, 0.11f, 0.95f);
+            Color outerBorder = lit ? new Color(1.0f, 0.36f, 0.32f, 0.98f) : new Color(0.32f, 0.22f, 0.24f, 0.78f);
+            DrawRect(new Rect(r.x - 1f, r.y - 1f, r.width + 2f, r.height + 2f), outerBorder);
+            DrawRect(r, frameCol);
+
+            // Bold "> Mode Title" Header Row
+            GUI.Label(new Rect(r.x + 14f, r.y + 5f, r.width - 28f, 30f), title, popupCardTitleStyle);
+
+            // Wide Preview Thumbnail (just like Pic 4's inset world preview!)
+            Rect imgR = new Rect(r.x + 8f, r.y + 38f, r.width - 16f, r.height - 46f);
+            if (thumb != null)
+            {
+                GUI.DrawTexture(imgR, thumb, ScaleMode.ScaleAndCrop);
             }
             else
             {
-                if (GUI.Button(new Rect(lvlX + 166f, rowY + 2f, 114f, 34f), "RESET LVL 1", buttonDarkStyle))
-                {
-                    highestLevelUnlocked = 1;
-                    selectedStartLevel = 1;
-                    PlayerPrefs.SetInt(PrefHighestLevel, 1);
-                    PlayerPrefs.Save();
-                    if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(1));
-                }
+                DrawRect(imgR, new Color(0.08f, 0.04f, 0.05f, 1f));
             }
 
-            string deployText = currentMode == GameModeType.EndlessHorde
-                ? "▶ DEPLOY HORDE WAVE 1 (PLAY)"
-                : $"▶ DEPLOY LEVEL {selectedStartLevel} (PLAY)";
-            if (GUI.Button(new Rect(deckRect.xMax - 498f, rowY, 304f, 38f), deployText, buttonBrassStyle))
-                StartNewGame();
-            if (GUI.Button(new Rect(deckRect.xMax - 186f, rowY, 170f, 38f), "🛒 ARMORY SHOP [B]", buttonDarkStyle))
-                ToggleShop();
+            // Bottom dark glass caption bar over bottom of thumbnail so description is razor-readable
+            Rect capR = new Rect(imgR.x, imgR.yMax - 30f, imgR.width, 30f);
+            DrawRect(capR, new Color(0.03f, 0.01f, 0.02f, 0.84f));
+            GUI.Label(new Rect(capR.x + 10f, capR.y + 3f, capR.width - 20f, 24f), desc, smallMonoStyle);
 
-            // Row 3: Clean 2-Line Centered Controls Strip with full vertical room
-            DrawRect(new Rect(deckX + pad, deckY + 158f, deckW - pad * 2f, 52f), new Color(0f, 0f, 0f, 0.45f));
-            GUI.Label(new Rect(deckX + pad + 8f, deckY + 162f, deckW - pad * 2f - 16f, 44f),
-                "[WASD] Move  ·  [MOUSE] 3D Look  ·  [L-CLICK] Fire  ·  [R-CLICK] ADS / Operator Scope  ·  [1-5] Valorant Weapons\n[R] Tactical Reload  ·  [Y] Inspect  ·  [V] 3D Melee  ·  [X] Special Ability  ·  [SHIFT] Phase-Dash  ·  [Q/E] Overdrive  ·  [B] Shop",
-                controlsCenterStyle);
-
-            GUI.color = savedCol;
+            return GUI.Button(r, "", GUIStyle.none);
         }
 
-        private void DrawModeCard(Rect r, GameModeType mode, string title, string desc)
+        /// <summary>
+        /// STEP 2 POP-UP (Matches Pic 5 "Choose Role" Layout -> "Choose Playstyle": Easy, Medium, Hard!)
+        /// Clicking Easy, Medium, or Hard immediately sets difficulty and deploys straight into the game!
+        /// </summary>
+        private void DrawChoosePlaystylePopup(float sw, float sh)
         {
-            bool sel = currentMode == mode;
-            DrawRect(r, sel ? new Color(0.42f, 0.08f, 0.08f, 0.78f) : new Color(0.09f, 0.07f, 0.09f, 0.86f));
-            if (sel) DrawRect(new Rect(r.x, r.y, r.width, 2f), new Color(0.94f, 0.24f, 0.22f, 0.98f));
-            if (GUI.Button(r, "", GUIStyle.none)) currentMode = mode;
-            GUI.Label(new Rect(r.x + 12f, r.y + 8f, r.width - 24f, 22f), title, sel ? cardTitleSelStyle : cardTitleStyle);
-            GUI.Label(new Rect(r.x + 12f, r.y + 34f, r.width - 24f, 38f), desc, cardDescStyle);
+            float p = Mathf.Clamp01((Time.unscaledTime - popupOpenTime) / 0.26f);
+            float pop = EaseOutBack(p);
+
+            DrawRect(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.62f * p));
+
+            float baseW = 510f;
+            float baseH = 472f;
+            float curW = baseW * Mathf.Lerp(0.84f, 1f, pop);
+            float curH = baseH * Mathf.Lerp(0.84f, 1f, pop);
+            Rect panel = new Rect(sw * 0.5f - curW * 0.5f + 135f, sh * 0.5f - curH * 0.5f + 18f, curW, curH);
+
+            DrawRect(new Rect(panel.x - 2f, panel.y - 2f, panel.width + 4f, panel.height + 4f), new Color(0.88f, 0.16f, 0.16f, 0.72f * p));
+            DrawRect(panel, new Color(0.06f, 0.04f, 0.05f, 0.97f * p));
+
+            DrawPopupHeader(panel, "Choose Playstyle");
+
+            // Selected Mode & Sequential Level Bar (Preserves strict Level 1 -> 100 unlocking!)
+            string modeLabel = currentMode == GameModeType.Campaign ? "OP // 01 CAMPAIGN"
+                             : currentMode == GameModeType.EndlessHorde ? "OP // 02 ENDLESS HORDE"
+                             : "OP // 03 PURGATORY BLITZ";
+            Rect metaR = new Rect(panel.x + 22f, panel.y + 64f, panel.width - 44f, 40f);
+            DrawRect(metaR, new Color(0.14f, 0.05f, 0.06f, 0.85f));
+            GUI.Label(new Rect(metaR.x + 12f, metaR.y + 8f, 220f, 24f), modeLabel, smallMonoStyle);
+
+            if (currentMode != GameModeType.EndlessHorde)
+            {
+                selectedStartLevel = Mathf.Clamp(selectedStartLevel, 1, highestLevelUnlocked);
+                float lx = metaR.xMax - 178f;
+                GUI.enabled = selectedStartLevel > 1;
+                if (GUI.Button(new Rect(lx, metaR.y + 5f, 28f, 30f), "<", buttonDarkStyle))
+                {
+                    selectedStartLevel = Mathf.Max(1, selectedStartLevel - 1);
+                    if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(selectedStartLevel));
+                }
+                GUI.enabled = true;
+                GUI.Label(new Rect(lx + 30f, metaR.y + 8f, 114f, 24f),
+                    highestLevelUnlocked <= 1 ? "LVL 1 (L2 LOCKED)" : $"LVL {selectedStartLevel} / {highestLevelUnlocked}",
+                    hudCenterSmallStyle);
+                GUI.enabled = selectedStartLevel < highestLevelUnlocked;
+                if (GUI.Button(new Rect(lx + 146f, metaR.y + 5f, 28f, 30f), ">", buttonDarkStyle))
+                {
+                    selectedStartLevel = Mathf.Min(highestLevelUnlocked, selectedStartLevel + 1);
+                    if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(selectedStartLevel));
+                }
+                GUI.enabled = true;
+            }
+
+            // Pic 5 Stacked "> Option" Rows: Easy / Medium / Hard!
+            float rowX = panel.x + 22f;
+            float rowW = panel.width - 44f;
+            float rowH = 74f;
+            float startY = panel.y + 122f;
+
+            if (DrawPlaystyleRow(new Rect(rowX, startY, rowW, rowH), "> Easy",
+                "0.75x Threat  ·  Balanced Demon HP & Acid Damage  ·  Recommended for New Slayers"))
+            {
+                DifficultyMult = 0.75f;
+                StartNewGame();
+            }
+
+            if (DrawPlaystyleRow(new Rect(rowX, startY + 86f, rowW, rowH), "> Medium",
+                "1.00x Threat  ·  Authentic DOOM Tactical Combat  ·  Standard Boss Scaling"))
+            {
+                DifficultyMult = 1.0f;
+                StartNewGame();
+            }
+
+            if (DrawPlaystyleRow(new Rect(rowX, startY + 172f, rowW, rowH), "> Hard",
+                "1.45x Threat  ·  Brutal Acid Corrosion & Relentless Enraged Bosses  ·  Nightmare"))
+            {
+                DifficultyMult = 1.45f;
+                StartNewGame();
+            }
+
+            // Back Button to Step 1 (Choose Mode)
+            if (GUI.Button(new Rect(panel.x + 22f, panel.yMax - 54f, 176f, 36f), "← BACK TO MODES", buttonDarkStyle))
+            {
+                OpenMenuPopup(MenuPopupState.ChooseMode);
+            }
+        }
+
+        private bool DrawPlaystyleRow(Rect r, string title, string subtitle)
+        {
+            bool hov = r.Contains(Event.current.mousePosition);
+            Rect drawR = hov ? new Rect(r.x + 6f, r.y - 1f, r.width - 4f, r.height + 2f) : r;
+            Texture2D bg = hov ? pillDarkHoverTex : pillDarkTex;
+            if (bg != null) GUI.DrawTexture(drawR, bg, ScaleMode.StretchToFill);
+            else DrawRect(drawR, hov ? new Color(0.55f, 0.10f, 0.10f, 0.96f) : new Color(0.08f, 0.06f, 0.07f, 0.95f));
+
+            GUI.Label(new Rect(drawR.x + 20f, drawR.y + 10f, drawR.width - 40f, 30f), title, popupRowLabelStyle);
+            GUI.Label(new Rect(drawR.x + 24f, drawR.y + 42f, drawR.width - 44f, 22f), subtitle, popupRowSubStyle);
+            return GUI.Button(drawR, "", GUIStyle.none);
+        }
+
+        /// <summary>
+        /// SETTINGS POP-UP (Triggered by Button 3 "Settings" in the Red Main Menu!)
+        /// </summary>
+        private void DrawSettingsPopup(float sw, float sh)
+        {
+            float p = Mathf.Clamp01((Time.unscaledTime - popupOpenTime) / 0.26f);
+            float pop = EaseOutBack(p);
+
+            DrawRect(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.62f * p));
+
+            float baseW = 520f;
+            float baseH = 440f;
+            float curW = baseW * Mathf.Lerp(0.84f, 1f, pop);
+            float curH = baseH * Mathf.Lerp(0.84f, 1f, pop);
+            Rect panel = new Rect(sw * 0.5f - curW * 0.5f + 135f, sh * 0.5f - curH * 0.5f + 18f, curW, curH);
+
+            DrawRect(new Rect(panel.x - 2f, panel.y - 2f, panel.width + 4f, panel.height + 4f), new Color(0.88f, 0.16f, 0.16f, 0.72f * p));
+            DrawRect(panel, new Color(0.06f, 0.04f, 0.05f, 0.97f * p));
+
+            DrawPopupHeader(panel, "Settings");
+
+            float sx = panel.x + 24f;
+            float swIn = panel.width - 48f;
+            float y = panel.y + 74f;
+
+            // Row 1: Master Audio Toggle
+            DrawRect(new Rect(sx, y, swIn, 54f), new Color(0.11f, 0.07f, 0.08f, 0.92f));
+            GUI.Label(new Rect(sx + 16f, y + 14f, 240f, 26f), "> MASTER AUDIO & SFX", popupCardTitleStyle);
+            if (GUI.Button(new Rect(sx + swIn - 156f, y + 10f, 142f, 34f), audioMutedUi ? "MUTED [M]" : "ENABLED [M]", audioMutedUi ? buttonDarkStyle : buttonBrassStyle))
+            {
+                audioMutedUi = !audioMutedUi;
+                if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.ToggleAudio();
+            }
+
+            // Row 2: Mouse Aim Sensitivity Slider
+            y += 66f;
+            DrawRect(new Rect(sx, y, swIn, 64f), new Color(0.11f, 0.07f, 0.08f, 0.92f));
+            float sensVal = FPSPlayerController.Instance != null ? FPSPlayerController.Instance.mouseSensitivity : 1.0f;
+            GUI.Label(new Rect(sx + 16f, y + 8f, swIn - 32f, 24f), $"> MOUSE AIM SENSITIVITY: {sensVal:F2}x", smallMonoStyle);
+            float newSens = GUI.HorizontalSlider(new Rect(sx + 16f, y + 36f, swIn - 32f, 20f), sensVal, 0.4f, 2.5f);
+            if (FPSPlayerController.Instance != null) FPSPlayerController.Instance.mouseSensitivity = newSens;
+
+            // Row 3: Campaign Progress & Reset Level 1
+            y += 76f;
+            DrawRect(new Rect(sx, y, swIn, 54f), new Color(0.11f, 0.07f, 0.08f, 0.92f));
+            GUI.Label(new Rect(sx + 16f, y + 14f, 260f, 26f), $"> UNLOCKED: LEVEL {highestLevelUnlocked} / 100", smallMonoStyle);
+            GUI.enabled = highestLevelUnlocked > 1;
+            if (GUI.Button(new Rect(sx + swIn - 156f, y + 10f, 142f, 34f), "RESET TO LVL 1", buttonDarkStyle))
+            {
+                highestLevelUnlocked = 1;
+                selectedStartLevel = 1;
+                PlayerPrefs.SetInt(PrefHighestLevel, 1);
+                PlayerPrefs.Save();
+                if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(1));
+            }
+            GUI.enabled = true;
+
+            // Row 4: Replay 12s Hero Intro
+            y += 66f;
+            if (GUI.Button(new Rect(sx, y, swIn, 42f), "↻ REPLAY 12-SECOND HERO CINEMATIC", buttonDarkStyle))
+            {
+                menuPopup = MenuPopupState.None;
+                heroIntroStartTime = Time.unscaledTime;
+            }
+
+            // Row 5: Controls Quick Strip
+            y += 54f;
+            DrawRect(new Rect(sx, y, swIn, 48f), new Color(0.03f, 0.02f, 0.02f, 0.80f));
+            GUI.Label(new Rect(sx + 8f, y + 4f, swIn - 16f, 40f),
+                "[WASD] Move · [MOUSE] Look · [LMB] Fire · [RMB] ADS/Scope · [1-5] Guns\n[R] Reload · [Y] Inspect · [V] Melee · [X] Ability · [SHIFT] Dash · [Q/E] Overdrive · [B] Shop",
+                controlsCenterStyle);
         }
 
         private void DrawGameplayHUD(float sw, float sh)
