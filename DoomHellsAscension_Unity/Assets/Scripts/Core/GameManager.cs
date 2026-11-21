@@ -293,6 +293,66 @@ namespace DoomHellsAscension
             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StartMusic();
         }
 
+        // =========================================================================
+        // WEBGL LANDING HERO BRIDGE (Called by index.html compact animated popups!)
+        // =========================================================================
+        public void LaunchFromWebHero(string payload)
+        {
+            if (!string.IsNullOrEmpty(payload))
+            {
+                string[] parts = payload.Split('|');
+                if (parts.Length >= 1)
+                {
+                    if (parts[0] == "EndlessHorde") currentMode = GameModeType.EndlessHorde;
+                    else if (parts[0] == "PurgatoryBlitz") currentMode = GameModeType.PurgatoryBlitz;
+                    else currentMode = GameModeType.Campaign;
+                }
+                if (parts.Length >= 2 && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float mult))
+                {
+                    DifficultyMult = Mathf.Clamp(mult, 0.5f, 2.0f);
+                }
+            }
+            heroIntroStartTime = Time.unscaledTime - 10f;
+            menuPopup = MenuPopupState.None;
+            StartNewGame();
+        }
+
+        public void OpenShopFromWeb(string unused)
+        {
+            heroIntroStartTime = Time.unscaledTime - 10f;
+            menuPopup = MenuPopupState.None;
+            if (!ShopOpen) ToggleShop();
+        }
+
+        public void ApplyWebSettings(string payload)
+        {
+            if (string.IsNullOrEmpty(payload)) return;
+            string[] parts = payload.Split('|');
+            if (parts.Length >= 1 && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float s))
+            {
+                if (FPSPlayerController.Instance != null)
+                    FPSPlayerController.Instance.mouseSensitivity = Mathf.Clamp(s, 0.4f, 2.5f);
+            }
+            if (parts.Length >= 2)
+            {
+                bool wantMuted = parts[1] == "1";
+                if (wantMuted != audioMutedUi)
+                {
+                    audioMutedUi = wantMuted;
+                    if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.ToggleAudio();
+                }
+            }
+        }
+
+        public void ResetProgressFromWeb(string unused)
+        {
+            highestLevelUnlocked = 1;
+            selectedStartLevel = 1;
+            PlayerPrefs.SetInt(PrefHighestLevel, 1);
+            PlayerPrefs.Save();
+            if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(1));
+        }
+
         private void LoadCampaignLevel(int levelNum)
         {
             ClearDynamicObjects();
@@ -1766,37 +1826,37 @@ namespace DoomHellsAscension
             GUI.color = new Color(1f, 1f, 1f, deckAlpha);
 
             // =========================================================================
-            // 3. SLEEK VERTICAL 3-BUTTON RED MENU STACK (Pic 1 Layout: Play / Armory Shop / Settings)
-            // Replaces the old bottom bar so the armored warrior & metropolis stay clean & iconic!
+            // 3. COMPACT VERTICAL 3-BUTTON RED MENU STACK (Pic 1: Play / Armory Shop / Settings)
+            // Compact footprint on bottom-left so the DOOM warrior & metropolis stay clean & visible!
             // =========================================================================
-            float menuX = 56f;
-            float menuY = sh - 266f;
-            float menuW = 344f;
+            float menuX = 48f;
+            float menuY = sh - 232f;
+            float menuW = 286f;
             bool popupBlocking = (menuPopup != MenuPopupState.None);
 
-            // Button 1: Glowing Blood-Red "Play" Pill (with hover-pop + click spring popup!)
-            if (DrawPillMenuButton(new Rect(menuX, menuY, menuW, 74f), "Play", iconPlayTex, true, ref playHoverAnim, !popupBlocking))
+            // Button 1: Glowing Blood-Red "Play" Pill (with hover-pop + spring popup!)
+            if (DrawPillMenuButton(new Rect(menuX, menuY, menuW, 62f), "Play", iconPlayTex, true, ref playHoverAnim, !popupBlocking))
             {
                 OpenMenuPopup(MenuPopupState.ChooseMode);
             }
 
-            // Button 2: Sleek Dark Crimson-Bordered "Armory Shop" Pill
-            if (DrawPillMenuButton(new Rect(menuX, menuY + 86f, menuW, 64f), "Armory Shop", iconShopTex, false, ref shopHoverAnim, !popupBlocking))
+            // Button 2: Compact Dark Crimson-Bordered "Armory Shop" Pill
+            if (DrawPillMenuButton(new Rect(menuX, menuY + 72f, menuW, 54f), "Armory Shop", iconShopTex, false, ref shopHoverAnim, !popupBlocking))
             {
                 menuPopup = MenuPopupState.None;
                 ToggleShop();
             }
 
-            // Button 3: Sleek Dark Crimson-Bordered "Settings" Pill
-            if (DrawPillMenuButton(new Rect(menuX, menuY + 162f, menuW, 64f), "Settings", iconGearTex, false, ref settingsHoverAnim, !popupBlocking))
+            // Button 3: Compact Dark Crimson-Bordered "Settings" Pill
+            if (DrawPillMenuButton(new Rect(menuX, menuY + 136f, menuW, 54f), "Settings", iconGearTex, false, ref settingsHoverAnim, !popupBlocking))
             {
                 OpenMenuPopup(MenuPopupState.Settings);
             }
 
             // Subtle compact campaign progress badge under Settings pill
             selectedStartLevel = Mathf.Clamp(selectedStartLevel, 1, highestLevelUnlocked);
-            GUI.Label(new Rect(menuX + 12f, menuY + 232f, menuW, 22f),
-                $"CAMPAIGN PROGRESS: LVL {selectedStartLevel} / UNLOCKED {highestLevelUnlocked} OF 100",
+            GUI.Label(new Rect(menuX + 10f, menuY + 196f, menuW + 40f, 20f),
+                $"CAMPAIGN: LVL {selectedStartLevel} / UNLOCKED {highestLevelUnlocked} OF 100",
                 smallMonoStyle);
 
             // =========================================================================
@@ -1852,9 +1912,9 @@ namespace DoomHellsAscension
             if (bg != null) GUI.DrawTexture(r, bg, ScaleMode.StretchToFill);
             else DrawRect(r, isPrimaryRed ? new Color(0.86f, 0.16f, 0.16f, 0.96f) : new Color(0.10f, 0.08f, 0.09f, 0.95f));
 
-            // Left Icon + Crisp Vertical Divider "|" + Bold Title (Matching Pic 1!)
-            float iconSize = isPrimaryRed ? 34f : 28f;
-            Rect iconR = new Rect(r.x + 26f, r.y + (r.height - iconSize) * 0.5f, iconSize, iconSize);
+            // Left Icon + Crisp Vertical Divider "|" + Bold Title (Compact Pic 1 Proportions!)
+            float iconSize = isPrimaryRed ? 28f : 24f;
+            Rect iconR = new Rect(r.x + 20f, r.y + (r.height - iconSize) * 0.5f, iconSize, iconSize);
             Color prevCol = GUI.color;
             if (iconTex != null)
             {
@@ -1863,10 +1923,10 @@ namespace DoomHellsAscension
             }
             // Crisp vertical divider line
             GUI.color = isPrimaryRed ? new Color(1f, 0.88f, 0.84f, 0.72f) : new Color(0.75f, 0.70f, 0.72f, 0.65f);
-            GUI.DrawTexture(new Rect(r.x + 86f, r.y + 14f, 2f, r.height - 28f), whiteTex);
+            GUI.DrawTexture(new Rect(r.x + 68f, r.y + 12f, 2f, r.height - 24f), whiteTex);
             GUI.color = prevCol;
 
-            GUI.Label(new Rect(r.x + 114f, r.y, r.width - 126f, r.height), label, isPrimaryRed ? menuPillPlayLabelStyle : menuPillLabelStyle);
+            GUI.Label(new Rect(r.x + 88f, r.y, r.width - 98f, r.height), label, isPrimaryRed ? menuPillPlayLabelStyle : menuPillLabelStyle);
 
             return interactive && GUI.Button(r, "", GUIStyle.none);
         }
