@@ -48,8 +48,15 @@ namespace DoomHellsAscension
         public float HitmarkerTimer { get; private set; }
         public bool LastHitWasHeadshot { get; private set; }
         public float DamageFlashTimer { get; private set; }
+        public float AcidFlashTimer { get; private set; }
+        public float AcidBurnTimer { get; private set; }
+        public bool IsAcidBurned => AcidBurnTimer > 0f;
         public float PickupFlashTimer { get; private set; }
         public float DashFlashTimer { get; private set; }
+
+        private float acidTickTimer;
+        private int acidTickDamage = 4;
+        private string acidAttacker = "DEMON ACID";
 
         private CharacterController controller;
         private float yaw;
@@ -99,6 +106,9 @@ namespace DoomHellsAscension
             vampiricTimer = 0f;
             invulnTimer = 0f;
             odinSpinup = 0f;
+            AcidBurnTimer = 0f;
+            AcidFlashTimer = 0f;
+            acidTickTimer = 0f;
             SelectWeapon(0);
             TeleportToSpawn();
         }
@@ -134,6 +144,7 @@ namespace DoomHellsAscension
         {
             if (HitmarkerTimer > 0f) HitmarkerTimer -= Time.deltaTime;
             if (DamageFlashTimer > 0f) DamageFlashTimer -= Time.deltaTime;
+            if (AcidFlashTimer > 0f) AcidFlashTimer -= Time.deltaTime;
             if (PickupFlashTimer > 0f) PickupFlashTimer -= Time.deltaTime;
             if (DashFlashTimer > 0f) DashFlashTimer -= Time.deltaTime;
 
@@ -149,6 +160,29 @@ namespace DoomHellsAscension
             if (dashCooldown > 0f) dashCooldown -= dt;
             if (invulnTimer > 0f) invulnTimer -= dt;
             if (vampiricTimer > 0f) vampiricTimer -= dt;
+
+            // Toxic Demon Acid Burn Damage-Over-Time (drains player health continuously!)
+            if (AcidBurnTimer > 0f)
+            {
+                AcidBurnTimer -= dt;
+                acidTickTimer -= dt;
+                if (acidTickTimer <= 0f)
+                {
+                    acidTickTimer = 0.70f;
+                    if (invulnTimer <= 0f)
+                    {
+                        hp = Mathf.Max(0, hp - acidTickDamage);
+                        AcidFlashTimer = 0.30f;
+                        if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayDamage();
+                        if (hp <= 0)
+                        {
+                            AcidBurnTimer = 0f;
+                            GameManager.Instance.TriggerGameOver($"DISSOLVED BY {acidAttacker}'S TOXIC ACID");
+                            return;
+                        }
+                    }
+                }
+            }
 
             if (IsReloading)
             {
@@ -484,6 +518,21 @@ namespace DoomHellsAscension
                 }
                 GameManager.Instance.AddKillfeed("BRIMSTONE METEOR STRIKE OBLITERATED THE PLAZA!");
             }
+        }
+
+        public void ApplyAcidSpit(int impactDamage, float burnDuration, int tickDmg, string attacker)
+        {
+            if (invulnTimer > 0f) return;
+            AcidFlashTimer = 0.45f;
+            AcidBurnTimer = Mathf.Max(AcidBurnTimer, burnDuration);
+            acidTickDamage = Mathf.Max(3, tickDmg);
+            acidTickTimer = 0.65f;
+            acidAttacker = attacker;
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.AddKillfeed($"CORRODED BY {attacker}'S ACID SPIT! (-HP BURN)");
+            }
+            TakeDamage(impactDamage, $"{attacker} (ACID)");
         }
 
         public void TakeDamage(int rawDmg, string attacker)

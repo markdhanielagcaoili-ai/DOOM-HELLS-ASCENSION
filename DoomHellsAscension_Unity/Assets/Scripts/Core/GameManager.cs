@@ -1639,9 +1639,25 @@ namespace DoomHellsAscension
 
             // Screen-Space Flashes
             if (p.DamageFlashTimer > 0f) DrawRect(new Rect(0, 0, sw, sh), new Color(1f, 0.08f, 0f, p.DamageFlashTimer * 1.1f));
+            if (p.AcidFlashTimer > 0f || p.IsAcidBurned)
+            {
+                float acidA = Mathf.Max(p.AcidFlashTimer * 0.65f, p.IsAcidBurned ? (0.12f + 0.07f * Mathf.Sin(Time.time * 10f)) : 0f);
+                DrawRect(new Rect(0, 0, sw, sh), new Color(0.20f, 0.96f, 0.14f, acidA));
+                // Glowing corrosive screen edge trim while acid drains player HP
+                DrawRect(new Rect(0, 0, sw, 10), new Color(0.30f, 1f, 0.16f, acidA * 2.2f));
+                DrawRect(new Rect(0, sh - 10, sw, 10), new Color(0.30f, 1f, 0.16f, acidA * 2.2f));
+            }
             if (OverdriveActive) DrawRect(new Rect(0, 0, sw, sh), new Color(0.65f, 0.25f, 1f, 0.12f));
             if (p.PickupFlashTimer > 0f) DrawRect(new Rect(0, 0, sw, sh), new Color(0.14f, 0.85f, 1f, p.PickupFlashTimer * 0.7f));
             if (p.DashFlashTimer > 0f) DrawRect(new Rect(0, 0, sw, sh), new Color(1f, 1f, 1f, p.DashFlashTimer * 0.6f));
+
+            if (!IsPaused && p.IsAcidBurned)
+            {
+                Rect acidAlert = new Rect(sw * 0.5f - 175f, 54f, 350f, 28f);
+                DrawRect(acidAlert, new Color(0.06f, 0.24f, 0.04f, 0.92f));
+                DrawRect(new Rect(acidAlert.x, acidAlert.y, acidAlert.width, 2f), new Color(0.36f, 1f, 0.18f, 0.95f));
+                GUI.Label(acidAlert, $"TOXIC ACID CORROSION! (-HP  {p.AcidBurnTimer:F1}s)", hudCenterSmallStyle);
+            }
 
             // VALORANT Operator Full-Screen Sniper Scope Overlay (Right-Click Zoom with Operator!)
             if (!IsPaused && p.IsSniperScoped)
