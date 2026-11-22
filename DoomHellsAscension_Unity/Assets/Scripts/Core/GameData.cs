@@ -73,18 +73,6 @@ namespace DoomHellsAscension
     }
 
     [Serializable]
-    public class SpecialAbilityDef
-    {
-        public string id;
-        public string name;
-        public string desc;
-        public string tag;
-        public int cost;
-        public int chargesPerBuy;
-        public bool isInstant;
-    }
-
-    [Serializable]
     public class BossProfile
     {
         public int bossLevel;          // 10, 20, 30, ..., 100
@@ -216,37 +204,6 @@ namespace DoomHellsAscension
                     desc = "Colossal obsidian maul. Slams the ground to unleash a 7.5m 360-degree seismic shockwave ([V]).",
                     damage = 270f, range = 7.5f, cooldown = 0.72f, isShockwave = true, bladeColor = new Color(1f, 0.82f, 0.30f),
                     owned = false, cost = 550
-                }
-            };
-        }
-
-        public static List<SpecialAbilityDef> CreateDefaultAbilities()
-        {
-            return new List<SpecialAbilityDef>
-            {
-                new SpecialAbilityDef
-                {
-                    id = "nova", name = "HELLFIRE ORBITAL NOVA", tag = "OFFENSIVE BARRAGE",
-                    desc = "Press [X] to launch a 360-degree ring of 12 explosive brimstone missiles around you.",
-                    cost = 200, chargesPerBuy = 2
-                },
-                new SpecialAbilityDef
-                {
-                    id = "aegis", name = "VAMPIRIC BLOOD-AEGIS", tag = "DEFENSIVE / LIFESTEAL",
-                    desc = "Press [X] for 6 seconds of 100% Invulnerability Shield + all bullets leech +10 HP per hit.",
-                    cost = 300, chargesPerBuy = 2
-                },
-                new SpecialAbilityDef
-                {
-                    id = "meteor", name = "BRIMSTONE METEOR STRIKE", tag = "APOCALYPTIC AIRSTRIKE",
-                    desc = "Press [X] to call down apocalyptic molten meteors from the Citadel sky onto active demons.",
-                    cost = 420, chargesPerBuy = 2
-                },
-                new SpecialAbilityDef
-                {
-                    id = "resupply", name = "FULL TACTICAL RESUPPLY CRATE", tag = "INSTANT SUPPLY DROP",
-                    desc = "Instantly restores 100 HP, 100 Aegis Armor, max Slag Shells, max Plasma Cells, and full mags.",
-                    cost = 150, isInstant = true
                 }
             };
         }
@@ -444,12 +401,12 @@ namespace DoomHellsAscension
 
         public static readonly string[] RubricBodies =
         {
-            "Original Inverted Thermodynamic Ascension with Valorant-inspired crisp tactical gunplay across 100 escalating levels: 5 distinct 3D firearms (Reaver Vandal, Inferno Phantom, Hell-Judge, Soul-Shredder Odin, Reaver Operator), 1-tap headshots, Right-Click ADS/Scope, per-weapon mechanical reloads [R], inspect [Y], phase-dash [SHIFT], 3D melee [V], Special Abilities [X], and Chrono-Thermal Overdrive [Q/E].",
+            "Original Inverted Thermodynamic Ascension with Valorant-inspired crisp tactical gunplay across 100 escalating levels: 5 distinct 3D firearms (Reaver Vandal, Inferno Phantom, Hell-Judge, Soul-Shredder Odin, Reaver Operator), 1-tap headshots, Right-Click ADS/Scope, per-weapon mechanical reloads [R], inspect [Y], phase-dash [SHIFT], 3D melee [V], and Chrono-Thermal Overdrive [Q/E].",
             "1) Aegis Shield Partitioning: Aegis Armor absorbs 65% of incoming damage while active. 2) Magazine & Reserve Discipline: Detachable magazines require realistic [R] reloads. 3) Kill-Chain Decay: 4.5s window builds multiplier 1.0x to 5.0x with escalating kill-streak chimes. 4) Level Gate Lock: Citadel Portal unlocks at 100% purge. 5) Boss Tier Milestones: Every 10th level (10, 20, ..., 100) seals the Realm behind a unique Final Boss.",
             "VICTORY: Purge every level from Level 1 to Level 100, defeat all 10 unique Realm Final Bosses (Pyroclast, Ignis Rex, Glacieron, Pestilor, Umbrathor, Ferrum Titan, Sanguinus, Fulguron, Astralis, and Level 100 Supreme Sovereign Archon Malakor) to achieve Total Ascension.\nLOSS: Vitality HP dropping to 0 shatters the Warden's vessel; in Purgatory Blitz, letting the clock reach 00:00.0 triggers Chrono-Collapse.",
-            "System Interactivity Layers: 3D Hip-Fire, Holo ADS & Operator Scope Modes, Weapon Inspect [Y], Live 2D Top-Down Radar, Interactive Black-Market Armory Shop [B] (Upgrades MK-1..MK-5, Melees, Special Abilities), Level/Boss Tier Selector, and Built-In 6-Criteria Rubric Inspector.\nPlayable Modes: 01 100-Level Campaign Ascension, 02 Endless Abyssal Horde, 03 Purgatory Blitz.",
+            "System Interactivity Layers: 3D Hip-Fire, Holo ADS & Operator Scope Modes, Weapon Inspect [Y], Live 2D Top-Down Radar, Interactive Black-Market Armory Shop [B] (Upgrades MK-1..MK-5, Melees), Level/Boss Tier Selector, and Built-In 6-Criteria Rubric Inspector.\nPlayable Modes: 01 100-Level Campaign Ascension, 02 Endless Abyssal Horde, 03 Purgatory Blitz.",
             "1) Multi-Archetype 3D Target Prioritization scaling from Level 1 to 100. 2) 10 Distinct Multi-Phase Final Bosses every 10 levels with unique attack patterns (Radial Novas, Blinking Frost Lances, Gatling Suppression, Blood Seraph Heal-Phase, Solar Rings, and Malakor's 3-Phase Apocalypse). 3) Crisp Recoil Control, Odin Spin-Up & Headshot Precision. 4) Soul Credit Economy & Weapon Upgrades.",
-            "OBJECTIVES: Climb Levels 1 to 100 across 10 Infernal Realms and vanquish all 10 unique Final Bosses.\nFLOW: 9 escalating skirmish levels per Realm -> Realm Final Boss at Level 10/20/.../100 -> Realm Transition & Boss Bounty -> Next Realm.\nDURATION: 1-3m per level, full 100-level campaign with persistent checkpoint saves.\nAVAILABILITY: Standalone Unity 6 build + WebGL deployment.\nRELATIONSHIP: Closed-loop economy connecting kills & Boss bounties -> Armory Shop upgrades & Abilities -> Higher Realms.\nPROGRESSION: 10 unique Realm atmospheres (Ash, Molten, Frozen, Plague, Void, Iron, Crimson, Storm, Astral, Empyrean Throne) and 10 unique Final Bosses."
+            "OBJECTIVES: Climb Levels 1 to 100 across 10 Infernal Realms and vanquish all 10 unique Final Bosses.\nFLOW: 9 escalating skirmish levels per Realm -> Realm Final Boss at Level 10/20/.../100 -> Realm Transition & Boss Bounty -> Next Realm.\nDURATION: 1-3m per level, full 100-level campaign with persistent checkpoint saves.\nAVAILABILITY: Standalone Unity 6 build + WebGL deployment.\nRELATIONSHIP: Closed-loop economy connecting kills & Boss bounties -> Armory Shop upgrades & Melees -> Higher Realms.\nPROGRESSION: 10 unique Realm atmospheres (Ash, Molten, Frozen, Plague, Void, Iron, Crimson, Storm, Astral, Empyrean Throne) and 10 unique Final Bosses."
         };
     }
 }

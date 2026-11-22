@@ -52,7 +52,7 @@ namespace DoomHellsAscension
         private string modalMode = ""; // "", "pause", "stratum", "victory", "defeat"
         private string modalTitle = "";
         private string modalSub = "";
-        private int shopCategory = 0; // 0=Guns, 1=Melee, 2=Abilities
+        private int shopCategory = 0; // 0=Guns, 1=Melee
         private Vector2 shopScroll;
         private Vector2 modePopupScroll;
         private MenuPopupState menuPopup = MenuPopupState.None;
@@ -2285,7 +2285,7 @@ namespace DoomHellsAscension
             y += 54f;
             DrawRect(new Rect(sx, y, swIn, 48f), new Color(0.03f, 0.02f, 0.02f, 0.80f));
             GUI.Label(new Rect(sx + 8f, y + 4f, swIn - 16f, 40f),
-                "[WASD] Move · [MOUSE] Look · [LMB] Fire · [RMB] ADS/Scope · [1-5] Guns\n[R] Reload · [Y] Inspect · [V] Melee · [X] Ability · [SHIFT] Dash · [Q/E] Overdrive · [B] Shop",
+                "[WASD] Move · [MOUSE] Look · [LMB] Fire · [RMB] ADS/Scope · [1-5] Guns\n[R] Reload · [Y] Inspect · [V] Melee · [SHIFT] Dash · [Q/E] Overdrive · [B] Shop",
                 controlsCenterStyle);
         }
 
@@ -2434,8 +2434,7 @@ namespace DoomHellsAscension
             string ascLabel = OverdriveActive ? $"OVERDRIVE ACTIVE ({overdriveTimer:F1}s)!" : $"ASCENSION RESONANCE [Q/E]: {Mathf.RoundToInt(ascensionGauge)}%";
             GUI.Label(new Rect(bcX + 10f, botY + 8f, bcW - 20f, 22f), ascLabel, hudCenterSmallStyle);
             DrawBar(new Rect(bcX + 14f, botY + 34f, bcW - 28f, 14f), OverdriveActive ? (overdriveTimer / 8f) : (ascensionGauge / 100f), new Color(0.85f, 0.32f, 1f));
-            int abChg = p.abilityCharges.ContainsKey(p.equippedAbility) ? p.abilityCharges[p.equippedAbility] : 0;
-            GUI.Label(new Rect(bcX + 10f, botY + 55f, bcW - 20f, 22f), $"[V] {p.melees[p.meleeIndex].name}  |  [X] {p.equippedAbility.ToUpper()} ({abChg})", hudCenterSmallStyle);
+            GUI.Label(new Rect(bcX + 10f, botY + 55f, bcW - 20f, 22f), $"[V] MELEE: {p.melees[p.meleeIndex].name}", hudCenterSmallStyle);
             GUI.Label(new Rect(bcX + 10f, botY + 79f, bcW - 20f, 22f), "[B] SHOP  ·  [R] RELOAD  ·  [Y] INSPECT  ·  [RMB] ADS", hudCenterSmallStyle);
 
             // BOTTOM-RIGHT: Active Valorant-Style Weapon & 5-Slot Bar (Single-line Weapon Title + Right-Aligned Ammo + Centered Slots!)
@@ -2509,9 +2508,9 @@ namespace DoomHellsAscension
             if (GUI.Button(new Rect(box.xMax - 180, box.y + 12, 160, 32), "CLOSE / RESUME [B]", buttonBrassStyle)) ToggleShop();
 
             // Category Tabs
-            if (GUI.Button(new Rect(box.x + 22, box.y + 56, 200, 32), shopCategory == 0 ? "[1] FIREARMS & UPGRADES" : "1. FIREARMS & UPGRADES", shopCategory == 0 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 0;
-            if (GUI.Button(new Rect(box.x + 232, box.y + 56, 200, 32), shopCategory == 1 ? "[2] MELEE WEAPONS [V]" : "2. MELEE WEAPONS [V]", shopCategory == 1 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 1;
-            if (GUI.Button(new Rect(box.x + 442, box.y + 56, 240, 32), shopCategory == 2 ? "[3] SPECIAL ABILITIES [X]" : "3. SPECIAL ABILITIES [X]", shopCategory == 2 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 2;
+            shopCategory = Mathf.Clamp(shopCategory, 0, 1);
+            if (GUI.Button(new Rect(box.x + 22, box.y + 56, 220, 32), shopCategory == 0 ? "[1] FIREARMS & UPGRADES" : "1. FIREARMS & UPGRADES", shopCategory == 0 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 0;
+            if (GUI.Button(new Rect(box.x + 252, box.y + 56, 220, 32), shopCategory == 1 ? "[2] MELEE WEAPONS [V]" : "2. MELEE WEAPONS [V]", shopCategory == 1 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 1;
 
             Rect listView = new Rect(box.x + 22, box.y + 102, box.width - 44, box.height - 122);
             GUILayout.BeginArea(listView);
@@ -2589,43 +2588,6 @@ namespace DoomHellsAscension
                             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayMelee(i);
                         }
                     }
-                    GUILayout.EndVertical();
-                    GUILayout.Space(6);
-                }
-            }
-            else
-            {
-                foreach (var ab in p.abilities)
-                {
-                    int chg = p.abilityCharges.ContainsKey(ab.id) ? p.abilityCharges[ab.id] : 0;
-                    GUILayout.BeginVertical(panelBoxStyle);
-                    GUILayout.Label($"{ab.name} [{ab.tag}]  —  {(ab.isInstant ? "INSTANT" : $"CHARGES: {chg}")}", headerStyle);
-                    GUILayout.Label(ab.desc, labelStyle);
-                    GUILayout.BeginHorizontal();
-                    GUI.enabled = p.credits >= ab.cost;
-                    if (GUILayout.Button(ab.isInstant ? $"BUY FULL RESUPPLY (${ab.cost})" : $"BUY +{ab.chargesPerBuy} CHARGES (${ab.cost})", buttonBrassStyle, GUILayout.Height(30)))
-                    {
-                        p.credits -= ab.cost;
-                        if (ab.isInstant)
-                        {
-                            p.hp = p.maxHp; p.armor = p.maxArmor; p.shells = p.maxShells; p.cells = p.maxCells;
-                            p.ResetLoadoutMags();
-                            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayReload(p.weaponIndex);
-                        }
-                        else
-                        {
-                            p.abilityCharges[ab.id] = chg + ab.chargesPerBuy;
-                            p.equippedAbility = ab.id;
-                            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayOverdrive();
-                        }
-                    }
-                    GUI.enabled = true;
-                    if (!ab.isInstant && GUILayout.Button(p.equippedAbility == ab.id ? "ACTIVE ON [X]" : "EQUIP ON [X]", buttonDarkStyle, GUILayout.Height(30), GUILayout.Width(140)))
-                    {
-                        p.equippedAbility = ab.id;
-                        if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayPickup();
-                    }
-                    GUILayout.EndHorizontal();
                     GUILayout.EndVertical();
                     GUILayout.Space(6);
                 }

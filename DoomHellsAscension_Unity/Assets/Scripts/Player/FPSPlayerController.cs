@@ -7,7 +7,7 @@ namespace DoomHellsAscension
     /// Full 3D Unity CharacterController FPS Player with VALORANT-style tactical gunplay:
     /// 5 distinct firearms (Vandal, Phantom, Judge, Odin w/ RPM spin-up, Operator w/ full scope),
     /// crisp 1-tap headshots, per-weapon tactical reloads ([R]), inspect ([Y]), 3D melee ([V]),
-    /// Special Abilities ([X]), Abyssal Phase-Dash ([SHIFT]), and Chrono-Thermal Overdrive ([Q/E]).
+    /// Abyssal Phase-Dash ([SHIFT]), and Chrono-Thermal Overdrive ([Q/E]).
     /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public class FPSPlayerController : MonoBehaviour
@@ -31,15 +31,9 @@ namespace DoomHellsAscension
 
         public List<WeaponDef> weapons;
         public List<MeleeDef> melees;
-        public List<SpecialAbilityDef> abilities;
         public int[] mags;
         public int weaponIndex = 0;
         public int meleeIndex = 0;
-        public string equippedAbility = "nova";
-        public Dictionary<string, int> abilityCharges = new Dictionary<string, int>
-        {
-            { "nova", 1 }, { "aegis", 0 }, { "meteor", 0 }
-        };
 
         public bool IsADS { get; private set; }
         public bool IsSniperScoped => IsADS && weapons != null && weaponIndex < weapons.Count && weapons[weaponIndex].isSniper && !IsReloading;
@@ -72,7 +66,6 @@ namespace DoomHellsAscension
         private float dashTimer;
         private Vector3 dashVel;
         private float invulnTimer;
-        private float vampiricTimer;
         private float reloadTimer;
         private float activeReloadDuration = 1.55f;
         private bool prevADS;
@@ -83,7 +76,6 @@ namespace DoomHellsAscension
             controller = GetComponent<CharacterController>();
             weapons = GameCatalog.CreateDefaultWeapons();
             melees = GameCatalog.CreateDefaultMelees();
-            abilities = GameCatalog.CreateDefaultAbilities();
             ResetLoadoutMags();
         }
 
@@ -104,7 +96,6 @@ namespace DoomHellsAscension
             weaponIndex = 0;
             IsReloading = false;
             IsADS = false;
-            vampiricTimer = 0f;
             invulnTimer = 0f;
             odinSpinup = 0f;
             AcidBurnTimer = 0f;
@@ -160,7 +151,6 @@ namespace DoomHellsAscension
             if (meleeCooldown > 0f) meleeCooldown -= dt;
             if (dashCooldown > 0f) dashCooldown -= dt;
             if (invulnTimer > 0f) invulnTimer -= dt;
-            if (vampiricTimer > 0f) vampiricTimer -= dt;
 
             // Toxic Demon Acid Burn Damage-Over-Time (drains player health continuously!)
             if (AcidBurnTimer > 0f)
@@ -306,7 +296,6 @@ namespace DoomHellsAscension
             if (Input.GetKeyDown(KeyCode.R)) StartReload();
             if (Input.GetKeyDown(KeyCode.Y) && viewmodel != null && !IsReloading) viewmodel.TriggerInspect();
             if (Input.GetKeyDown(KeyCode.V)) TriggerMeleeAttack();
-            if (Input.GetKeyDown(KeyCode.X)) TriggerSpecialAbility();
             if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.E))
                 GameManager.Instance.TriggerAscensionOverdrive();
 
@@ -406,7 +395,6 @@ namespace DoomHellsAscension
                         if (isHeadshot) anyHeadshot = true;
                         float hsMult = isHeadshot ? w.headshotMult : 1.0f;
                         enemy.TakeDamage(w.damage * dmgMult * hsMult, w.resonanceGain / w.pellets, isHeadshot);
-                        if (vampiricTimer > 0f) hp = Mathf.Min(maxHp, hp + 10);
                         Color impactCol = isHeadshot
                             ? (isReaverVandal ? new Color(0.86f, 0.56f, 1.0f) : Color.yellow)
                             : (isReaverVandal ? new Color(0.62f, 0.22f, 1.0f) : new Color(1f, 0.14f, 0.08f));
@@ -472,57 +460,6 @@ namespace DoomHellsAscension
                 HitmarkerTimer = 0.14f;
                 LastHitWasHeadshot = false;
                 GameManager.Instance.AddKillfeed($"{m.name} CLEAVED {hits} HOSTILE(S)!");
-            }
-        }
-
-        public void TriggerSpecialAbility()
-        {
-            int charges = abilityCharges.ContainsKey(equippedAbility) ? abilityCharges[equippedAbility] : 0;
-            if (charges <= 0)
-            {
-                GameManager.Instance.AddKillfeed($"NO {equippedAbility.ToUpper()} CHARGES - PRESS [B] TO BUY IN SHOP!");
-                return;
-            }
-            abilityCharges[equippedAbility] = charges - 1;
-            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayOverdrive();
-
-            if (equippedAbility == "nova")
-            {
-                for (int i = 0; i < 12; i++)
-                {
-                    float ang = (i / 12f) * Mathf.PI * 2f;
-                    Vector3 d = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang));
-                    GameObject orb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                    Destroy(orb.GetComponent<Collider>());
-                    orb.transform.position = transform.position + d * 1.2f + Vector3.up * 0.4f;
-                    orb.transform.localScale = Vector3.one * 0.55f;
-                    orb.GetComponent<Renderer>().material = CitadelWorldBuilder.MakeEmissiveMat(new Color(1f, 0.35f, 0.08f), 3.2f);
-                    var pr = orb.AddComponent<Projectile3D>();
-                    pr.velocity = d * 24f;
-                    pr.damage = 260f;
-                    pr.fromPlayer = true;
-                    pr.isBFG = true;
-                }
-                GameManager.Instance.AddKillfeed("UNLEASHED HELLFIRE ORBITAL NOVA (12 MISSILES)!");
-            }
-            else if (equippedAbility == "aegis")
-            {
-                vampiricTimer = 6.0f;
-                invulnTimer = 6.0f;
-                armor = maxArmor;
-                PickupFlashTimer = 0.45f;
-                GameManager.Instance.AddKillfeed("VAMPIRIC BLOOD-AEGIS ACTIVE (6s INVULN + LIFESTEAL)!");
-            }
-            else if (equippedAbility == "meteor")
-            {
-                foreach (var enemy in GameManager.Instance.ActiveEnemies.ToArray())
-                {
-                    if (enemy == null || enemy.IsDead) continue;
-                    GameManager.Instance.SpawnBurstParticles(enemy.transform.position + Vector3.up * 4f, new Color(1f, 0.67f, 0.14f), 16);
-                    GameManager.Instance.SpawnBurstParticles(enemy.transform.position + Vector3.up * 1.2f, new Color(1f, 0.14f, 0.05f), 16);
-                    enemy.TakeDamage(380f, 15f, true);
-                }
-                GameManager.Instance.AddKillfeed("BRIMSTONE METEOR STRIKE OBLITERATED THE PLAZA!");
             }
         }
 
