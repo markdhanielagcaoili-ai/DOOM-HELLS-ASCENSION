@@ -1433,7 +1433,7 @@
         loadIsReturn = !!options.isReturn;
         activeLoadTheme = pickNextLoadingTheme();
         if (activeLoadTheme === "hellscape_video") {
-          loadMinDur = loadIsReturn ? 3.8 : 4.5;
+          loadMinDur = loadIsReturn ? 6.0 : 4.5;
           if (loadingVideo) {
             loadingVideo.muted = true;
             loadingVideo.playbackRate = 1.0;
@@ -1442,7 +1442,7 @@
             loadingVideo.play().catch(() => { });
           }
         } else {
-          loadMinDur = loadIsReturn ? 2.4 : 2.8;
+          loadMinDur = loadIsReturn ? 4.4 : 2.8;
           if (loadingVideo) {
             loadingVideo.classList.remove("active");
             if (!loadingVideo.paused) loadingVideo.pause();

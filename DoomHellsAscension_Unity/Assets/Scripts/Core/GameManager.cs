@@ -364,7 +364,8 @@ namespace DoomHellsAscension
 
             if (activeLoadingTheme == 1 && canPlayHellscape)
             {
-                duration = Mathf.Max(duration, 4.2f);
+                bool isReturnScreen = !string.IsNullOrEmpty(headline) && headline.StartsWith("RETURNING");
+                duration = Mathf.Max(duration, isReturnScreen ? 6.0f : 4.5f);
                 loadingHellscapePlayer.time = 0;
                 loadingHellscapePlayer.playbackSpeed = 1.0f;
                 loadingHellscapePlayer.skipOnDrop = false;
@@ -2788,7 +2789,7 @@ namespace DoomHellsAscension
             if (!handledByWeb)
             {
                 if (landingVideoPlayer != null && landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
-                TriggerDemonicLoadingScreen("RETURNING // MAIN MENU", 2.35f);
+                TriggerDemonicLoadingScreen("RETURNING // MAIN MENU", 4.4f);
             }
         }
 
