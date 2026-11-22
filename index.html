@@ -58,8 +58,6 @@
       object-fit: cover;
       object-position: center center;
       display: block;
-      transform: scale(1.04);
-      will-change: transform;
       z-index: 0;
     }
 
@@ -946,12 +944,6 @@
       window.addEventListener("resize", resizeCanvas);
       resizeCanvas();
 
-      let targetMX = 0, targetMY = 0, curMX = 0, curMY = 0;
-      window.addEventListener("mousemove", (e) => {
-        targetMX = (e.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
-        targetMY = (e.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
-      });
-
       const manaSparks = Array.from({ length: 64 }, (_, i) => ({
         x: Math.random(), y: Math.random(),
         vx: (Math.random() - 0.5) * 0.018, vy: -(0.028 + Math.random() * 0.075),
@@ -968,13 +960,6 @@
         const dt = Math.min(0.05, (now - lastFrameTs) / 1000);
         lastFrameTs = now;
         const t = now / 1000;
-
-        curMX += (targetMX - curMX) * Math.min(1, dt * 4.2);
-        curMY += (targetMY - curMY) * Math.min(1, dt * 4.2);
-
-        if (heroVideo) {
-          heroVideo.style.transform = `translate3d(${(-curMX * 10).toFixed(2)}px, ${(-curMY * 6).toFixed(2)}px, 0) scale(1.045)`;
-        }
 
         ctx.clearRect(0, 0, cw, ch);
         ctx.save();
@@ -1183,12 +1168,27 @@
         }
       }
 
+      let heroDismissTimer = null;
+
       function dismissHero() {
+        if (heroDismissTimer) { clearTimeout(heroDismissTimer); heroDismissTimer = null; }
         heroStage.classList.add("dismissed");
-        setTimeout(() => {
+        heroDismissTimer = setTimeout(() => {
+          heroDismissTimer = null;
           heroActive = false;
           if (heroVideo && !heroVideo.paused) heroVideo.pause();
         }, 850);
+      }
+
+      function restoreHero() {
+        if (heroDismissTimer) { clearTimeout(heroDismissTimer); heroDismissTimer = null; }
+        heroStage.classList.remove("dismissed");
+        if (!heroActive) {
+          heroActive = true;
+          lastFrameTs = performance.now();
+          requestAnimationFrame(renderHero);
+        }
+        if (heroVideo && heroVideo.paused) heroVideo.play().catch(() => { });
       }
 
       function launchIntoUnity(mode, diff) {
@@ -1204,6 +1204,28 @@
           if (unityInst) unityInst.SendMessage("GameManager", "LaunchFromWebHero", `${mode}|${diff}`);
         });
       }
+
+      // Called from Unity WebGL whenever the player backs out / dies and presses Back to Main Menu!
+      window.doomReturnToMainMenu = () => {
+        pendingShopOpen = false;
+        closePopup();
+        if (document.pointerLockElement && document.exitPointerLock) {
+          try { document.exitPointerLock(); } catch (_) { }
+        }
+        startGodWarriorLoadingScreen("MAIN MENU", () => {
+          restoreHero();
+        }, { isReturn: true });
+      };
+
+      // Called from Unity WebGL when closing Armory Shop back to the Main Menu (no loading screen)
+      window.doomRestoreMainMenuDirect = () => {
+        pendingShopOpen = false;
+        closePopup();
+        if (document.pointerLockElement && document.exitPointerLock) {
+          try { document.exitPointerLock(); } catch (_) { }
+        }
+        restoreHero();
+      };
 
       // =========================================================================
       // 2.5. GOD WARRIOR DEMONIC BLOOD-ECLIPSE 60FPS ANIMATED LOADING SCREEN
@@ -1232,6 +1254,13 @@
         "FORGING REAVER ARSENAL...",
         "UNSEALING DEMONIC CITADEL...",
         "ENTERING BATTLEFIELD..."
+      ];
+      const returnLoadStages = [
+        "EXITING DEMONIC CITADEL...",
+        "SEALING BLOOD ECLIPSE...",
+        "RECALLING SHADOW ARMY...",
+        "RESTORING COMMAND SANCTUM...",
+        "ENTERING MAIN MENU..."
       ];
 
       const loadBgImg = new Image();
@@ -1279,18 +1308,30 @@
       let loadLastTs = 0;
       let loadCallback = null;
       let loadMinDur = 2.8;
+      let loadIsReturn = false;
       let unityLoadProgress = 0;
 
-      function startGodWarriorLoadingScreen(modeName, onComplete) {
+      function startGodWarriorLoadingScreen(modeName, onComplete, options = {}) {
+        const wasActive = loadActive;
+        loadIsReturn = !!options.isReturn;
+        loadMinDur = loadIsReturn ? 2.4 : 2.8;
         loadCallback = onComplete;
-        loadTitleEl.textContent = `DEPLOYING // ${modeName}`;
+        loadTitleEl.textContent = loadIsReturn ? `RETURNING // ${modeName}` : `DEPLOYING // ${modeName}`;
+        loadStatusEl.textContent = loadIsReturn ? returnLoadStages[0] : loadStages[0];
+        loadPctEl.textContent = "0%";
+        loadBarFill.style.width = "0%";
         loadTipEl.textContent = loadTips[Math.floor(Math.random() * loadTips.length)];
         loadStartTs = performance.now();
         loadLastTs = loadStartTs;
         loadActive = true;
         loadScreenEl.classList.add("active");
-        dismissHero();
-        requestAnimationFrame(renderLoadingScreen);
+        if (loadIsReturn) {
+          // Pre-reveal the Sung Jinwoo main menu silently behind the opaque loading screen so fade-out is seamless!
+          setTimeout(() => { if (loadActive && loadIsReturn) restoreHero(); }, 480);
+        } else {
+          dismissHero();
+        }
+        if (!wasActive) requestAnimationFrame(renderLoadingScreen);
       }
 
       function renderLoadingScreen(now) {
@@ -1425,8 +1466,9 @@
 
         loadPctEl.textContent = `${pct}%`;
         loadBarFill.style.width = `${pct}%`;
-        const stageIdx = Math.min(loadStages.length - 1, Math.floor(shownProg * loadStages.length));
-        loadStatusEl.textContent = unityReady ? loadStages[stageIdx] : `LOADING UNITY 6 ENGINE (${Math.round(unityLoadProgress * 100)}%)...`;
+        const activeStages = loadIsReturn ? returnLoadStages : loadStages;
+        const stageIdx = Math.min(activeStages.length - 1, Math.floor(shownProg * activeStages.length));
+        loadStatusEl.textContent = unityReady ? activeStages[stageIdx] : `LOADING UNITY 6 ENGINE (${Math.round(unityLoadProgress * 100)}%)...`;
 
         if (unityReady && elapsed >= loadMinDur + 0.25) {
           loadActive = false;

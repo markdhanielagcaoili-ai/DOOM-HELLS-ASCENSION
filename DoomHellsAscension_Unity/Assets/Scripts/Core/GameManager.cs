@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Video;
 
@@ -10,6 +11,14 @@ namespace DoomHellsAscension
     /// </summary>
     public class GameManager : MonoBehaviour
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")]
+        private static extern int DoomNotifyReturnToMainMenu();
+
+        [DllImport("__Internal")]
+        private static extern int DoomNotifyRestoreMainMenuDirect();
+#endif
+
         public static GameManager Instance { get; private set; }
 
         public CitadelWorldBuilder worldBuilder;
@@ -181,14 +190,22 @@ namespace DoomHellsAscension
 
         private void Update()
         {
-            // Keep gameplay frozen cleanly while the God Warrior Loading Screen plays (Play -> Mode -> Easy/Medium/Hard)
+            // Keep gameplay frozen cleanly while the God Warrior Loading Screen plays (Deploy OR Return to Main Menu)
             if (unityLoadingTimer > 0f)
             {
                 unityLoadingTimer = Mathf.Max(0f, unityLoadingTimer - Time.unscaledDeltaTime);
                 if (unityLoadingTimer <= 0f)
                 {
                     IsPaused = false;
-                    LockCursor(true);
+                    if (IsRunning)
+                    {
+                        LockCursor(true);
+                    }
+                    else
+                    {
+                        LockCursor(false);
+                        if (landingVideoPlayer != null && landingVideoPlayer.isPrepared) landingVideoPlayer.Play();
+                    }
                 }
                 return;
             }
@@ -750,6 +767,13 @@ namespace DoomHellsAscension
             {
                 IsPaused = false;
                 LockCursor(true);
+            }
+            else if (!IsRunning)
+            {
+                LockCursor(false);
+#if UNITY_WEBGL && !UNITY_EDITOR
+                DoomNotifyRestoreMainMenuDirect();
+#endif
             }
         }
 
@@ -1752,23 +1776,20 @@ namespace DoomHellsAscension
             Matrix4x4 prevMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(uiScale, uiScale, 1f));
 
-            if (!IsRunning)
+            if (unityLoadingTimer > 0f)
+            {
+                DrawDemonicLoadingScreen(vw, vh);
+            }
+            else if (!IsRunning)
             {
                 if (ShopOpen) DrawShopModal(vw, vh);
                 else DrawBlackLandingMenu(vw, vh);
             }
             else
             {
-                if (unityLoadingTimer > 0f)
-                {
-                    DrawDemonicLoadingScreen(vw, vh);
-                }
-                else
-                {
-                    DrawGameplayHUD(vw, vh);
-                    if (ShopOpen) DrawShopModal(vw, vh);
-                    else if (!string.IsNullOrEmpty(modalMode)) DrawStateModal(vw, vh);
-                }
+                DrawGameplayHUD(vw, vh);
+                if (ShopOpen) DrawShopModal(vw, vh);
+                else if (!string.IsNullOrEmpty(modalMode)) DrawStateModal(vw, vh);
             }
 
             GUI.matrix = prevMatrix;
@@ -1794,16 +1815,8 @@ namespace DoomHellsAscension
 
             if (bgTex != null)
             {
-                float imgAspect = (float)bgTex.width / Mathf.Max(1, bgTex.height);
-                float canAspect = sw / Mathf.Max(1f, sh);
-                float baseW = canAspect > imgAspect ? sw : sh * imgAspect;
-                float baseH = canAspect > imgAspect ? sw / imgAspect : sh;
-                float breath = 1.02f + 0.008f * Mathf.Sin(t * 0.55f);
-                float drawW = baseW * breath;
-                float drawH = baseH * breath;
-                float dx = (sw - drawW) * 0.5f + Mathf.Sin(t * 0.30f) * 8f;
-                float dy = (sh - drawH) * 0.5f + Mathf.Cos(t * 0.25f) * 5f;
-                GUI.DrawTexture(new Rect(dx, dy, drawW, drawH), bgTex, ScaleMode.StretchToFill);
+                // Locked, rock-steady full-bleed framing (zero artificial pan/breath/shake!)
+                GUI.DrawTexture(new Rect(0, 0, sw, sh), bgTex, ScaleMode.ScaleAndCrop);
             }
             else
             {
@@ -2645,16 +2658,33 @@ namespace DoomHellsAscension
                 }
             }
 
-            if (GUI.Button(new Rect(leftBtnX, btnY + 50f, 560f, 36f), "MAIN TITLE SCREEN", buttonDarkStyle))
+            if (GUI.Button(new Rect(leftBtnX, btnY + 50f, 560f, 36f), "BACK TO MAIN MENU", buttonDarkStyle))
             {
-                IsRunning = false;
-                IsPaused = false;
-                modalMode = "";
-                if (landingVideoPlayer != null && landingVideoPlayer.isPrepared) landingVideoPlayer.Play();
-                selectedStartLevel = Mathf.Clamp(highestLevelUnlocked, 1, GameCatalog.MaxCampaignLevel);
-                if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(selectedStartLevel));
-                if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StopMusic();
-                LockCursor(false);
+                ReturnToMainMenuWithLoading();
+            }
+        }
+
+        private void ReturnToMainMenuWithLoading()
+        {
+            ClearDynamicObjects();
+            IsRunning = false;
+            IsPaused = false;
+            ShopOpen = false;
+            modalMode = "";
+            menuPopup = MenuPopupState.None;
+            selectedStartLevel = Mathf.Clamp(highestLevelUnlocked, 1, GameCatalog.MaxCampaignLevel);
+            if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(selectedStartLevel));
+            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StopMusic();
+            LockCursor(false);
+
+            bool handledByWeb = false;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            handledByWeb = DoomNotifyReturnToMainMenu() == 1;
+#endif
+            if (!handledByWeb)
+            {
+                if (landingVideoPlayer != null && landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
+                TriggerDemonicLoadingScreen("RETURNING // MAIN MENU", 2.35f);
             }
         }
 
@@ -2716,7 +2746,11 @@ namespace DoomHellsAscension
             float barY = sh - 68f;
             DrawRect(new Rect(0, sh - 128f, sw, 128f), new Color(0.02f, 0.008f, 0.01f, 0.72f));
             GUI.Label(new Rect(padX, barY - 46f, barW - 110f, 26f), unityLoadingHeadline, headerStyle);
-            GUI.Label(new Rect(padX, barY - 22f, barW - 110f, 20f), prog < 0.35f ? "IGNITING BLOOD ECLIPSE..." : prog < 0.72f ? "FORGING REAVER ARSENAL..." : "UNSEALING CITADEL REALM...", smallMonoStyle);
+            bool isReturn = !string.IsNullOrEmpty(unityLoadingHeadline) && unityLoadingHeadline.StartsWith("RETURNING");
+            string statusLine = isReturn
+                ? (prog < 0.35f ? "EXITING DEMONIC CITADEL..." : prog < 0.72f ? "RECALLING SHADOW ARMY..." : "ENTERING MAIN MENU...")
+                : (prog < 0.35f ? "IGNITING BLOOD ECLIPSE..." : prog < 0.72f ? "FORGING REAVER ARSENAL..." : "UNSEALING CITADEL REALM...");
+            GUI.Label(new Rect(padX, barY - 22f, barW - 110f, 20f), statusLine, smallMonoStyle);
             GUI.Label(new Rect(sw - padX - 100f, barY - 40f, 100f, 34f), $"{Mathf.RoundToInt(prog * 100f)}%", hudAmmoRightStyle);
 
             DrawRect(new Rect(padX, barY, barW, 8f), new Color(1f, 1f, 1f, 0.12f));
