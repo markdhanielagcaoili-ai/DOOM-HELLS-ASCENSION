@@ -1,17 +1,26 @@
 <!DOCTYPE html>
 <html lang="en-us">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>DOOM: HELL'S ASCENSION — Cinematic Hero & Unity 6 Tactical FPS</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23120304'/%3E%3Crect x='3' y='3' width='58' height='58' rx='10' fill='none' stroke='%23dc2626' stroke-width='4'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-family='Impact,Arial Black,sans-serif' font-size='42' font-weight='900' fill='%23ef4444'%3ED%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23120304'/%3E%3Crect x='3' y='3' width='58' height='58' rx='10' fill='none' stroke='%23dc2626' stroke-width='4'/%3E%3Ctext x='32' y='46' text-anchor='middle' font-family='Impact,Arial Black,sans-serif' font-size='42' font-weight='900' fill='%23ef4444'%3ED%3C/text%3E%3C/svg%3E" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Oswald:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@800;900&family=Oswald:wght@600;700&display=swap"
+    rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
       width: 100%;
       height: 100%;
       overflow: hidden;
@@ -34,10 +43,24 @@
       z-index: 30;
       transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.8s ease;
     }
+
     #hero-stage.dismissed {
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
+    }
+
+    #hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      display: block;
+      transform: scale(1.04);
+      will-change: transform;
+      z-index: 0;
     }
 
     #cinematic-canvas {
@@ -46,7 +69,8 @@
       width: 100%;
       height: 100%;
       display: block;
-      will-change: transform;
+      pointer-events: none;
+      z-index: 1;
     }
 
     .hero-vignette {
@@ -54,8 +78,8 @@
       inset: 0;
       pointer-events: none;
       background:
-        radial-gradient(ellipse at 50% 48%, rgba(0, 0, 0, 0) 50%, rgba(28, 5, 6, 0.42) 100%),
-        linear-gradient(180deg, rgba(36, 6, 7, 0.34) 0%, rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 80%, rgba(34, 6, 7, 0.32) 100%);
+        radial-gradient(ellipse at 50% 52%, rgba(0, 0, 0, 0) 46%, rgba(6, 10, 22, 0.56) 100%),
+        linear-gradient(180deg, rgba(6, 10, 22, 0.48) 0%, rgba(0, 0, 0, 0) 26%, rgba(0, 0, 0, 0) 78%, rgba(6, 10, 20, 0.54) 100%);
       z-index: 2;
     }
 
@@ -78,6 +102,7 @@
         transform 1.7s cubic-bezier(0.16, 1, 0.3, 1),
         filter 1.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
     #hero-title-wrap.revealed {
       opacity: 1;
       transform: translate3d(-50%, 0, 0) scale(1);
@@ -90,23 +115,21 @@
       display: block;
       overflow: visible;
       filter:
-        drop-shadow(0 10px 22px rgba(0, 0, 0, 0.96))
-        drop-shadow(0 0 28px rgba(220, 38, 38, 0.65))
-        drop-shadow(0 0 64px rgba(239, 68, 68, 0.36));
+        drop-shadow(0 10px 22px rgba(0, 0, 0, 0.96)) drop-shadow(0 0 28px rgba(220, 38, 38, 0.65)) drop-shadow(0 0 64px rgba(239, 68, 68, 0.36));
       animation: titleEmberPulse 4.2s ease-in-out infinite;
     }
+
     @keyframes titleEmberPulse {
-      0%, 100% {
+
+      0%,
+      100% {
         filter:
-          drop-shadow(0 10px 22px rgba(0, 0, 0, 0.96))
-          drop-shadow(0 0 24px rgba(220, 38, 38, 0.62))
-          drop-shadow(0 0 56px rgba(239, 68, 68, 0.34));
+          drop-shadow(0 10px 22px rgba(0, 0, 0, 0.96)) drop-shadow(0 0 24px rgba(220, 38, 38, 0.62)) drop-shadow(0 0 56px rgba(239, 68, 68, 0.34));
       }
+
       50% {
         filter:
-          drop-shadow(0 12px 26px rgba(0, 0, 0, 0.98))
-          drop-shadow(0 0 36px rgba(239, 68, 68, 0.88))
-          drop-shadow(0 0 82px rgba(220, 38, 38, 0.52));
+          drop-shadow(0 12px 26px rgba(0, 0, 0, 0.98)) drop-shadow(0 0 36px rgba(239, 68, 68, 0.88)) drop-shadow(0 0 82px rgba(220, 38, 38, 0.52));
       }
     }
 
@@ -115,11 +138,13 @@
       font-weight: 900;
       letter-spacing: 0.22em;
     }
+
     .svg-sub-ascension {
       font-family: "Oswald", "Arial Narrow", Impact, sans-serif;
       font-weight: 700;
       letter-spacing: 0.44em;
     }
+
     .title-flame-rule {
       width: min(520px, 64vw);
       height: 2px;
@@ -149,6 +174,7 @@
         opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
         transform 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
+
     #landing-menu-stack.visible {
       opacity: 1;
       transform: translate3d(0, 0, 0) scale(1);
@@ -170,9 +196,11 @@
         border-color 0.22s ease,
         background 0.22s ease;
     }
+
     .pill-btn:hover {
       transform: translateX(8px) scale(1.03);
     }
+
     .pill-btn:active {
       transform: translateX(4px) scale(0.97);
     }
@@ -189,6 +217,7 @@
         0 0 26px rgba(220, 38, 38, 0.55),
         inset 0 2px 0 rgba(255, 195, 185, 0.55);
     }
+
     .pill-play:hover {
       background: linear-gradient(180deg, #ff4b45 0%, #dc2626 52%, #a61418 100%);
       box-shadow:
@@ -209,9 +238,11 @@
         0 6px 18px rgba(24, 3, 4, 0.65),
         inset 0 1px 0 rgba(255, 160, 150, 0.25);
     }
+
     .pill-dark:last-of-type {
       border-radius: 10px 10px 18px 18px;
     }
+
     .pill-dark:hover {
       border-color: #ef4444;
       background: linear-gradient(180deg, rgba(145, 24, 26, 0.92) 0%, rgba(72, 12, 14, 0.95) 100%);
@@ -228,14 +259,21 @@
       justify-content: center;
       flex-shrink: 0;
     }
+
     .pill-divider {
       width: 1.5px;
       height: 54%;
       margin: 0 15px 0 13px;
       flex-shrink: 0;
     }
-    .pill-play .pill-divider { background: rgba(255, 225, 215, 0.65); }
-    .pill-dark .pill-divider { background: rgba(210, 185, 185, 0.45); }
+
+    .pill-play .pill-divider {
+      background: rgba(255, 225, 215, 0.65);
+    }
+
+    .pill-dark .pill-divider {
+      background: rgba(210, 185, 185, 0.45);
+    }
 
     .pill-text {
       font-family: "Oswald", sans-serif;
@@ -243,8 +281,14 @@
       letter-spacing: 0.06em;
       line-height: 1;
     }
-    .pill-play .pill-text { font-size: 1.55rem; }
-    .pill-dark .pill-text { font-size: 1.2rem; }
+
+    .pill-play .pill-text {
+      font-size: 1.55rem;
+    }
+
+    .pill-dark .pill-text {
+      font-size: 1.2rem;
+    }
 
     .engine-pill-status {
       margin-top: 2px;
@@ -259,6 +303,7 @@
       letter-spacing: 0.14em;
       color: #f3cbc5;
     }
+
     .engine-dot {
       width: 7px;
       height: 7px;
@@ -268,6 +313,7 @@
       display: inline-block;
       margin-right: 6px;
     }
+
     .engine-dot.ready {
       background: #22c55e;
       box-shadow: 0 0 8px #22c55e;
@@ -287,13 +333,20 @@
       justify-content: center;
       padding: 18px;
     }
+
     #popup-backdrop.open {
       display: flex;
       animation: backdropFade 0.22s ease forwards;
     }
+
     @keyframes backdropFade {
-      from { opacity: 0; }
-      to { opacity: 1; }
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
     }
 
     .popup-box {
@@ -311,9 +364,17 @@
       transform-origin: center center;
       animation: springPopIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
+
     @keyframes springPopIn {
-      0%   { opacity: 0; transform: scale(0.82) translateY(20px); }
-      100% { opacity: 1; transform: scale(1) translateY(0); }
+      0% {
+        opacity: 0;
+        transform: scale(0.82) translateY(20px);
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
     }
 
     /* Pic 4 & Pic 5 Signature Crimson Header: Icon + Title + Arrow Line + Red [X] */
@@ -325,6 +386,7 @@
       border-bottom: 1px solid rgba(220, 38, 38, 0.28);
       background: rgba(24, 9, 11, 0.75);
     }
+
     .popup-title {
       font-size: 1.35rem;
       font-weight: 700;
@@ -333,6 +395,7 @@
       white-space: nowrap;
       text-shadow: 0 2px 10px rgba(220, 38, 38, 0.5);
     }
+
     .popup-arrow-line {
       flex: 1;
       height: 2px;
@@ -340,6 +403,7 @@
       position: relative;
       margin: 0 4px;
     }
+
     .popup-arrow-line::after {
       content: "";
       position: absolute;
@@ -351,6 +415,7 @@
       border-right: 2px solid #ef4444;
       transform: rotate(45deg);
     }
+
     .popup-close {
       width: 30px;
       height: 30px;
@@ -366,6 +431,7 @@
       justify-content: center;
       transition: transform 0.16s ease, filter 0.16s ease;
     }
+
     .popup-close:hover {
       transform: scale(1.08);
       filter: brightness(1.15);
@@ -378,8 +444,15 @@
       flex-direction: column;
       gap: 10px;
     }
-    .popup-body::-webkit-scrollbar { width: 5px; }
-    .popup-body::-webkit-scrollbar-thumb { background: rgba(220, 38, 38, 0.65); border-radius: 4px; }
+
+    .popup-body::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .popup-body::-webkit-scrollbar-thumb {
+      background: rgba(220, 38, 38, 0.65);
+      border-radius: 4px;
+    }
 
     /* Pic 4 Compact Visual Mode Cards (OP // 01, 02, 03) */
     .mode-card {
@@ -393,11 +466,14 @@
       padding: 0;
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .mode-card:hover, .mode-card.active {
+
+    .mode-card:hover,
+    .mode-card.active {
       transform: scale(1.02);
       border-color: #ef4444;
       box-shadow: 0 6px 20px rgba(220, 38, 38, 0.36);
     }
+
     .mode-card-head {
       padding: 6px 11px;
       font-size: 0.98rem;
@@ -406,9 +482,11 @@
       color: #ffffff;
       background: linear-gradient(90deg, rgba(165, 22, 24, 0.92) 0%, rgba(70, 12, 14, 0.92) 100%);
     }
+
     .mode-card:not(.active):not(:hover) .mode-card-head {
       background: linear-gradient(90deg, rgba(28, 19, 21, 0.96) 0%, rgba(14, 10, 11, 0.96) 100%);
     }
+
     .mode-card-thumb {
       position: relative;
       width: 100%;
@@ -416,6 +494,7 @@
       overflow: hidden;
       background: #090506;
     }
+
     .mode-card-thumb img {
       width: 100%;
       height: 100%;
@@ -423,12 +502,16 @@
       display: block;
       transition: transform 0.35s ease;
     }
+
     .mode-card:hover .mode-card-thumb img {
       transform: scale(1.06);
     }
+
     .mode-card-desc {
       position: absolute;
-      left: 0; right: 0; bottom: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       padding: 4px 10px;
       background: linear-gradient(180deg, rgba(6, 2, 3, 0.1) 0%, rgba(6, 2, 3, 0.9) 100%);
       font-size: 0.72rem;
@@ -449,6 +532,7 @@
       justify-content: space-between;
       align-items: center;
     }
+
     .role-row {
       width: 100%;
       padding: 11px 14px;
@@ -460,18 +544,21 @@
       color: #ffffff;
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
     }
+
     .role-row:hover {
       transform: translateX(6px);
       border-color: #ef4444;
       background: linear-gradient(180deg, rgba(135, 22, 24, 0.92) 0%, rgba(56, 10, 12, 0.96) 100%);
       box-shadow: 0 6px 20px rgba(220, 38, 38, 0.35);
     }
+
     .role-row-title {
       font-size: 1.22rem;
       font-weight: 700;
       letter-spacing: 0.04em;
       display: block;
     }
+
     .role-row-sub {
       font-size: 0.72rem;
       letter-spacing: 0.05em;
@@ -493,6 +580,7 @@
       font-size: 0.82rem;
       letter-spacing: 0.05em;
     }
+
     .compact-btn {
       padding: 7px 14px;
       border-radius: 7px;
@@ -507,12 +595,18 @@
       text-transform: uppercase;
       transition: transform 0.16s ease, filter 0.16s ease;
     }
-    .compact-btn:hover { transform: scale(1.03); filter: brightness(1.12); }
+
+    .compact-btn:hover {
+      transform: scale(1.03);
+      filter: brightness(1.12);
+    }
+
     .compact-btn.secondary {
       background: rgba(26, 17, 19, 0.95);
       border-color: rgba(200, 90, 90, 0.45);
       color: #f0d4cf;
     }
+
     .compact-slider {
       width: 100%;
       accent-color: #ef4444;
@@ -538,8 +632,16 @@
       cursor: pointer;
       transition: opacity 0.4s ease, border-color 0.2s ease, color 0.2s ease;
     }
-    #skip-intro-btn:hover { border-color: rgba(239, 68, 68, 0.8); color: #ffffff; }
-    #skip-intro-btn.hidden { opacity: 0; pointer-events: none; }
+
+    #skip-intro-btn:hover {
+      border-color: rgba(239, 68, 68, 0.8);
+      color: #ffffff;
+    }
+
+    #skip-intro-btn.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
 
     /* =====================================================================
        UNITY 6 WEBGL FULLSCREEN GAME CONTAINER (PRELOADED SILENTLY BEHIND)
@@ -552,6 +654,7 @@
       background: #060506;
       z-index: 10;
     }
+
     #unity-canvas {
       width: 100%;
       height: 100%;
@@ -559,6 +662,7 @@
       background: #060506;
       outline: none;
     }
+
     #fs-btn {
       position: fixed;
       right: 14px;
@@ -574,10 +678,18 @@
       cursor: pointer;
       transition: opacity 0.2s ease, background 0.2s ease;
     }
-    #fs-btn:hover { background: rgba(185, 28, 28, 0.45); }
-    #fs-btn.hidden { opacity: 0; pointer-events: none; }
+
+    #fs-btn:hover {
+      background: rgba(185, 28, 28, 0.45);
+    }
+
+    #fs-btn.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
+
 <body>
   <!-- LIVE UNITY 6 WEBGL GAME CANVAS -->
   <div id="unity-container">
@@ -585,14 +697,18 @@
   </div>
   <button id="fs-btn" title="Toggle Fullscreen">⛶ FULLSCREEN</button>
 
-  <!-- CINEMATIC 12-SECOND 60FPS HERO LANDING PAGE -->
+  <!-- LIVE SHADOW ARMY ANIMATED LANDING PAGE -->
   <section id="hero-stage" aria-label="DOOM Hell's Ascension Hero">
+    <video id="hero-video" autoplay loop muted playsinline preload="auto" poster="assets/hero/shadow_monarch.jpg">
+      <source src="assets/hero/shadow_monarch.mp4" type="video/mp4" />
+    </video>
     <canvas id="cinematic-canvas"></canvas>
     <div class="hero-vignette"></div>
 
     <!-- Chiseled Metallic Blood-Red & Glowing Crimson SVG Title Typography -->
-    <div id="hero-title-wrap">
-      <svg class="title-svg" viewBox="0 0 1200 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DOOM HELL'S ASCENSION">
+    <div id="hero-title-wrap" class="revealed">
+      <svg class="title-svg" viewBox="0 0 1200 230" xmlns="http://www.w3.org/2000/svg" role="img"
+        aria-label="DOOM HELL'S ASCENSION">
         <defs>
           <linearGradient id="doomRedMetal" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="#ff857a" />
@@ -620,20 +736,27 @@
             <animate attributeName="x2" values="0%;160%" dur="4.6s" repeatCount="indefinite" />
           </linearGradient>
         </defs>
-        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom" fill="#140203" stroke="#090102" stroke-width="10" transform="translate(0, 7)">DOOM</text>
-        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom" fill="url(#doomRedMetal)" stroke="url(#doomBevelRim)" stroke-width="3.2">DOOM</text>
-        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom" fill="url(#sheenSweep)">DOOM</text>
-        <text x="600" y="202" text-anchor="middle" font-size="40" class="svg-sub-ascension" fill="#120203" stroke="#080102" stroke-width="5" transform="translate(0, 3)">HELL'S ASCENSION</text>
-        <text x="600" y="202" text-anchor="middle" font-size="40" class="svg-sub-ascension" fill="url(#subCrimsonMetal)" stroke="rgba(254, 202, 202, 0.48)" stroke-width="1">HELL'S ASCENSION</text>
+        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom" fill="#140203" stroke="#090102"
+          stroke-width="10" transform="translate(0, 7)">DOOM</text>
+        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom" fill="url(#doomRedMetal)"
+          stroke="url(#doomBevelRim)" stroke-width="3.2">DOOM</text>
+        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom"
+          fill="url(#sheenSweep)">DOOM</text>
+        <text x="600" y="202" text-anchor="middle" font-size="40" class="svg-sub-ascension" fill="#120203"
+          stroke="#080102" stroke-width="5" transform="translate(0, 3)">HELL'S ASCENSION</text>
+        <text x="600" y="202" text-anchor="middle" font-size="40" class="svg-sub-ascension" fill="url(#subCrimsonMetal)"
+          stroke="rgba(254, 202, 202, 0.48)" stroke-width="1">HELL'S ASCENSION</text>
       </svg>
       <div class="title-flame-rule"></div>
     </div>
 
-    <!-- COMPACT RED 3-BUTTON VERTICAL MENU STACK (Pic 1: Play / Armory Shop / Settings) -->
-    <nav id="landing-menu-stack" aria-label="Main Menu">
+    <!-- COMPACT RED 3-BUTTON VERTICAL MENU STACK (Play / Armory Shop / Settings) -->
+    <nav id="landing-menu-stack" class="visible" aria-label="Main Menu">
       <button id="btn-menu-play" class="pill-btn pill-play">
         <span class="pill-icon">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="#120202"><polygon points="5,3 20,12 5,21" /></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="#120202">
+            <polygon points="5,3 20,12 5,21" />
+          </svg>
         </span>
         <span class="pill-divider"></span>
         <span class="pill-text">Play</span>
@@ -641,7 +764,8 @@
 
       <button id="btn-menu-shop" class="pill-btn pill-dark">
         <span class="pill-icon">
-          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#ffffff" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <path d="M16 10a4 4 0 0 1-8 0"></path>
@@ -653,9 +777,12 @@
 
       <button id="btn-menu-settings" class="pill-btn pill-dark">
         <span class="pill-icon">
-          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="#ffffff" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
           </svg>
         </span>
         <span class="pill-divider"></span>
@@ -667,8 +794,6 @@
         <span style="opacity:0.75">UNITY 6</span>
       </div>
     </nav>
-
-    <button id="skip-intro-btn">SKIP TO MENU ▸</button>
   </section>
 
   <!-- COMPACT ANIMATED POP-UP BOXES (Choose Mode -> Choose Playstyle / Armory Shop / Settings) -->
@@ -680,31 +805,24 @@
   <script>
     (() => {
       // =========================================================================
-      // 1. 60FPS 12-SECOND CINEMATIC HERO CHOREOGRAPHY ENGINE
+      // 1. LIVE SHADOW ARMY WALLPAPER VIDEO + SPECTRAL MANA PARTICLES
       // =========================================================================
       const heroStage = document.getElementById("hero-stage");
+      const heroVideo = document.getElementById("hero-video");
       const cineCanvas = document.getElementById("cinematic-canvas");
-      const ctx = cineCanvas.getContext("2d", { alpha: false });
-      const titleWrap = document.getElementById("hero-title-wrap");
-      const menuStack = document.getElementById("landing-menu-stack");
-      const skipBtn = document.getElementById("skip-intro-btn");
+      const ctx = cineCanvas.getContext("2d");
       const popupBackdrop = document.getElementById("popup-backdrop");
       const popupRoot = document.getElementById("popup-box-root");
       const engineDot = document.getElementById("engine-dot");
       const engineStatusText = document.getElementById("engine-status-text");
 
-      const shotPaths = [
-        "assets/hero/shot1_front.jpg",
-        "assets/hero/shot2_turn.jpg",
-        "assets/hero/shot3_pullback.jpg",
-        "assets/hero/shot4_wide.jpg"
-      ];
-      const shots = shotPaths.map((src) => {
-        const img = new Image();
-        img.decoding = "async";
-        img.src = src;
-        return img;
-      });
+      if (heroVideo) {
+        heroVideo.muted = true;
+        heroVideo.play().catch(() => { });
+        window.addEventListener("pointerdown", () => {
+          if (heroActive && heroVideo.paused) heroVideo.play().catch(() => { });
+        }, { once: true });
+      }
 
       let cw = 1920, ch = 1080;
       function resizeCanvas() {
@@ -723,59 +841,14 @@
         targetMY = (e.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
       });
 
-      const smokePuffs = Array.from({ length: 16 }, (_, i) => ({
-        x: Math.random(), y: 0.18 + Math.random() * 0.82, r: 0.16 + Math.random() * 0.24,
-        vx: (i % 2 === 0 ? 1 : -1) * (0.008 + Math.random() * 0.014),
-        vy: -(0.004 + Math.random() * 0.010), alpha: 0.06 + Math.random() * 0.10,
-        crimson: i % 3 !== 0, phase: Math.random() * Math.PI * 2
-      }));
-
-      const embers = Array.from({ length: 90 }, () => ({
+      const manaSparks = Array.from({ length: 64 }, (_, i) => ({
         x: Math.random(), y: Math.random(),
-        vx: 0.012 + Math.random() * 0.036, vy: -(0.045 + Math.random() * 0.115),
-        size: 1.4 + Math.random() * 3.8, phase: Math.random() * Math.PI * 2, hot: Math.random() > 0.35
+        vx: (Math.random() - 0.5) * 0.018, vy: -(0.028 + Math.random() * 0.075),
+        size: 1.4 + Math.random() * 3.4, phase: Math.random() * Math.PI * 2, cyan: i % 3 !== 0
       }));
 
-      const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
-      const smooth = (t) => t * t * (3 - 2 * t);
-      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
-      const lerp = (a, b, t) => a + (b - a) * t;
-
-      function drawShotLayer(img, alpha, scale, panXNorm, panYNorm) {
-        if (!img || !img.complete || img.naturalWidth === 0 || alpha <= 0.002) return;
-        const imgAspect = img.naturalWidth / img.naturalHeight;
-        const canAspect = cw / ch;
-        let baseW, baseH;
-        if (canAspect > imgAspect) { baseW = cw; baseH = cw / imgAspect; }
-        else { baseH = ch; baseW = ch * imgAspect; }
-        const drawW = baseW * scale;
-        const drawH = baseH * scale;
-        const dx = (cw - drawW) * 0.5 + panXNorm * cw - curMX * 14;
-        const dy = (ch - drawH) * 0.5 + panYNorm * ch - curMY * 9;
-        ctx.save();
-        ctx.globalAlpha = clamp01(alpha);
-        ctx.drawImage(img, dx, dy, drawW, drawH);
-        ctx.restore();
-      }
-
-      let heroStartTime = performance.now();
       let heroActive = true;
-      let titleShown = false;
-      let menuShown = false;
-      let lastFrameTs = heroStartTime;
-
-      function resetCinematic(jumpToWide = false) {
-        closePopup();
-        heroStartTime = performance.now() - (jumpToWide ? 9400 : 0);
-        if (!jumpToWide) {
-          titleShown = false;
-          menuShown = false;
-          titleWrap.classList.remove("revealed");
-          menuStack.classList.remove("visible");
-          skipBtn.classList.remove("hidden");
-        }
-      }
-      skipBtn.addEventListener("click", () => resetCinematic(true));
+      let lastFrameTs = performance.now();
 
       function renderHero(now) {
         if (!heroActive) return;
@@ -783,81 +856,44 @@
 
         const dt = Math.min(0.05, (now - lastFrameTs) / 1000);
         lastFrameTs = now;
-        const elapsed = (now - heroStartTime) / 1000;
+        const t = now / 1000;
 
-        curMX += (targetMX - curMX) * Math.min(1, dt * 4.5);
-        curMY += (targetMY - curMY) * Math.min(1, dt * 4.5);
+        curMX += (targetMX - curMX) * Math.min(1, dt * 4.2);
+        curMY += (targetMY - curMY) * Math.min(1, dt * 4.2);
 
-        ctx.fillStyle = "#040304";
-        ctx.fillRect(0, 0, cw, ch);
+        if (heroVideo) {
+          heroVideo.style.transform = `translate3d(${(-curMX * 10).toFixed(2)}px, ${(-curMY * 6).toFixed(2)}px, 0) scale(1.045)`;
+        }
 
-        // 4-Shot Camera Choreography matching video_1.mp4
-        const s1FadeOut = smooth(clamp01((elapsed - 2.3) / 1.35));
-        const s1Prog = clamp01(elapsed / 3.6);
-        drawShotLayer(shots[0], 1 - s1FadeOut, lerp(1.02, 1.11, s1Prog), lerp(0.0, 0.022, s1Prog), lerp(0.008, -0.006, s1Prog));
-
-        const s2In = smooth(clamp01((elapsed - 2.2) / 1.35));
-        const s2Out = smooth(clamp01((elapsed - 5.2) / 1.45));
-        const s2Prog = clamp01((elapsed - 2.2) / 4.4);
-        drawShotLayer(shots[1], s2In * (1 - s2Out), lerp(1.12, 1.03, easeOutCubic(s2Prog)), lerp(-0.024, 0.018, s2Prog), lerp(-0.004, 0.010, s2Prog));
-
-        const s3In = smooth(clamp01((elapsed - 5.1) / 1.45));
-        const s3Out = smooth(clamp01((elapsed - 8.0) / 1.55));
-        const s3Prog = clamp01((elapsed - 5.1) / 4.5);
-        drawShotLayer(shots[2], s3In * (1 - s3Out), lerp(1.20, 1.03, easeOutCubic(s3Prog)), lerp(0.014, -0.006, s3Prog), lerp(0.024, -0.004, s3Prog));
-
-        const s4In = smooth(clamp01((elapsed - 7.9) / 1.6));
-        const s4Pull = easeOutCubic(clamp01((elapsed - 7.9) / 4.3));
-        const idleBreath = elapsed > 12.0 ? Math.sin((elapsed - 12.0) * 0.45) * 0.012 : 0;
-        const idlePan = elapsed > 12.0 ? Math.sin((elapsed - 12.0) * 0.28) * 0.008 : 0;
-        drawShotLayer(shots[3], s4In, lerp(1.18, 1.03, s4Pull) + idleBreath, idlePan, lerp(0.032, 0.0, s4Pull));
-
-        // Live Volumetric Crimson Smoke & Embers
-        const cityIntensity = clamp01((elapsed - 4.5) / 4.5);
+        ctx.clearRect(0, 0, cw, ch);
         ctx.save();
         ctx.globalCompositeOperation = "screen";
-        for (let i = 0; i < smokePuffs.length; i++) {
-          const p = smokePuffs[i];
-          p.x = (p.x + p.vx * dt + 1.4) % 1.4 - 0.2;
-          p.y = (p.y + p.vy * dt + 1.3) % 1.3 - 0.15;
-          const px = p.x * cw, py = p.y * ch, rad = p.r * Math.max(cw, ch);
-          const a = p.alpha * (0.78 + 0.22 * Math.sin(elapsed * 0.9 + p.phase)) * (0.65 + 0.55 * cityIntensity);
-          const g = ctx.createRadialGradient(px, py, 0, px, py, rad);
-          g.addColorStop(0, p.crimson ? `rgba(185, 28, 28, ${a.toFixed(3)})` : `rgba(90, 26, 20, ${(a * 0.7).toFixed(3)})`);
-          g.addColorStop(1, "rgba(0, 0, 0, 0)");
-          ctx.fillStyle = g;
-          ctx.fillRect(px - rad, py - rad, rad * 2, rad * 2);
-        }
-        for (let i = 0; i < embers.length; i++) {
-          const e = embers[i];
-          e.x += (e.vx + Math.sin(elapsed * 2.1 + e.phase) * 0.015) * dt;
+        for (let i = 0; i < manaSparks.length; i++) {
+          const e = manaSparks[i];
+          e.x += (e.vx + Math.sin(t * 1.8 + e.phase) * 0.010) * dt;
           e.y += e.vy * dt;
-          if (e.y < -0.05) { e.y = 1.06; e.x = Math.random(); }
-          if (e.x > 1.06) e.x = -0.05;
-          if (e.x < -0.06) e.x = 1.05;
+          if (e.y < -0.05) { e.y = 1.05; e.x = Math.random(); }
+          if (e.x > 1.05) e.x = -0.04;
+          if (e.x < -0.05) e.x = 1.04;
           const ex = e.x * cw, ey = e.y * ch;
-          const flicker = 0.45 + 0.55 * Math.sin(elapsed * 6.5 + e.phase);
+          const flicker = 0.42 + 0.58 * Math.sin(t * 5.2 + e.phase);
           const r = e.size * (cw / 1920) * (0.85 + 0.3 * flicker);
-          const eg = ctx.createRadialGradient(ex, ey, 0, ex, ey, r * 3.2);
-          eg.addColorStop(0, e.hot ? `rgba(255, 224, 178, ${(0.95 * flicker).toFixed(3)})` : `rgba(249, 115, 22, ${(0.85 * flicker).toFixed(3)})`);
-          eg.addColorStop(0.4, `rgba(239, 68, 68, ${(0.65 * flicker).toFixed(3)})`);
-          eg.addColorStop(1, "rgba(220, 38, 38, 0)");
+          const eg = ctx.createRadialGradient(ex, ey, 0, ex, ey, r * 3.4);
+          if (e.cyan) {
+            eg.addColorStop(0, `rgba(186, 230, 253, ${(0.88 * flicker).toFixed(3)})`);
+            eg.addColorStop(0.42, `rgba(56, 189, 248, ${(0.55 * flicker).toFixed(3)})`);
+            eg.addColorStop(1, "rgba(37, 99, 235, 0)");
+          } else {
+            eg.addColorStop(0, `rgba(221, 214, 254, ${(0.82 * flicker).toFixed(3)})`);
+            eg.addColorStop(0.42, `rgba(139, 92, 246, ${(0.50 * flicker).toFixed(3)})`);
+            eg.addColorStop(1, "rgba(91, 33, 182, 0)");
+          }
           ctx.fillStyle = eg;
           ctx.beginPath();
-          ctx.arc(ex, ey, r * 3.2, 0, Math.PI * 2);
+          ctx.arc(ex, ey, r * 3.4, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.restore();
-
-        if (!titleShown && elapsed >= 8.2) {
-          titleShown = true;
-          titleWrap.classList.add("revealed");
-          skipBtn.classList.add("hidden");
-        }
-        if (!menuShown && elapsed >= 9.0) {
-          menuShown = true;
-          menuStack.classList.add("visible");
-        }
       }
       requestAnimationFrame(renderHero);
 
@@ -901,21 +937,21 @@
           <button class="mode-card active" data-mode="Campaign">
             <div class="mode-card-head">&gt; OP // 01  CAMPAIGN (100 LEVELS)</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/shot4_wide.jpg" alt="Campaign" />
+              <img src="assets/hero/shadow_monarch.jpg" alt="Campaign" />
               <div class="mode-card-desc">Sequential Level 1 → 100 · 10 Unique Realm Bosses · Acid Demons</div>
             </div>
           </button>
           <button class="mode-card" data-mode="EndlessHorde">
             <div class="mode-card-head">&gt; OP // 02  ENDLESS HORDE</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/shot3_pullback.jpg" alt="Endless Horde" />
+              <img src="assets/hero/shadow_monarch.jpg" alt="Endless Horde" />
               <div class="mode-card-desc">Infinite Escalating Waves · Unique Realm Boss every 3rd Wave</div>
             </div>
           </button>
           <button class="mode-card" data-mode="PurgatoryBlitz">
             <div class="mode-card-head">&gt; OP // 03  PURGATORY BLITZ</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/shot2_turn.jpg" alt="Purgatory Blitz" />
+              <img src="assets/hero/shadow_monarch.jpg" alt="Purgatory Blitz" />
               <div class="mode-card-desc">150s Doomsday Clock (+2.5s / Kill) across unlocked levels</div>
             </div>
           </button>
@@ -931,8 +967,8 @@
       // STEP 2 POP-UP: Pic 5 "Choose Playstyle" -> Easy / Medium / Hard
       function openChoosePlaystylePopup() {
         const modeTitle = selectedMode === "Campaign" ? "OP // 01 CAMPAIGN"
-                        : selectedMode === "EndlessHorde" ? "OP // 02 ENDLESS HORDE"
-                        : "OP // 03 PURGATORY BLITZ";
+          : selectedMode === "EndlessHorde" ? "OP // 02 ENDLESS HORDE"
+            : "OP // 03 PURGATORY BLITZ";
         openPopupHtml("Choose Playstyle", `
           <div class="playstyle-meta">
             <span>MODE: ${modeTitle}</span>
@@ -1004,7 +1040,6 @@
             <span>CAMPAIGN PROGRESS</span>
             <button id="btn-set-reset" class="compact-btn secondary">RESET TO LVL 1</button>
           </div>
-          <button id="btn-set-replay" class="compact-btn secondary" style="width:100%;">↻ REPLAY 12-SECOND HERO CINEMATIC</button>
           <div style="font-size:0.70rem;color:#c9a9a3;text-align:center;line-height:1.45;">
             [WASD] Move · [MOUSE] Aim · [LMB] Fire/Slash · [RMB] ADS/Heavy · [1-5] Guns · [0] Knife<br/>
             [R] Reload · [Y] Inspect/Spin · [SHIFT] Dash · [B] Shop
@@ -1025,7 +1060,6 @@
           if (unityReady && unityInst) unityInst.SendMessage("GameManager", "ResetProgressFromWeb", "");
           e.target.textContent = "RESET DONE!";
         });
-        document.getElementById("btn-set-replay").addEventListener("click", () => resetCinematic(false));
       }
 
       document.getElementById("btn-menu-play").addEventListener("click", openChooseModePopup);
@@ -1040,7 +1074,10 @@
 
       function dismissHero() {
         heroStage.classList.add("dismissed");
-        setTimeout(() => { heroActive = false; }, 850);
+        setTimeout(() => {
+          heroActive = false;
+          if (heroVideo && !heroVideo.paused) heroVideo.pause();
+        }, 850);
       }
 
       function launchIntoUnity(mode, diff) {
@@ -1107,9 +1144,9 @@
       fsBtn.addEventListener("click", () => {
         if (!document.fullscreenElement) {
           if (unityInst) unityInst.SetFullscreen(1);
-          else document.documentElement.requestFullscreen?.().catch(() => {});
+          else document.documentElement.requestFullscreen?.().catch(() => { });
         } else {
-          document.exitFullscreen().catch(() => {});
+          document.exitFullscreen().catch(() => { });
         }
       });
 
@@ -1120,4 +1157,5 @@
     })();
   </script>
 </body>
+
 </html>

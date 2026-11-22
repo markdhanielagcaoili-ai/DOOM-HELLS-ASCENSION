@@ -2,6 +2,7 @@
   <assembly fullname="UnityEngine.PhysicsModule" preserve="all" />
   <assembly fullname="UnityEngine.ParticleSystemModule" preserve="all" />
   <assembly fullname="UnityEngine.AudioModule" preserve="all" />
+  <assembly fullname="UnityEngine.VideoModule" preserve="all" />
   <assembly fullname="UnityEngine.IMGUIModule" preserve="all" />
   <assembly fullname="UnityEngine.CoreModule">
     <type fullname="UnityEngine.MeshFilter" preserve="all" />

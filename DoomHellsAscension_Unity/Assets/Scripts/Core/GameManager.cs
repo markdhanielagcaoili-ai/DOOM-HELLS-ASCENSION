@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Video;
 
 namespace DoomHellsAscension
 {
@@ -87,8 +88,9 @@ namespace DoomHellsAscension
         private Texture2D iconShopTex;
         private Texture2D iconGearTex;
         private Texture2D iconPinTex;
-        private Texture2D[] heroShots;
-        private float heroIntroStartTime;
+        private Texture2D landingPosterTex;
+        private VideoPlayer landingVideoPlayer;
+        private RenderTexture landingVideoRT;
         private MenuParticle[] menuShards;
         private MenuParticle[] menuEmbers;
         private MenuParticle[] menuTracers;
@@ -149,14 +151,8 @@ namespace DoomHellsAscension
             iconShopTex = GenerateShopIconTexture();
             iconGearTex = GenerateGearIconTexture();
             iconPinTex = GeneratePinIconTexture();
-            heroShots = new Texture2D[4]
-            {
-                Resources.Load<Texture2D>("Hero/shot1_front"),
-                Resources.Load<Texture2D>("Hero/shot2_turn"),
-                Resources.Load<Texture2D>("Hero/shot3_pullback"),
-                Resources.Load<Texture2D>("Hero/shot4_wide")
-            };
-            heroIntroStartTime = Time.unscaledTime;
+            landingPosterTex = Resources.Load<Texture2D>("Hero/shadow_monarch");
+            InitLandingVideoPlayer();
             InitMenuParticles();
         }
 
@@ -291,7 +287,36 @@ namespace DoomHellsAscension
             IsRunning = true;
             IsPaused = false;
             LockCursor(true);
+            if (landingVideoPlayer != null && landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StartMusic();
+        }
+
+        private void InitLandingVideoPlayer()
+        {
+            string vidUrl = Application.streamingAssetsPath + "/shadow_monarch.mp4";
+            landingVideoRT = new RenderTexture(1280, 720, 0, RenderTextureFormat.ARGB32);
+            landingVideoRT.Create();
+            landingVideoPlayer = gameObject.AddComponent<VideoPlayer>();
+            landingVideoPlayer.playOnAwake = false;
+            landingVideoPlayer.isLooping = true;
+            landingVideoPlayer.audioOutputMode = VideoAudioOutputMode.None;
+            landingVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
+            landingVideoPlayer.targetTexture = landingVideoRT;
+            landingVideoPlayer.source = VideoSource.Url;
+            landingVideoPlayer.url = vidUrl;
+            landingVideoPlayer.errorReceived += (vp, msg) => Debug.LogWarning("[LandingVideo] Fallback to poster: " + msg);
+            landingVideoPlayer.prepareCompleted += (vp) => { if (!IsRunning) vp.Play(); };
+            landingVideoPlayer.Prepare();
+        }
+
+        private void OnDestroy()
+        {
+            if (landingVideoRT != null)
+            {
+                landingVideoRT.Release();
+                Destroy(landingVideoRT);
+                landingVideoRT = null;
+            }
         }
 
         // =========================================================================
@@ -313,14 +338,12 @@ namespace DoomHellsAscension
                     DifficultyMult = Mathf.Clamp(mult, 0.5f, 2.0f);
                 }
             }
-            heroIntroStartTime = Time.unscaledTime - 10f;
             menuPopup = MenuPopupState.None;
             StartNewGame();
         }
 
         public void OpenShopFromWeb(string unused)
         {
-            heroIntroStartTime = Time.unscaledTime - 10f;
             menuPopup = MenuPopupState.None;
             if (!ShopOpen) ToggleShop();
         }
@@ -1709,160 +1732,79 @@ namespace DoomHellsAscension
             GUI.matrix = prevMatrix;
         }
 
-        private void DrawHeroShotLayer(Texture2D tex, float sw, float sh, float alpha, float scale, float panXNorm, float panYNorm)
-        {
-            if (tex == null || alpha <= 0.002f) return;
-            float imgAspect = (float)tex.width / Mathf.Max(1, tex.height);
-            float canAspect = sw / Mathf.Max(1f, sh);
-            float baseW, baseH;
-            if (canAspect > imgAspect)
-            {
-                baseW = sw;
-                baseH = sw / imgAspect;
-            }
-            else
-            {
-                baseH = sh;
-                baseW = sh * imgAspect;
-            }
-            float drawW = baseW * scale;
-            float drawH = baseH * scale;
-            float dx = (sw - drawW) * 0.5f + panXNorm * sw;
-            float dy = (sh - drawH) * 0.5f + panYNorm * sh;
-            Color prev = GUI.color;
-            GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
-            GUI.DrawTexture(new Rect(dx, dy, drawW, drawH), tex, ScaleMode.StretchToFill);
-            GUI.color = prev;
-        }
-
         private void DrawBlackLandingMenu(float sw, float sh)
         {
             float t = Time.unscaledTime;
-            float elapsed = Mathf.Max(0f, t - heroIntroStartTime);
             Color savedCol = GUI.color;
-            bool hasCinematic = heroShots != null && heroShots.Length == 4 && heroShots[0] != null && heroShots[3] != null;
 
-            // Pitch-black studio canvas base
-            DrawRect(new Rect(0, 0, sw, sh), new Color(0.016f, 0.012f, 0.016f, 1f));
+            // Pitch-black shadow canvas base
+            DrawRect(new Rect(0, 0, sw, sh), new Color(0.014f, 0.018f, 0.032f, 1f));
 
-            if (hasCinematic)
+            // LIVE LOOPING SHADOW ARMY WALLPAPER VIDEO (with instant zero-flash poster fallback!)
+            if (landingVideoPlayer != null && landingVideoPlayer.isPrepared && !landingVideoPlayer.isPlaying)
             {
-                // =========================================================================
-                // 12-SECOND 60FPS CINEMATIC DOOM HUMAN WARRIOR HERO SEQUENCE (ZERO WATERMARKS)
-                // 0.0s - 3.6s : Front Close-Up Portrait (Battle-scarred human warrior)
-                // 2.2s - 6.6s : Head-Turn Left Profile + Emerging Fiery Bokeh Metropolis
-                // 5.1s - 9.6s : Over-The-Shoulder Rooftop Ledge Pullback
-                // 7.9s - 12s+ : Colossal Wide Crimson Metropolis + Red Title Reveal
-                // =========================================================================
-                float s1FadeOut = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 2.3f) / 1.35f));
-                float s1Prog = Mathf.Clamp01(elapsed / 3.6f);
-                DrawHeroShotLayer(heroShots[0], sw, sh, 1f - s1FadeOut,
-                    Mathf.Lerp(1.02f, 1.11f, s1Prog), Mathf.Lerp(0f, 0.022f, s1Prog), Mathf.Lerp(0.008f, -0.006f, s1Prog));
+                landingVideoPlayer.Play();
+            }
 
-                float s2In = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 2.2f) / 1.35f));
-                float s2Out = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 5.2f) / 1.45f));
-                float s2Prog = Mathf.Clamp01((elapsed - 2.2f) / 4.4f);
-                float s2Ease = 1f - Mathf.Pow(1f - s2Prog, 3f);
-                DrawHeroShotLayer(heroShots[1], sw, sh, s2In * (1f - s2Out),
-                    Mathf.Lerp(1.12f, 1.03f, s2Ease), Mathf.Lerp(-0.024f, 0.018f, s2Prog), Mathf.Lerp(-0.004f, 0.010f, s2Prog));
+            Texture bgTex = (landingVideoPlayer != null && landingVideoPlayer.isPlaying && landingVideoRT != null)
+                ? (Texture)landingVideoRT
+                : (Texture)landingPosterTex;
 
-                float s3In = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 5.1f) / 1.45f));
-                float s3Out = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 8.0f) / 1.55f));
-                float s3Prog = Mathf.Clamp01((elapsed - 5.1f) / 4.5f);
-                float s3Ease = 1f - Mathf.Pow(1f - s3Prog, 3f);
-                DrawHeroShotLayer(heroShots[2], sw, sh, s3In * (1f - s3Out),
-                    Mathf.Lerp(1.20f, 1.03f, s3Ease), Mathf.Lerp(0.014f, -0.006f, s3Prog), Mathf.Lerp(0.024f, -0.004f, s3Prog));
-
-                float s4In = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 7.9f) / 1.60f));
-                float s4Prog = Mathf.Clamp01((elapsed - 7.9f) / 4.3f);
-                float s4Ease = 1f - Mathf.Pow(1f - s4Prog, 3f);
-                float idleBreath = elapsed > 12f ? Mathf.Sin((elapsed - 12f) * 0.45f) * 0.012f : 0f;
-                float idlePan = elapsed > 12f ? Mathf.Sin((elapsed - 12f) * 0.28f) * 0.008f : 0f;
-                DrawHeroShotLayer(heroShots[3], sw, sh, s4In,
-                    Mathf.Lerp(1.18f, 1.03f, s4Ease) + idleBreath, idlePan, Mathf.Lerp(0.032f, 0f, s4Ease));
-
-                // Live Volumetric Crimson Smoke & Fiery Horizon Glow Overlay
-                if (softGlowTex != null)
-                {
-                    float cityGlow = Mathf.Clamp01((elapsed - 4.5f) / 4.5f);
-                    for (int b = 0; b < 4; b++)
-                    {
-                        float sx = ((sw * (0.15f + b * 0.26f) + t * (16f + b * 7f) * (b % 2 == 0 ? 1f : -1f)) % (sw + 380f));
-                        if (sx < -190f) sx += sw + 380f;
-                        float sy = sh * (0.36f + (b % 2) * 0.26f) + Mathf.Sin(t * 0.6f + b) * 28f;
-                        float rad = 320f + b * 55f;
-                        GUI.color = new Color(0.86f, 0.14f, 0.12f, (0.10f + 0.06f * cityGlow) * (0.75f + 0.25f * Mathf.Sin(t + b)));
-                        GUI.DrawTexture(new Rect(sx - rad, sy - rad * 0.65f, rad * 2f, rad * 1.3f), softGlowTex);
-                    }
-                    if (s4In > 0.05f)
-                    {
-                        float hPulse = (0.16f + 0.06f * Mathf.Sin(t * 1.9f)) * s4In;
-                        GUI.color = new Color(0.94f, 0.24f, 0.22f, hPulse);
-                        GUI.DrawTexture(new Rect(sw * 0.08f, sh * 0.28f, sw * 0.84f, sh * 0.65f), softGlowTex);
-                    }
-                }
+            if (bgTex != null)
+            {
+                float imgAspect = (float)bgTex.width / Mathf.Max(1, bgTex.height);
+                float canAspect = sw / Mathf.Max(1f, sh);
+                float baseW = canAspect > imgAspect ? sw : sh * imgAspect;
+                float baseH = canAspect > imgAspect ? sw / imgAspect : sh;
+                float breath = 1.02f + 0.008f * Mathf.Sin(t * 0.55f);
+                float drawW = baseW * breath;
+                float drawH = baseH * breath;
+                float dx = (sw - drawW) * 0.5f + Mathf.Sin(t * 0.30f) * 8f;
+                float dy = (sh - drawH) * 0.5f + Mathf.Cos(t * 0.25f) * 5f;
+                GUI.DrawTexture(new Rect(dx, dy, drawW, drawH), bgTex, ScaleMode.StretchToFill);
             }
             else
             {
-                // Fallback procedural backdrop if Hero resources are missing
                 GUI.DrawTexture(new Rect(0, 0, sw, sh), blackHeroBgTex, ScaleMode.ScaleAndCrop);
             }
 
-            // LIVE RISING FIERY CRIMSON EMBERS (Always active across all 4 shots!)
+            // Subtle Shadow-Blue & Arcane Violet Drifting Aura Particles matching the live wallpaper
             if (menuEmbers != null && softGlowTex != null)
             {
                 for (int i = 0; i < menuEmbers.Length; i++)
                 {
                     MenuParticle em = menuEmbers[i];
-                    float ex = (em.x + t * em.vx + Mathf.Sin(t * 1.9f + em.phase) * 26f) % (sw + 40f);
+                    float ex = (em.x + t * em.vx * 0.65f + Mathf.Sin(t * 1.6f + em.phase) * 22f) % (sw + 40f);
                     if (ex < -20f) ex += sw + 40f;
-                    float ey = (em.y + t * em.vy) % (sh + 40f);
+                    float ey = (em.y + t * em.vy * 0.72f) % (sh + 40f);
                     if (ey < -20f) ey += sh + 40f;
-                    float flicker = 0.50f + 0.50f * Mathf.Sin(t * 5.6f + em.phase);
-                    float esz = em.size * (0.85f + 0.35f * flicker);
-                    GUI.color = new Color(0.98f, i % 3 == 0 ? 0.55f : 0.26f, 0.16f, em.alpha * flicker);
+                    float flicker = 0.45f + 0.55f * Mathf.Sin(t * 4.2f + em.phase);
+                    float esz = em.size * (0.75f + 0.30f * flicker);
+                    GUI.color = (i % 3 == 0)
+                        ? new Color(0.32f, 0.72f, 1.0f, em.alpha * 0.65f * flicker)
+                        : new Color(0.46f, 0.36f, 1.0f, em.alpha * 0.55f * flicker);
                     GUI.DrawTexture(new Rect(ex - esz, ey - esz, esz * 2f, esz * 2f), softGlowTex);
                 }
             }
             GUI.color = savedCol;
 
-            // During Opening 8s Close-Up & Head-Turn: ZERO black bars or clutter blocking the hero artwork
-            float titleAlpha = hasCinematic ? Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 8.0f) / 1.35f)) : 1f;
-            float deckAlpha = hasCinematic ? Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((elapsed - 8.55f) / 1.10f)) : 1f;
-
-            if (hasCinematic && titleAlpha < 0.85f)
-            {
-                if (GUI.Button(new Rect(sw - 168f, sh - 46f, 148f, 30f), "SKIP INTRO ▸", buttonDarkStyle))
-                {
-                    heroIntroStartTime = t - 9.8f;
-                }
-                GUI.color = savedCol;
-                return;
-            }
-
-            // 1. Subtle Crimson-Tinted Top Header Strip matching landing palette (no solid black bar!)
-            GUI.color = new Color(1f, 1f, 1f, deckAlpha);
-            DrawRect(new Rect(0, 0, sw, 38), new Color(0.16f, 0.03f, 0.03f, 0.52f));
-            DrawRect(new Rect(0, 37, sw, 1), new Color(0.90f, 0.20f, 0.18f, 0.45f));
-            GUI.Label(new Rect(20, 8, sw - 220, 22), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC FPS", smallMonoStyle);
-            if (GUI.Button(new Rect(sw - 164, 5, 148, 28), "↻ REPLAY INTRO", buttonDarkStyle))
-            {
-                menuPopup = MenuPopupState.None;
-                heroIntroStartTime = t;
-            }
+            // 1. Subtle Dark Translucent Top Header Strip
+            DrawRect(new Rect(0, 0, sw, 36), new Color(0.03f, 0.05f, 0.10f, 0.54f));
+            DrawRect(new Rect(0, 35, sw, 1), new Color(0.30f, 0.62f, 1.0f, 0.32f));
+            GUI.Label(new Rect(20, 7, sw - 40, 22), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC FPS", smallMonoStyle);
 
             // 2. CHISELED GLOWING BLOOD-RED "DOOM HELL'S ASCENSION" TITLE IN UPPER-CENTER SKY!
-            float titleY = 48f + (1f - titleAlpha) * -18f;
-            float subY = titleY + 86f;
+            float titleY = 44f;
+            float subY = titleY + 84f;
             float emberPulse = 0.78f + 0.22f * Mathf.Sin(t * 2.6f);
 
             if (softGlowTex != null)
             {
-                GUI.color = new Color(0.86f, 0.14f, 0.14f, 0.34f * titleAlpha * emberPulse);
+                GUI.color = new Color(0.86f, 0.14f, 0.14f, 0.30f * emberPulse);
                 GUI.DrawTexture(new Rect(sw * 0.5f - 360f, titleY - 18f, 720f, 165f), softGlowTex);
             }
 
-            GUI.color = new Color(1f, 1f, 1f, titleAlpha);
+            GUI.color = Color.white;
             GUI.Label(new Rect(4f, titleY + 6f, sw, 92f), "D  O  O  M", titleShadowStyle);
             GUI.Label(new Rect(-2f, titleY + 2f, sw, 92f), "D  O  O  M", titleCrimsonGlowStyle);
             GUI.Label(new Rect(2f, titleY - 2f, sw, 92f), "D  O  O  M", titleCrimsonGlowStyle);
@@ -1871,14 +1813,10 @@ namespace DoomHellsAscension
 
             GUI.Label(new Rect(2f, subY + 2f, sw, 32f), "H E L L ' S   A S C E N S I O N", subtitleShadowStyle);
             GUI.Label(new Rect(0f, subY, sw, 32f), "H E L L ' S   A S C E N S I O N", subtitleCrimsonStyle);
-            DrawRect(new Rect(sw * 0.5f - 230f, subY + 36f, 460f, 2f), new Color(0.92f, 0.22f, 0.20f, 0.85f * titleAlpha * emberPulse));
-
-            if (deckAlpha <= 0.02f) { GUI.color = savedCol; return; }
-            GUI.color = new Color(1f, 1f, 1f, deckAlpha);
+            DrawRect(new Rect(sw * 0.5f - 230f, subY + 36f, 460f, 2f), new Color(0.92f, 0.22f, 0.20f, 0.85f * emberPulse));
 
             // =========================================================================
-            // 3. COMPACT VERTICAL 3-BUTTON RED MENU STACK (Pic 1: Play / Armory Shop / Settings)
-            // Compact footprint on bottom-left so the DOOM warrior & metropolis stay clean & visible!
+            // 3. COMPACT VERTICAL 3-BUTTON RED MENU STACK (Play / Armory Shop / Settings)
             // =========================================================================
             float menuX = 48f;
             float menuY = sh - 232f;
@@ -2053,7 +1991,7 @@ namespace DoomHellsAscension
             if (DrawVisualModeCard(new Rect(0f, 0f, innerW, cardH),
                 $"> OP // 01  CAMPAIGN (LVL {selectedStartLevel} / UNLOCKED {highestLevelUnlocked})",
                 campDesc,
-                (heroShots != null && heroShots.Length > 3) ? heroShots[3] : blackHeroBgTex,
+                landingPosterTex != null ? landingPosterTex : blackHeroBgTex,
                 currentMode == GameModeType.Campaign))
             {
                 currentMode = GameModeType.Campaign;
@@ -2063,7 +2001,7 @@ namespace DoomHellsAscension
             if (DrawVisualModeCard(new Rect(0f, cardH + gap, innerW, cardH),
                 "> OP // 02  ENDLESS HORDE",
                 "Infinite Escalating Waves · Unique Realm Boss every 3rd Wave",
-                (heroShots != null && heroShots.Length > 2) ? heroShots[2] : blackHeroBgTex,
+                landingPosterTex != null ? landingPosterTex : blackHeroBgTex,
                 currentMode == GameModeType.EndlessHorde))
             {
                 currentMode = GameModeType.EndlessHorde;
@@ -2073,7 +2011,7 @@ namespace DoomHellsAscension
             if (DrawVisualModeCard(new Rect(0f, (cardH + gap) * 2f, innerW, cardH),
                 "> OP // 03  PURGATORY BLITZ",
                 "150s Doomsday Clock (+2.5s / Kill) across unlocked levels",
-                (heroShots != null && heroShots.Length > 1) ? heroShots[1] : blackHeroBgTex,
+                landingPosterTex != null ? landingPosterTex : blackHeroBgTex,
                 currentMode == GameModeType.PurgatoryBlitz))
             {
                 currentMode = GameModeType.PurgatoryBlitz;
@@ -2273,18 +2211,10 @@ namespace DoomHellsAscension
             }
             GUI.enabled = true;
 
-            // Row 4: Replay 12s Hero Intro
-            y += 66f;
-            if (GUI.Button(new Rect(sx, y, swIn, 42f), "↻ REPLAY 12-SECOND HERO CINEMATIC", buttonDarkStyle))
-            {
-                menuPopup = MenuPopupState.None;
-                heroIntroStartTime = Time.unscaledTime;
-            }
-
-            // Row 5: Controls Quick Strip
-            y += 54f;
-            DrawRect(new Rect(sx, y, swIn, 48f), new Color(0.03f, 0.02f, 0.02f, 0.80f));
-            GUI.Label(new Rect(sx + 8f, y + 4f, swIn - 16f, 40f),
+            // Row 4: Controls Quick Strip
+            y += 72f;
+            DrawRect(new Rect(sx, y, swIn, 52f), new Color(0.03f, 0.02f, 0.03f, 0.82f));
+            GUI.Label(new Rect(sx + 8f, y + 6f, swIn - 16f, 40f),
                 "[WASD] Move · [MOUSE] Look · [LMB] Fire/Slash · [RMB] ADS/Heavy · [1-5] Guns · [0] Knife\n[R] Reload · [Y] Inspect/Spin · [SHIFT] Dash · [Q/E] Overdrive · [B] Shop",
                 controlsCenterStyle);
         }
@@ -2675,7 +2605,7 @@ namespace DoomHellsAscension
                 IsRunning = false;
                 IsPaused = false;
                 modalMode = "";
-                heroIntroStartTime = Time.unscaledTime - 9.8f;
+                if (landingVideoPlayer != null && landingVideoPlayer.isPrepared) landingVideoPlayer.Play();
                 selectedStartLevel = Mathf.Clamp(highestLevelUnlocked, 1, GameCatalog.MaxCampaignLevel);
                 if (worldBuilder != null) worldBuilder.ApplyStratumAtmosphere(GetRealmForLevel(selectedStartLevel));
                 if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StopMusic();
