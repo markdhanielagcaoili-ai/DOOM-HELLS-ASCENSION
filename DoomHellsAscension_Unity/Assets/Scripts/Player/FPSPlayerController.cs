@@ -378,13 +378,14 @@ namespace DoomHellsAscension
             fireCooldown = w.cooldown * rofMult;
             pitch = Mathf.Clamp(pitch - w.recoilKick * (IsADS ? 15f : 30f), -72f, 72f);
 
-            if (viewmodel != null) viewmodel.TriggerRecoil(w);
+            if (viewmodel != null) viewmodel.TriggerRecoil(w, IsADS);
             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayShoot(w.id, mags[weaponIndex], w.magSize);
 
             float dmgMult = GameManager.Instance.OverdriveActive ? 2.0f : 1.0f;
             float sp = IsADS ? w.adsSpread : w.spread;
             bool hitAny = false;
             bool anyHeadshot = false;
+            bool isReaverVandal = (w.id == 0);
 
             for (int p = 0; p < w.pellets; p++)
             {
@@ -406,11 +407,15 @@ namespace DoomHellsAscension
                         float hsMult = isHeadshot ? w.headshotMult : 1.0f;
                         enemy.TakeDamage(w.damage * dmgMult * hsMult, w.resonanceGain / w.pellets, isHeadshot);
                         if (vampiricTimer > 0f) hp = Mathf.Min(maxHp, hp + 10);
-                        GameManager.Instance.SpawnBurstParticles(hit.point, isHeadshot ? Color.yellow : new Color(1f, 0.14f, 0.08f), isHeadshot ? 12 : 6);
+                        Color impactCol = isHeadshot
+                            ? (isReaverVandal ? new Color(0.86f, 0.56f, 1.0f) : Color.yellow)
+                            : (isReaverVandal ? new Color(0.62f, 0.22f, 1.0f) : new Color(1f, 0.14f, 0.08f));
+                        GameManager.Instance.SpawnBurstParticles(hit.point, impactCol, isHeadshot ? 14 : 7);
                     }
                     else
                     {
-                        GameManager.Instance.SpawnBurstParticles(hit.point, new Color(1f, 0.78f, 0.25f), 5);
+                        Color wallSparkCol = isReaverVandal ? new Color(0.66f, 0.30f, 1.0f) : new Color(1f, 0.78f, 0.25f);
+                        GameManager.Instance.SpawnBurstParticles(hit.point, wallSparkCol, isReaverVandal ? 7 : 5);
                         GameManager.Instance.SpawnBulletDecal(hit.point, hit.normal);
                     }
                 }

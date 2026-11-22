@@ -222,6 +222,14 @@ namespace DoomHellsAscension.Editor
                 {
                     AssetDatabase.CreateAsset(mat.mainTexture, $"{genDir}/{prefix}_Tex_{idx++}.asset");
                 }
+                if (mat.HasProperty("_EmissionMap"))
+                {
+                    Texture emTex = mat.GetTexture("_EmissionMap");
+                    if (emTex != null && !AssetDatabase.Contains(emTex))
+                    {
+                        AssetDatabase.CreateAsset(emTex, $"{genDir}/{prefix}_EmTex_{idx++}.asset");
+                    }
+                }
                 if (!AssetDatabase.Contains(mat))
                 {
                     AssetDatabase.CreateAsset(mat, $"{genDir}/{prefix}_Mat_{idx++}.mat");

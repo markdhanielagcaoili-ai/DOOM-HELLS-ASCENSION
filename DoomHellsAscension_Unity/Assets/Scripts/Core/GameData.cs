@@ -135,12 +135,12 @@ namespace DoomHellsAscension
                 new WeaponDef
                 {
                     id = 0, name = "REAVER VANDAL", shortName = "VANDAL",
-                    desc = "Iconic 7.62 heavy rifle with curved banana mag, Reaver crimson-obsidian runes, and lethal 1-tap headshots (4x HS).",
-                    ammoType = "infinite", ammoLabel = "[R] RELOAD // 7.62 REAVER",
+                    desc = "Iconic 7.62 gothic rifle forged in midnight-indigo steel & silver filigree, glowing violet runes, spectral star flash, telekinetic reload, and lethal 1-tap headshots (4x HS).",
+                    ammoType = "infinite", ammoLabel = "[R] TELEKINETIC RELOAD // 7.62 REAVER",
                     magSize = 25, costPerShot = 1, baseDamage = 40f, damage = 40f, headshotMult = 4.0f,
-                    cooldown = 0.105f, reloadTime = 1.60f, pellets = 1, spread = 0.012f, adsSpread = 0.002f, adsFov = 54f,
-                    accentColor = new Color(0.95f, 0.20f, 0.25f), tracerColor = new Color(1f, 0.45f, 0.22f),
-                    isAuto = true, resonanceGain = 6f, recoilKick = 0.052f, owned = true, level = 1, upgradeCost = 220
+                    cooldown = 0.102f, reloadTime = 1.85f, pellets = 1, spread = 0.011f, adsSpread = 0.0018f, adsFov = 54f,
+                    accentColor = new Color(0.66f, 0.30f, 1.0f), tracerColor = new Color(0.76f, 0.42f, 1.0f),
+                    isAuto = true, resonanceGain = 6f, recoilKick = 0.056f, owned = true, level = 1, upgradeCost = 220
                 },
                 new WeaponDef
                 {

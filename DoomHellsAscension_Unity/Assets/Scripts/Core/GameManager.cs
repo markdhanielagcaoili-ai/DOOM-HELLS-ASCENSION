@@ -578,6 +578,13 @@ namespace DoomHellsAscension
                 AddKillfeed($"{(isHeadshot ? "HEADSHOT! " : "")}{enemy.displayName} (+{pts} PTS // +${bounty})");
             }
 
+            if (FPSPlayerController.Instance != null && FPSPlayerController.Instance.weaponIndex == 0)
+            {
+                // Iconic Reaver Vandal Soul-Pillar Finisher (1:08-1:12 in reference video!)
+                bool fullFinisher = (ActiveEnemies.Count == 0 || enemy.isBoss);
+                SpawnReaverFinisherVFX(new Vector3(enemy.transform.position.x, 0.04f, enemy.transform.position.z), fullFinisher);
+            }
+
             if (ActiveEnemies.Count == 0)
             {
                 if (currentMode == GameModeType.EndlessHorde)
@@ -720,6 +727,53 @@ namespace DoomHellsAscension
             var r = go.GetComponent<ParticleSystemRenderer>();
             r.sharedMaterial = CitadelWorldBuilder.MakeEmissiveMat(col, 2.5f);
             ps.Play();
+        }
+
+        private static Texture2D cachedReaverRuneCircleTex;
+
+        public void SpawnReaverFinisherVFX(Vector3 groundPos, bool fullPillar)
+        {
+            if (cachedReaverRuneCircleTex == null) cachedReaverRuneCircleTex = BuildReaverRuneCircleTexture();
+            GameObject fxGo = new GameObject(fullPillar ? "ReaverSoulFinisher" : "ReaverSoulEcho");
+            fxGo.transform.position = groundPos;
+            ReaverFinisherFX fx = fxGo.AddComponent<ReaverFinisherFX>();
+            fx.Init(cachedReaverRuneCircleTex, fullPillar);
+        }
+
+        private static Texture2D BuildReaverRuneCircleTexture()
+        {
+            int s = 256;
+            Texture2D tex = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            for (int y = 0; y < s; y++)
+            {
+                float ny = (y / (float)(s - 1)) * 2f - 1f;
+                for (int x = 0; x < s; x++)
+                {
+                    float nx = (x / (float)(s - 1)) * 2f - 1f;
+                    float r = Mathf.Sqrt(nx * nx + ny * ny);
+                    float ang = Mathf.Atan2(ny, nx);
+
+                    float outerRing = Mathf.Exp(-Mathf.Abs(r - 0.86f) * 32f);
+                    float innerRing = Mathf.Exp(-Mathf.Abs(r - 0.62f) * 28f);
+                    float runes = Mathf.Exp(-Mathf.Abs(r - 0.74f) * 18f) * Mathf.Pow(Mathf.Abs(Mathf.Sin(ang * 12f)), 2.2f);
+                    float darkPool = Mathf.Clamp01(1f - r / 0.88f) * 0.82f;
+                    float glow = Mathf.Clamp01(outerRing * 1.15f + innerRing * 0.9f + runes * 1.1f);
+
+                    float alpha = Mathf.Clamp01(darkPool + glow);
+                    if (r >= 0.98f) alpha = 0f;
+
+                    Color abyss = new Color(0.06f, 0.01f, 0.14f, alpha);
+                    Color violet = new Color(0.62f, 0.22f, 1.0f, alpha);
+                    Color hot = new Color(0.92f, 0.78f, 1.0f, alpha);
+                    Color c = Color.Lerp(abyss, violet, glow);
+                    c = Color.Lerp(c, hot, Mathf.Clamp01(outerRing * 0.65f + runes * 0.55f));
+                    c.a = alpha;
+                    tex.SetPixel(x, y, c);
+                }
+            }
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.Apply();
+            return tex;
         }
 
         public void SpawnBulletDecal(Vector3 point, Vector3 normal)

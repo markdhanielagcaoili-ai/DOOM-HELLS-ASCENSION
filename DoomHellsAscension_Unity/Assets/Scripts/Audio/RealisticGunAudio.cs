@@ -154,7 +154,7 @@ namespace DoomHellsAscension
             gunClips[4] = SynthOperatorSniperShot();     // [5] Operator: Colossal sniper cannon + dramatic bolt-action cycle!
 
             // 5 Dedicated Per-Weapon Valorant Multi-Stage Mechanical Reloads
-            reloadClips[0] = SynthReloadVandal(1.60f);
+            reloadClips[0] = SynthReloadVandal(1.85f);
             reloadClips[1] = SynthReloadPhantom(1.45f);
             reloadClips[2] = SynthReloadJudge(1.75f);
             reloadClips[3] = SynthReloadOdin(2.25f);
@@ -186,11 +186,11 @@ namespace DoomHellsAscension
         }
 
         // =========================================================================
-        // 1. VANDAL "REAVER" — Punchy 7.62 Mechanical Crack + Sub-Bass Punch + Reaver Ring
+        // 1. VANDAL "REAVER" — Punchy 7.62 Crack + Deep Dark Gothic Bell & Spectral Tail
         // =========================================================================
         private AudioClip SynthVandalReaverShot()
         {
-            float dur = 0.58f;
+            float dur = 0.68f;
             int len = Mathf.FloorToInt(SR * dur);
             float[] s = new float[len];
             System.Random rng = new System.Random(101);
@@ -200,36 +200,38 @@ namespace DoomHellsAscension
             {
                 float t = (float)i / SR;
                 float n = (float)(rng.NextDouble() * 2.0 - 1.0);
-                lp += 0.20f * (n - lp);
+                lp += 0.18f * (n - lp);
                 hp += 0.42f * (n - hp);
 
                 // Razor-sharp Vandal initial transient snap (0-18ms)
-                float crack = (n - hp) * Mathf.Exp(-t * 125f) * 2.1f;
-                // Signature Vandal mid-low punchy bark
-                float bark = lp * Mathf.Exp(-t * 24f) * 1.55f;
-                // Heavy chest sub-punch (195Hz -> 42Hz)
-                phase += 2f * Mathf.PI * Mathf.Lerp(195f, 42f, Mathf.Min(1f, t / 0.065f)) / SR;
-                float punch = Mathf.Sin(phase) * Mathf.Exp(-t * 28f) * 1.15f;
+                float crack = (n - hp) * Mathf.Exp(-t * 118f) * 2.15f;
+                // Signature Reaver deep hollow bark
+                float bark = lp * Mathf.Exp(-t * 21f) * 1.60f;
+                // Heavy chest sub-punch (185Hz -> 36Hz)
+                phase += 2f * Mathf.PI * Mathf.Lerp(185f, 36f, Mathf.Min(1f, t / 0.075f)) / SR;
+                float punch = Mathf.Sin(phase) * Mathf.Exp(-t * 24f) * 1.25f;
 
-                // Crisp AK/Vandal steel bolt carrier slap at 22ms
+                // Crisp steel bolt carrier slap at 20ms
                 float bolt = 0f;
-                if (t > 0.020f && t < 0.065f)
+                if (t > 0.020f && t < 0.068f)
                 {
                     float bt = t - 0.020f;
-                    bolt = (Mathf.Sin(2f * Mathf.PI * 2450f * bt) * 0.55f + Mathf.Sin(2f * Mathf.PI * 4120f * bt) * 0.35f) * Mathf.Exp(-bt * 85f);
+                    bolt = (Mathf.Sin(2f * Mathf.PI * 2450f * bt) * 0.50f + Mathf.Sin(2f * Mathf.PI * 4120f * bt) * 0.30f) * Mathf.Exp(-bt * 82f);
                 }
 
-                // Subtle Reaver dark obsidian harmonic resonance tail
-                float reaverBell = Mathf.Sin(2f * Mathf.PI * 293.66f * t) * Mathf.Exp(-t * 14f) * 0.16f
-                                 + Mathf.Sin(2f * Mathf.PI * 587.33f * t) * Mathf.Exp(-t * 22f) * 0.10f;
+                // Iconic VALORANT Reaver dark gothic cathedral bell harmonics + spectral whisper tail!
+                float reaverBell = Mathf.Sin(2f * Mathf.PI * 220.00f * t) * Mathf.Exp(-t * 8.5f) * 0.30f
+                                 + Mathf.Sin(2f * Mathf.PI * 293.66f * t) * Mathf.Exp(-t * 10.5f) * 0.28f
+                                 + Mathf.Sin(2f * Mathf.PI * 440.00f * t) * Mathf.Exp(-t * 14.0f) * 0.18f
+                                 + Mathf.Sin(2f * Mathf.PI * 622.25f * t) * Mathf.Exp(-t * 19.0f) * 0.12f;
 
-                // Clean studio/courtyard echo tail (90ms+)
-                float tail = (t > 0.085f) ? lp * Mathf.Exp(-(t - 0.085f) * 9.5f) * 0.34f : 0f;
+                // Eerie hollow spectral wind reverberation tail
+                float spectralTail = (t > 0.055f) ? lp * Mathf.Exp(-(t - 0.055f) * 7.2f) * 0.42f : 0f;
 
-                // Brass shell casing double-clink at 280ms & 365ms
-                float brass = BrassCasingSample(t, 0.28f, 6800f);
+                // Dark metallic shell casing double-clink
+                float brass = BrassCasingSample(t, 0.30f, 6400f);
 
-                s[i] = (float)Math.Tanh((crack + bark + punch + bolt + reaverBell + tail + brass) * 1.45f);
+                s[i] = (float)Math.Tanh((crack + bark + punch + bolt + reaverBell + spectralTail + brass) * 1.42f);
             }
             return MakeClip("VandalShot", s);
         }
@@ -380,20 +382,40 @@ namespace DoomHellsAscension
             {
                 float t = (float)i / SR;
                 float n = (float)(rng.NextDouble() * 2.0 - 1.0);
-                lp += 0.20f * (n - lp);
+                lp += 0.18f * (n - lp);
                 float v = 0f;
-                // 0.08s: Paddle mag release click + rock curved Vandal mag out
-                v += MechClickSample(t, 0.08f, 2200f, 1150f, 0.07f, n, 0.55f);
-                v += FrictionSlideSample(t, 0.12f, 0.20f, lp, 0.45f);
-                // 0.66s: Curved banana mag rocks in + solid steel lock THUNK-CLICK!
-                v += PalmThudSample(t, 0.66f, 140f, 0.72f);
-                v += MechClickSample(t, 0.69f, 1700f, 3200f, 0.06f, n, 0.65f);
-                // 1.12s: AK/Vandal right-side charging handle pulled back (KCHHH!)
-                v += FrictionSlideSample(t, 1.10f, 0.14f, n - lp, 0.52f);
-                v += MechClickSample(t, 1.12f, 1400f, 2600f, 0.07f, n, 0.55f);
-                // 1.32s: Bolt snaps forward (CLACK-CHUNK!)
-                v += PalmThudSample(t, 1.32f, 230f, 0.65f);
-                v += MechClickSample(t, 1.32f, 3600f, 1800f, 0.08f, n, 0.78f);
+                // 0.08s: Telekinetic spectral unlatch + ghostly downward swoosh as mag floats out!
+                v += MechClickSample(t, 0.08f, 2100f, 920f, 0.08f, n, 0.50f);
+                v += FrictionSlideSample(t, 0.10f, 0.36f, lp, 0.56f);
+                if (t > 0.08f && t < 0.52f)
+                {
+                    float wt = t - 0.08f;
+                    v += Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(420f, 155f, wt / 0.44f) * wt) * Mathf.Sin(Mathf.PI * wt / 0.44f) * 0.28f;
+                }
+                // 0.72s -> 1.12s: Rising dark spectral hum as fresh mag levitates up & snaps home with bell chime!
+                if (t > 0.70f && t < 1.12f)
+                {
+                    float rt = t - 0.70f;
+                    v += Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(170f, 360f, rt / 0.42f) * rt) * Mathf.Sin(Mathf.PI * rt / 0.42f) * 0.26f;
+                    v += FrictionSlideSample(t, 0.72f, 0.38f, lp, 0.44f);
+                }
+                v += PalmThudSample(t, 1.10f, 130f, 0.78f);
+                v += MechClickSample(t, 1.12f, 1800f, 3300f, 0.07f, n, 0.68f);
+                if (t > 1.10f && t < 1.50f)
+                {
+                    float bt = t - 1.10f;
+                    v += Mathf.Sin(2f * Mathf.PI * 293.66f * bt) * Mathf.Exp(-bt * 9.5f) * 0.22f;
+                }
+                // 1.38s -> 1.60s: Telekinetic bolt yank & gothic metallic SHING-CLACK!
+                v += FrictionSlideSample(t, 1.34f, 0.18f, n - lp, 0.48f);
+                v += MechClickSample(t, 1.36f, 1500f, 2800f, 0.08f, n, 0.56f);
+                v += PalmThudSample(t, 1.58f, 220f, 0.68f);
+                v += MechClickSample(t, 1.58f, 3800f, 1900f, 0.09f, n, 0.80f);
+                if (t > 1.58f)
+                {
+                    float st = t - 1.58f;
+                    v += (Mathf.Sin(2f * Mathf.PI * 587.33f * st) * 0.16f + Mathf.Sin(2f * Mathf.PI * 880f * st) * 0.10f) * Mathf.Exp(-st * 11f);
+                }
                 s[i] = Mathf.Clamp(v, -0.95f, 0.95f);
             }
             return MakeClip("ReloadVandal", s);
