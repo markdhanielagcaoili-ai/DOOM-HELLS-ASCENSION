@@ -89,8 +89,13 @@ namespace DoomHellsAscension
         private Texture2D iconGearTex;
         private Texture2D iconPinTex;
         private Texture2D landingPosterTex;
+        private Texture2D loadingGodWarriorTex;
         private VideoPlayer landingVideoPlayer;
         private RenderTexture landingVideoRT;
+        private float unityLoadingTimer;
+        private float unityLoadingDuration = 2.3f;
+        private string unityLoadingHeadline = "ENTERING CITADEL REALM";
+        private string unityLoadingTip = "TIP: Press [0] to spin-draw your Reaver Karambit · [LMB] Slash · [RMB] Heavy Stab";
         private MenuParticle[] menuShards;
         private MenuParticle[] menuEmbers;
         private MenuParticle[] menuTracers;
@@ -152,6 +157,7 @@ namespace DoomHellsAscension
             iconGearTex = GenerateGearIconTexture();
             iconPinTex = GeneratePinIconTexture();
             landingPosterTex = Resources.Load<Texture2D>("Hero/shadow_monarch");
+            loadingGodWarriorTex = Resources.Load<Texture2D>("Hero/loading_god_warrior");
             InitLandingVideoPlayer();
             InitMenuParticles();
         }
@@ -289,6 +295,27 @@ namespace DoomHellsAscension
             LockCursor(true);
             if (landingVideoPlayer != null && landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StartMusic();
+            // Trigger in-game God Warrior Demonic Blood-Eclipse Loading Screen in Unity Editor / Standalone!
+            if (Application.platform != RuntimePlatform.WebGLPlayer)
+            {
+                TriggerDemonicLoadingScreen($"DEPLOYING // LEVEL {currentLevel} ({GetRealmForLevel(currentLevel).name.Split('(')[0].Trim()})", 2.25f);
+            }
+        }
+
+        private void TriggerDemonicLoadingScreen(string headline, float duration = 2.15f)
+        {
+            string[] tips =
+            {
+                "TIP: Press [0] to spin-draw your Reaver Karambit · [LMB] Slash Combo · [RMB] Heavy Stab",
+                "TIP: Reaver Vandal deals 4x Headshot damage and triggers the Soul-Pillar Finisher on final/Boss kills",
+                "TIP: Dodge flying & leaping demons' toxic acid spit before corrosion drains your Vitality HP",
+                "TIP: Purge 100% of hostiles to unseal the Golden Ascension Portal and unlock the next Level",
+                "TIP: Press [SHIFT] to Phase-Dash through demon swarms and [Q/E] at 100% Resonance for Overdrive"
+            };
+            unityLoadingHeadline = headline;
+            unityLoadingDuration = duration;
+            unityLoadingTimer = duration;
+            unityLoadingTip = tips[Random.Range(0, tips.Length)];
         }
 
         private void InitLandingVideoPlayer()
@@ -1717,6 +1744,11 @@ namespace DoomHellsAscension
             Matrix4x4 prevMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(uiScale, uiScale, 1f));
 
+            if (unityLoadingTimer > 0f)
+            {
+                unityLoadingTimer = Mathf.Max(0f, unityLoadingTimer - Time.unscaledDeltaTime);
+            }
+
             if (!IsRunning)
             {
                 if (ShopOpen) DrawShopModal(vw, vh);
@@ -1724,9 +1756,16 @@ namespace DoomHellsAscension
             }
             else
             {
-                DrawGameplayHUD(vw, vh);
-                if (ShopOpen) DrawShopModal(vw, vh);
-                else if (!string.IsNullOrEmpty(modalMode)) DrawStateModal(vw, vh);
+                if (unityLoadingTimer > 0f)
+                {
+                    DrawDemonicLoadingScreen(vw, vh);
+                }
+                else
+                {
+                    DrawGameplayHUD(vw, vh);
+                    if (ShopOpen) DrawShopModal(vw, vh);
+                    else if (!string.IsNullOrEmpty(modalMode)) DrawStateModal(vw, vh);
+                }
             }
 
             GUI.matrix = prevMatrix;
@@ -2573,6 +2612,7 @@ namespace DoomHellsAscension
                     }
                     LoadCampaignLevel(currentLevel + 1);
                     ResumeGame();
+                    TriggerDemonicLoadingScreen($"ASCENDING // LEVEL {currentLevel} ({GetRealmForLevel(currentLevel).name.Split('(')[0].Trim()})", 1.85f);
                 }
                 if (GUI.Button(new Rect(box.x + 356f, btnY, 234f, 38f), "🛒 ARMORY SHOP [B]", buttonDarkStyle)) ToggleShop();
             }
@@ -2611,6 +2651,73 @@ namespace DoomHellsAscension
                 if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StopMusic();
                 LockCursor(false);
             }
+        }
+
+        private void DrawDemonicLoadingScreen(float sw, float sh)
+        {
+            float t = Time.unscaledTime;
+            float prog = Mathf.Clamp01(1f - (unityLoadingTimer / Mathf.Max(0.1f, unityLoadingDuration)));
+            Color savedCol = GUI.color;
+
+            DrawRect(new Rect(0, 0, sw, sh), new Color(0.01f, 0.005f, 0.008f, 1f));
+
+            // 1. God Warrior Demonic Blood-Eclipse Painting with slow cinematic breathing zoom
+            if (loadingGodWarriorTex != null)
+            {
+                float imgAspect = (float)loadingGodWarriorTex.width / Mathf.Max(1, loadingGodWarriorTex.height);
+                float canAspect = sw / Mathf.Max(1f, sh);
+                float baseW = canAspect > imgAspect ? sw : sh * imgAspect;
+                float baseH = canAspect > imgAspect ? sw / imgAspect : sh;
+                float zoom = 1.01f + prog * 0.042f;
+                float drawW = baseW * zoom;
+                float drawH = baseH * zoom;
+                GUI.DrawTexture(new Rect((sw - drawW) * 0.5f, (sh - drawH) * 0.5f, drawW, drawH), loadingGodWarriorTex, ScaleMode.StretchToFill);
+            }
+
+            // 2. Pulsing Blood Eclipse Corona, God-Warrior Celestial Halo & Drifting Crimson Leaves/Embers
+            if (softGlowTex != null)
+            {
+                float pulse = 0.5f + 0.5f * Mathf.Sin(t * 2.8f);
+                GUI.color = new Color(0.98f, 0.22f, 0.14f, 0.22f + 0.12f * pulse);
+                GUI.DrawTexture(new Rect(sw * 0.586f - 170f, sh * 0.452f - 165f, 340f, 330f), softGlowTex);
+
+                GUI.color = new Color(1.0f, 0.78f, 0.34f, 0.24f + 0.12f * Mathf.Sin(t * 3.4f + 1f));
+                GUI.DrawTexture(new Rect(sw * 0.240f - 105f, sh * 0.411f - 105f, 210f, 210f), softGlowTex);
+
+                // Shimmering lake reflection pulse
+                GUI.color = new Color(0.96f, 0.20f, 0.14f, 0.16f + 0.08f * Mathf.Sin(t * 4.2f));
+                GUI.DrawTexture(new Rect(sw * 0.56f + Mathf.Sin(t * 2.5f) * 12f, sh * 0.76f, 160f, sh * 0.22f), softGlowTex);
+
+                // Drifting Crimson Petals / Embers sweeping from left gnarled demon-tree across the Blood Eclipse!
+                if (menuEmbers != null)
+                {
+                    for (int i = 0; i < menuEmbers.Length; i++)
+                    {
+                        MenuParticle em = menuEmbers[i];
+                        float ex = (em.x + t * (48f + (i % 5) * 14f)) % (sw + 60f) - 30f;
+                        float ey = (em.y + t * (16f + (i % 4) * 7f) + Mathf.Sin(t * 2.2f + em.phase) * 18f) % (sh * 0.88f);
+                        float fl = 0.55f + 0.45f * Mathf.Sin(t * 5.0f + em.phase);
+                        float sz = em.size * 1.15f;
+                        GUI.color = new Color(0.96f, i % 3 == 0 ? 0.26f : 0.12f, 0.12f, 0.82f * fl);
+                        GUI.DrawTexture(new Rect(ex - sz, ey - sz * 0.55f, sz * 2.2f, sz * 1.1f), softGlowTex);
+                    }
+                }
+            }
+            GUI.color = savedCol;
+
+            // 3. Sleek Bottom AAA Demonic Loading Progress HUD
+            float padX = 56f;
+            float barW = sw - padX * 2f;
+            float barY = sh - 68f;
+            DrawRect(new Rect(0, sh - 128f, sw, 128f), new Color(0.02f, 0.008f, 0.01f, 0.72f));
+            GUI.Label(new Rect(padX, barY - 46f, barW - 110f, 26f), unityLoadingHeadline, headerStyle);
+            GUI.Label(new Rect(padX, barY - 22f, barW - 110f, 20f), prog < 0.35f ? "IGNITING BLOOD ECLIPSE..." : prog < 0.72f ? "FORGING REAVER ARSENAL..." : "UNSEALING CITADEL REALM...", smallMonoStyle);
+            GUI.Label(new Rect(sw - padX - 100f, barY - 40f, 100f, 34f), $"{Mathf.RoundToInt(prog * 100f)}%", hudAmmoRightStyle);
+
+            DrawRect(new Rect(padX, barY, barW, 8f), new Color(1f, 1f, 1f, 0.12f));
+            DrawRect(new Rect(padX, barY, barW * prog, 8f), new Color(0.94f, 0.24f, 0.16f, 0.98f));
+            DrawRect(new Rect(padX + barW * prog - 22f, barY, 22f * Mathf.Clamp01(prog * 5f), 8f), new Color(1f, 0.86f, 0.48f, 0.95f));
+            GUI.Label(new Rect(padX, barY + 14f, barW, 22f), unityLoadingTip, smallMonoStyle);
         }
 
         private static void ApplyVirtualRotation(Matrix4x4 baseMat, float angleDeg, Vector2 pivot)
