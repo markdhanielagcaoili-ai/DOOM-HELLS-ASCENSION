@@ -1121,11 +1121,15 @@
             ${unityReady ? "▶ OPEN LIVE ARMORY SHOP [B]" : "⏳ LOADING UNITY ARMORY..."}
           </button>
         `);
-        document.getElementById("btn-enter-shop").addEventListener("click", () => {
-          closePopup();
-          startGodWarriorLoadingScreen("ARMORY SHOP", () => {
-            if (unityInst) unityInst.SendMessage("GameManager", "OpenShopFromWeb", "");
-          });
+        document.getElementById("btn-enter-shop").addEventListener("click", (e) => {
+          if (unityReady && unityInst) {
+            closePopup();
+            dismissHero();
+            unityInst.SendMessage("GameManager", "OpenShopFromWeb", "");
+          } else {
+            pendingShopOpen = true;
+            e.target.textContent = "⏳ LOADING ENGINE — OPENING SHOP...";
+          }
         });
       }
 
@@ -1188,11 +1192,14 @@
       }
 
       function launchIntoUnity(mode, diff) {
+        pendingShopOpen = false;
         closePopup();
         const label = mode === "EndlessHorde" ? "ENDLESS HORDE"
                     : mode === "PurgatoryBlitz" ? "PURGATORY BLITZ"
                     : "CAMPAIGN CITADEL";
-        startGodWarriorLoadingScreen(label, () => {
+        const diffNum = parseFloat(diff);
+        const diffLabel = diffNum <= 0.8 ? "EASY" : diffNum >= 1.3 ? "HARD" : "MEDIUM";
+        startGodWarriorLoadingScreen(`${label} · ${diffLabel}`, () => {
           syncWebSettingsToUnity();
           if (unityInst) unityInst.SendMessage("GameManager", "LaunchFromWebHero", `${mode}|${diff}`);
         });
@@ -1463,6 +1470,12 @@
         engineDot.classList.add("ready");
         engineStatusText.textContent = "ENGINE READY";
         syncWebSettingsToUnity();
+        if (pendingShopOpen) {
+          pendingShopOpen = false;
+          closePopup();
+          dismissHero();
+          unityInst.SendMessage("GameManager", "OpenShopFromWeb", "");
+        }
       }).catch((err) => {
         engineStatusText.textContent = "ENGINE ERROR";
         console.error(err);

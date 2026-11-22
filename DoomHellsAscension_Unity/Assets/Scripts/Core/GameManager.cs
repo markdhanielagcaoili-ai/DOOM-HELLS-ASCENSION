@@ -181,6 +181,18 @@ namespace DoomHellsAscension
 
         private void Update()
         {
+            // Keep gameplay frozen cleanly while the God Warrior Loading Screen plays (Play -> Mode -> Easy/Medium/Hard)
+            if (unityLoadingTimer > 0f)
+            {
+                unityLoadingTimer = Mathf.Max(0f, unityLoadingTimer - Time.unscaledDeltaTime);
+                if (unityLoadingTimer <= 0f)
+                {
+                    IsPaused = false;
+                    LockCursor(true);
+                }
+                return;
+            }
+
             // Global Shortcuts
             if (Input.GetKeyDown(KeyCode.B))
             {
@@ -295,14 +307,9 @@ namespace DoomHellsAscension
             LockCursor(true);
             if (landingVideoPlayer != null && landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StartMusic();
-            // Trigger in-game God Warrior Demonic Blood-Eclipse Loading Screen in Unity Editor / Standalone!
-            if (Application.platform != RuntimePlatform.WebGLPlayer)
-            {
-                TriggerDemonicLoadingScreen($"DEPLOYING // LEVEL {currentLevel} ({GetRealmForLevel(currentLevel).name.Split('(')[0].Trim()})", 2.25f);
-            }
         }
 
-        private void TriggerDemonicLoadingScreen(string headline, float duration = 2.15f)
+        private void TriggerDemonicLoadingScreen(string headline, float duration = 2.4f)
         {
             string[] tips =
             {
@@ -316,6 +323,7 @@ namespace DoomHellsAscension
             unityLoadingDuration = duration;
             unityLoadingTimer = duration;
             unityLoadingTip = tips[Random.Range(0, tips.Length)];
+            IsPaused = true;
         }
 
         private void InitLandingVideoPlayer()
@@ -1744,11 +1752,6 @@ namespace DoomHellsAscension
             Matrix4x4 prevMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(uiScale, uiScale, 1f));
 
-            if (unityLoadingTimer > 0f)
-            {
-                unityLoadingTimer = Mathf.Max(0f, unityLoadingTimer - Time.unscaledDeltaTime);
-            }
-
             if (!IsRunning)
             {
                 if (ShopOpen) DrawShopModal(vw, vh);
@@ -2157,6 +2160,7 @@ namespace DoomHellsAscension
             {
                 DifficultyMult = 0.75f;
                 StartNewGame();
+                TriggerDemonicLoadingScreen($"DEPLOYING // {modeLabel} · EASY", 2.4f);
             }
 
             if (DrawPlaystyleRow(new Rect(rowX, startY + 86f, rowW, rowH), "> Medium",
@@ -2164,6 +2168,7 @@ namespace DoomHellsAscension
             {
                 DifficultyMult = 1.0f;
                 StartNewGame();
+                TriggerDemonicLoadingScreen($"DEPLOYING // {modeLabel} · MEDIUM", 2.4f);
             }
 
             if (DrawPlaystyleRow(new Rect(rowX, startY + 172f, rowW, rowH), "> Hard",
@@ -2171,6 +2176,7 @@ namespace DoomHellsAscension
             {
                 DifficultyMult = 1.45f;
                 StartNewGame();
+                TriggerDemonicLoadingScreen($"DEPLOYING // {modeLabel} · HARD", 2.4f);
             }
 
             // Back Button to Step 1 (Choose Mode)
@@ -2612,7 +2618,6 @@ namespace DoomHellsAscension
                     }
                     LoadCampaignLevel(currentLevel + 1);
                     ResumeGame();
-                    TriggerDemonicLoadingScreen($"ASCENDING // LEVEL {currentLevel} ({GetRealmForLevel(currentLevel).name.Split('(')[0].Trim()})", 1.85f);
                 }
                 if (GUI.Button(new Rect(box.x + 356f, btnY, 234f, 38f), "🛒 ARMORY SHOP [B]", buttonDarkStyle)) ToggleShop();
             }
