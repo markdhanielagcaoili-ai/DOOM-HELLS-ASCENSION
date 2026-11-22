@@ -76,8 +76,8 @@
       inset: 0;
       pointer-events: none;
       background:
-        radial-gradient(ellipse at 50% 52%, rgba(0, 0, 0, 0) 46%, rgba(6, 10, 22, 0.56) 100%),
-        linear-gradient(180deg, rgba(6, 10, 22, 0.48) 0%, rgba(0, 0, 0, 0) 26%, rgba(0, 0, 0, 0) 78%, rgba(6, 10, 20, 0.54) 100%);
+        radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 48%, rgba(8, 2, 3, 0.56) 100%),
+        linear-gradient(180deg, rgba(8, 2, 3, 0.34) 0%, rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0) 74%, rgba(8, 2, 3, 0.62) 100%);
       z-index: 2;
     }
 
@@ -814,58 +814,13 @@
   </div>
   <button id="fs-btn" title="Toggle Fullscreen">⛶ FULLSCREEN</button>
 
-  <!-- LIVE SHADOW ARMY ANIMATED LANDING PAGE -->
+  <!-- LIVE ABYSSAL REIGN ANIMATED LANDING PAGE (Play / Armory Shop / Settings stack intact!) -->
   <section id="hero-stage" aria-label="DOOM Hell's Ascension Hero">
-    <video id="hero-video" autoplay loop muted playsinline preload="auto" poster="assets/hero/shadow_monarch.jpg">
-      <source src="assets/hero/shadow_monarch.mp4" type="video/mp4" />
+    <video id="hero-video" autoplay loop muted playsinline preload="auto" poster="assets/hero/loading_god_warrior.jpg?v=2">
+      <source src="assets/hero/abyssal_reign_landing.mp4" type="video/mp4" />
     </video>
     <canvas id="cinematic-canvas"></canvas>
     <div class="hero-vignette"></div>
-
-    <!-- Chiseled Metallic Blood-Red & Glowing Crimson SVG Title Typography -->
-    <div id="hero-title-wrap" class="revealed">
-      <svg class="title-svg" viewBox="0 0 1200 230" xmlns="http://www.w3.org/2000/svg" role="img"
-        aria-label="DOOM HELL'S ASCENSION">
-        <defs>
-          <linearGradient id="doomRedMetal" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#ff857a" />
-            <stop offset="16%" stop-color="#ef4444" />
-            <stop offset="48%" stop-color="#dc2626" />
-            <stop offset="76%" stop-color="#991b1b" />
-            <stop offset="100%" stop-color="#450a0a" />
-          </linearGradient>
-          <linearGradient id="doomBevelRim" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#fecaca" />
-            <stop offset="30%" stop-color="#ef4444" />
-            <stop offset="65%" stop-color="#7f1d1d" />
-            <stop offset="100%" stop-color="#f87171" />
-          </linearGradient>
-          <linearGradient id="subCrimsonMetal" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#fca5a5" />
-            <stop offset="45%" stop-color="#ef4444" />
-            <stop offset="100%" stop-color="#991b1b" />
-          </linearGradient>
-          <linearGradient id="sheenSweep" x1="-30%" y1="0%" x2="10%" y2="0%">
-            <stop offset="0%" stop-color="rgba(255,220,200,0)" />
-            <stop offset="50%" stop-color="rgba(255,215,195,0.42)" />
-            <stop offset="100%" stop-color="rgba(255,220,200,0)" />
-            <animate attributeName="x1" values="-40%;120%" dur="4.6s" repeatCount="indefinite" />
-            <animate attributeName="x2" values="0%;160%" dur="4.6s" repeatCount="indefinite" />
-          </linearGradient>
-        </defs>
-        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom" fill="#140203" stroke="#090102"
-          stroke-width="10" transform="translate(0, 7)">DOOM</text>
-        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom" fill="url(#doomRedMetal)"
-          stroke="url(#doomBevelRim)" stroke-width="3.2">DOOM</text>
-        <text x="600" y="138" text-anchor="middle" font-size="136" class="svg-main-doom"
-          fill="url(#sheenSweep)">DOOM</text>
-        <text x="600" y="202" text-anchor="middle" font-size="40" class="svg-sub-ascension" fill="#120203"
-          stroke="#080102" stroke-width="5" transform="translate(0, 3)">HELL'S ASCENSION</text>
-        <text x="600" y="202" text-anchor="middle" font-size="40" class="svg-sub-ascension" fill="url(#subCrimsonMetal)"
-          stroke="rgba(254, 202, 202, 0.48)" stroke-width="1">HELL'S ASCENSION</text>
-      </svg>
-      <div class="title-flame-rule"></div>
-    </div>
 
     <!-- COMPACT RED 3-BUTTON VERTICAL MENU STACK (Play / Armory Shop / Settings) -->
     <nav id="landing-menu-stack" class="visible" aria-label="Main Menu">
@@ -955,7 +910,7 @@
       const engineDot = document.getElementById("engine-dot");
       const engineStatusText = document.getElementById("engine-status-text");
 
-      const HERO_VIDEO_SPEED = 0.52;
+      const HERO_VIDEO_SPEED = 0.72;
       let savedHeroVideoTime = 0;
 
       function lockHeroVideoSpeed() {
@@ -1056,13 +1011,13 @@
           const r = e.size * (cw / 1920) * (0.85 + 0.3 * flicker);
           const eg = ctx.createRadialGradient(ex, ey, 0, ex, ey, r * 3.4);
           if (e.cyan) {
-            eg.addColorStop(0, `rgba(186, 230, 253, ${(0.88 * flicker).toFixed(3)})`);
-            eg.addColorStop(0.42, `rgba(56, 189, 248, ${(0.55 * flicker).toFixed(3)})`);
-            eg.addColorStop(1, "rgba(37, 99, 235, 0)");
+            eg.addColorStop(0, `rgba(255, 224, 148, ${(0.88 * flicker).toFixed(3)})`);
+            eg.addColorStop(0.42, `rgba(255, 118, 36, ${(0.56 * flicker).toFixed(3)})`);
+            eg.addColorStop(1, "rgba(220, 32, 16, 0)");
           } else {
-            eg.addColorStop(0, `rgba(221, 214, 254, ${(0.82 * flicker).toFixed(3)})`);
-            eg.addColorStop(0.42, `rgba(139, 92, 246, ${(0.50 * flicker).toFixed(3)})`);
-            eg.addColorStop(1, "rgba(91, 33, 182, 0)");
+            eg.addColorStop(0, `rgba(255, 152, 92, ${(0.84 * flicker).toFixed(3)})`);
+            eg.addColorStop(0.42, `rgba(232, 42, 24, ${(0.50 * flicker).toFixed(3)})`);
+            eg.addColorStop(1, "rgba(148, 16, 12, 0)");
           }
           ctx.fillStyle = eg;
           ctx.beginPath();
@@ -1113,21 +1068,21 @@
           <button class="mode-card active" data-mode="Campaign">
             <div class="mode-card-head">&gt; OP // 01  CAMPAIGN (100 LEVELS)</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/shadow_monarch.jpg" alt="Campaign" />
+              <img src="assets/hero/loading_god_warrior.jpg?v=2" alt="Campaign" />
               <div class="mode-card-desc">Sequential Level 1 → 100 · 10 Unique Realm Bosses · Acid Demons</div>
             </div>
           </button>
           <button class="mode-card" data-mode="EndlessHorde">
             <div class="mode-card-head">&gt; OP // 02  ENDLESS HORDE</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/shadow_monarch.jpg" alt="Endless Horde" />
+              <img src="assets/hero/loading_god_warrior.jpg?v=2" alt="Endless Horde" />
               <div class="mode-card-desc">Infinite Escalating Waves · Unique Realm Boss every 3rd Wave</div>
             </div>
           </button>
           <button class="mode-card" data-mode="PurgatoryBlitz">
             <div class="mode-card-head">&gt; OP // 03  PURGATORY BLITZ</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/shadow_monarch.jpg" alt="Purgatory Blitz" />
+              <img src="assets/hero/loading_god_warrior.jpg?v=2" alt="Purgatory Blitz" />
               <div class="mode-card-desc">150s Doomsday Clock (+2.5s / Kill) across unlocked levels</div>
             </div>
           </button>

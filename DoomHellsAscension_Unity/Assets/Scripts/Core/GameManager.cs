@@ -105,7 +105,7 @@ namespace DoomHellsAscension
         private RenderTexture loadingHellscapeRT;
         private int activeLoadingTheme = 0; // 0 = DOOM Slayer Citadel, 1 = Hellscape Solar Eclipse Video
         private int lastLoadingTheme = -1;
-        private const float LandingVideoSlowSpeed = 0.52f;
+        private const float LandingVideoSlowSpeed = 0.72f;
         private double savedLandingVideoTime;
         private float unityLoadingTimer;
         private float unityLoadingDuration = 2.3f;
@@ -171,7 +171,7 @@ namespace DoomHellsAscension
             iconShopTex = GenerateShopIconTexture();
             iconGearTex = GenerateGearIconTexture();
             iconPinTex = GeneratePinIconTexture();
-            landingPosterTex = Resources.Load<Texture2D>("Hero/shadow_monarch");
+            landingPosterTex = Resources.Load<Texture2D>("Hero/loading_god_warrior");
             loadingGodWarriorTex = Resources.Load<Texture2D>("Hero/loading_god_warrior");
             InitLandingVideoPlayer();
             InitMenuParticles();
@@ -385,33 +385,33 @@ namespace DoomHellsAscension
 
         private void InitLandingVideoPlayer()
         {
-            string vidUrl = Application.streamingAssetsPath + "/shadow_monarch.mp4";
-            landingVideoRT = new RenderTexture(1280, 720, 0, RenderTextureFormat.ARGB32);
-            landingVideoRT.Create();
-            landingVideoPlayer = gameObject.AddComponent<VideoPlayer>();
-            landingVideoPlayer.playOnAwake = false;
-            landingVideoPlayer.isLooping = true;
-            landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
-            landingVideoPlayer.skipOnDrop = false;
-            landingVideoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
-            landingVideoPlayer.audioOutputMode = VideoAudioOutputMode.None;
-            landingVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
-            landingVideoPlayer.targetTexture = landingVideoRT;
-            landingVideoPlayer.source = VideoSource.Url;
-            landingVideoPlayer.url = vidUrl;
-            landingVideoPlayer.errorReceived += (vp, msg) => Debug.LogWarning("[LandingVideo] Fallback to poster: " + msg);
-            landingVideoPlayer.prepareCompleted += (vp) =>
-            {
-                vp.playbackSpeed = LandingVideoSlowSpeed;
-                vp.skipOnDrop = false;
-                if (!IsRunning && unityLoadingTimer <= 0f) vp.Play();
-            };
-            landingVideoPlayer.Prepare();
-
-            // Preload Hellscape Solar Eclipse loading video for native Unity Editor / Standalone shuffle pool
-            // (On WebGL, index.html plays assets/hero/hellscape_loop.mp4 directly so we avoid double-downloading!)
+            // On WebGL, index.html renders assets/hero/abyssal_reign_landing.mp4 & hellscape_loop.mp4 directly via HTML5 <video>,
+            // avoiding duplicate downloads inside the WebGL runtime!
             if (Application.platform != RuntimePlatform.WebGLPlayer)
             {
+                string vidUrl = Application.streamingAssetsPath + "/abyssal_reign_landing.mp4";
+                landingVideoRT = new RenderTexture(1280, 720, 0, RenderTextureFormat.ARGB32);
+                landingVideoRT.Create();
+                landingVideoPlayer = gameObject.AddComponent<VideoPlayer>();
+                landingVideoPlayer.playOnAwake = false;
+                landingVideoPlayer.isLooping = true;
+                landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
+                landingVideoPlayer.skipOnDrop = false;
+                landingVideoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
+                landingVideoPlayer.audioOutputMode = VideoAudioOutputMode.None;
+                landingVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
+                landingVideoPlayer.targetTexture = landingVideoRT;
+                landingVideoPlayer.source = VideoSource.Url;
+                landingVideoPlayer.url = vidUrl;
+                landingVideoPlayer.errorReceived += (vp, msg) => Debug.LogWarning("[LandingVideo] Fallback to poster: " + msg);
+                landingVideoPlayer.prepareCompleted += (vp) =>
+                {
+                    vp.playbackSpeed = LandingVideoSlowSpeed;
+                    vp.skipOnDrop = false;
+                    if (!IsRunning && unityLoadingTimer <= 0f) vp.Play();
+                };
+                landingVideoPlayer.Prepare();
+
                 loadingHellscapeRT = new RenderTexture(1280, 720, 0, RenderTextureFormat.ARGB32);
                 loadingHellscapeRT.Create();
                 loadingHellscapePlayer = gameObject.AddComponent<VideoPlayer>();
@@ -1928,7 +1928,7 @@ namespace DoomHellsAscension
                 GUI.DrawTexture(new Rect(0, 0, sw, sh), blackHeroBgTex, ScaleMode.ScaleAndCrop);
             }
 
-            // Subtle Shadow-Blue & Arcane Violet Drifting Aura Particles matching the calm slow-motion wallpaper
+            // Subtle Molten Gold & Volcanic Crimson Embers matching the Abyssal Reign landing video
             if (menuEmbers != null && softGlowTex != null)
             {
                 for (int i = 0; i < menuEmbers.Length; i++)
@@ -1941,39 +1941,17 @@ namespace DoomHellsAscension
                     float flicker = 0.48f + 0.52f * Mathf.Sin(t * 2.2f + em.phase);
                     float esz = em.size * (0.75f + 0.30f * flicker);
                     GUI.color = (i % 3 == 0)
-                        ? new Color(0.32f, 0.72f, 1.0f, em.alpha * 0.65f * flicker)
-                        : new Color(0.46f, 0.36f, 1.0f, em.alpha * 0.55f * flicker);
+                        ? new Color(1.0f, 0.72f, 0.28f, em.alpha * 0.65f * flicker)
+                        : new Color(0.96f, 0.28f, 0.14f, em.alpha * 0.58f * flicker);
                     GUI.DrawTexture(new Rect(ex - esz, ey - esz, esz * 2f, esz * 2f), softGlowTex);
                 }
             }
             GUI.color = savedCol;
 
-            // 1. Subtle Dark Translucent Top Header Strip
-            DrawRect(new Rect(0, 0, sw, 36), new Color(0.03f, 0.05f, 0.10f, 0.54f));
-            DrawRect(new Rect(0, 35, sw, 1), new Color(0.30f, 0.62f, 1.0f, 0.32f));
-            GUI.Label(new Rect(20, 7, sw - 40, 22), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC FPS", smallMonoStyle);
-
-            // 2. CHISELED GLOWING BLOOD-RED "DOOM HELL'S ASCENSION" TITLE IN UPPER-CENTER SKY!
-            float titleY = 44f;
-            float subY = titleY + 84f;
-            float emberPulse = 0.78f + 0.22f * Mathf.Sin(t * 2.6f);
-
-            if (softGlowTex != null)
-            {
-                GUI.color = new Color(0.86f, 0.14f, 0.14f, 0.30f * emberPulse);
-                GUI.DrawTexture(new Rect(sw * 0.5f - 360f, titleY - 18f, 720f, 165f), softGlowTex);
-            }
-
-            GUI.color = Color.white;
-            GUI.Label(new Rect(4f, titleY + 6f, sw, 92f), "D  O  O  M", titleShadowStyle);
-            GUI.Label(new Rect(-2f, titleY + 2f, sw, 92f), "D  O  O  M", titleCrimsonGlowStyle);
-            GUI.Label(new Rect(2f, titleY - 2f, sw, 92f), "D  O  O  M", titleCrimsonGlowStyle);
-            GUI.Label(new Rect(-1f, titleY - 1f, sw, 92f), "D  O  O  M", titleCrimsonRimStyle);
-            GUI.Label(new Rect(0f, titleY, sw, 92f), "D  O  O  M", titleCrimsonStyle);
-
-            GUI.Label(new Rect(2f, subY + 2f, sw, 32f), "H E L L ' S   A S C E N S I O N", subtitleShadowStyle);
-            GUI.Label(new Rect(0f, subY, sw, 32f), "H E L L ' S   A S C E N S I O N", subtitleCrimsonStyle);
-            DrawRect(new Rect(sw * 0.5f - 230f, subY + 36f, 460f, 2f), new Color(0.92f, 0.22f, 0.20f, 0.85f * emberPulse));
+            // 1. Subtle Dark Translucent Top Header Strip (video itself already renders the blazing title on upper-left!)
+            DrawRect(new Rect(0, 0, sw, 34), new Color(0.05f, 0.015f, 0.018f, 0.52f));
+            DrawRect(new Rect(0, 33, sw, 1), new Color(0.92f, 0.24f, 0.16f, 0.38f));
+            GUI.Label(new Rect(20, 6, sw - 40, 22), "DOOM: HELL'S ASCENSION  //  UNITY 6 DEMONIC FPS", smallMonoStyle);
 
             // =========================================================================
             // 3. COMPACT VERTICAL 3-BUTTON RED MENU STACK (Play / Armory Shop / Settings)
