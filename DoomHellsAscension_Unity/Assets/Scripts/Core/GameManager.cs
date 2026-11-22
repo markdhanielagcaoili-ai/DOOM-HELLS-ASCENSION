@@ -101,6 +101,8 @@ namespace DoomHellsAscension
         private Texture2D loadingGodWarriorTex;
         private VideoPlayer landingVideoPlayer;
         private RenderTexture landingVideoRT;
+        private const float LandingVideoSlowSpeed = 0.52f;
+        private double savedLandingVideoTime;
         private float unityLoadingTimer;
         private float unityLoadingDuration = 2.3f;
         private string unityLoadingHeadline = "ENTERING CITADEL REALM";
@@ -204,7 +206,12 @@ namespace DoomHellsAscension
                     else
                     {
                         LockCursor(false);
-                        if (landingVideoPlayer != null && landingVideoPlayer.isPrepared) landingVideoPlayer.Play();
+                        if (landingVideoPlayer != null && landingVideoPlayer.isPrepared)
+                        {
+                            landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
+                            landingVideoPlayer.skipOnDrop = false;
+                            landingVideoPlayer.Play();
+                        }
                     }
                 }
                 return;
@@ -351,14 +358,49 @@ namespace DoomHellsAscension
             landingVideoPlayer = gameObject.AddComponent<VideoPlayer>();
             landingVideoPlayer.playOnAwake = false;
             landingVideoPlayer.isLooping = true;
+            landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
+            landingVideoPlayer.skipOnDrop = false;
+            landingVideoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
             landingVideoPlayer.audioOutputMode = VideoAudioOutputMode.None;
             landingVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
             landingVideoPlayer.targetTexture = landingVideoRT;
             landingVideoPlayer.source = VideoSource.Url;
             landingVideoPlayer.url = vidUrl;
             landingVideoPlayer.errorReceived += (vp, msg) => Debug.LogWarning("[LandingVideo] Fallback to poster: " + msg);
-            landingVideoPlayer.prepareCompleted += (vp) => { if (!IsRunning) vp.Play(); };
+            landingVideoPlayer.prepareCompleted += (vp) =>
+            {
+                vp.playbackSpeed = LandingVideoSlowSpeed;
+                vp.skipOnDrop = false;
+                if (!IsRunning && unityLoadingTimer <= 0f) vp.Play();
+            };
             landingVideoPlayer.Prepare();
+        }
+
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            HandleLandingVideoVisibility(hasFocus);
+        }
+
+        private void OnApplicationPause(bool paused)
+        {
+            HandleLandingVideoVisibility(!paused);
+        }
+
+        private void HandleLandingVideoVisibility(bool visible)
+        {
+            if (landingVideoPlayer == null || !landingVideoPlayer.isPrepared) return;
+            if (!visible)
+            {
+                savedLandingVideoTime = landingVideoPlayer.time;
+                if (landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
+            }
+            else if (!IsRunning && unityLoadingTimer <= 0f)
+            {
+                landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
+                landingVideoPlayer.skipOnDrop = false;
+                if (savedLandingVideoTime > 0.01) landingVideoPlayer.time = savedLandingVideoTime;
+                landingVideoPlayer.Play();
+            }
         }
 
         private void OnDestroy()
@@ -1803,10 +1845,13 @@ namespace DoomHellsAscension
             // Pitch-black shadow canvas base
             DrawRect(new Rect(0, 0, sw, sh), new Color(0.014f, 0.018f, 0.032f, 1f));
 
-            // LIVE LOOPING SHADOW ARMY WALLPAPER VIDEO (with instant zero-flash poster fallback!)
-            if (landingVideoPlayer != null && landingVideoPlayer.isPrepared && !landingVideoPlayer.isPlaying)
+            // LIVE LOOPING SHADOW ARMY WALLPAPER VIDEO (locked slow-motion, zero tab-switch speedup!)
+            if (landingVideoPlayer != null && landingVideoPlayer.isPrepared)
             {
-                landingVideoPlayer.Play();
+                if (Mathf.Abs(landingVideoPlayer.playbackSpeed - LandingVideoSlowSpeed) > 0.01f)
+                    landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
+                if (Application.isFocused && !landingVideoPlayer.isPlaying)
+                    landingVideoPlayer.Play();
             }
 
             Texture bgTex = (landingVideoPlayer != null && landingVideoPlayer.isPlaying && landingVideoRT != null)
@@ -1823,17 +1868,17 @@ namespace DoomHellsAscension
                 GUI.DrawTexture(new Rect(0, 0, sw, sh), blackHeroBgTex, ScaleMode.ScaleAndCrop);
             }
 
-            // Subtle Shadow-Blue & Arcane Violet Drifting Aura Particles matching the live wallpaper
+            // Subtle Shadow-Blue & Arcane Violet Drifting Aura Particles matching the calm slow-motion wallpaper
             if (menuEmbers != null && softGlowTex != null)
             {
                 for (int i = 0; i < menuEmbers.Length; i++)
                 {
                     MenuParticle em = menuEmbers[i];
-                    float ex = (em.x + t * em.vx * 0.65f + Mathf.Sin(t * 1.6f + em.phase) * 22f) % (sw + 40f);
+                    float ex = (em.x + t * em.vx * 0.30f + Mathf.Sin(t * 0.9f + em.phase) * 14f) % (sw + 40f);
                     if (ex < -20f) ex += sw + 40f;
-                    float ey = (em.y + t * em.vy * 0.72f) % (sh + 40f);
+                    float ey = (em.y + t * em.vy * 0.34f) % (sh + 40f);
                     if (ey < -20f) ey += sh + 40f;
-                    float flicker = 0.45f + 0.55f * Mathf.Sin(t * 4.2f + em.phase);
+                    float flicker = 0.48f + 0.52f * Mathf.Sin(t * 2.2f + em.phase);
                     float esz = em.size * (0.75f + 0.30f * flicker);
                     GUI.color = (i % 3 == 0)
                         ? new Color(0.32f, 0.72f, 1.0f, em.alpha * 0.65f * flicker)
