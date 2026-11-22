@@ -2754,21 +2754,25 @@ namespace DoomHellsAscension
                 GUI.DrawTexture(new Rect((sw - drawW) * 0.5f, (sh - drawH) * 0.5f, drawW, drawH), loadingGodWarriorTex, ScaleMode.StretchToFill);
             }
 
-            // 2. Pulsing Blood Eclipse Corona, God-Warrior Celestial Halo & Drifting Crimson Leaves/Embers
+            // 2. Pulsing Crucible Blade, Hell Citadel Magma Furnace, Ascension Sky Beam & Drifting Crimson Embers/Leaves
             if (softGlowTex != null)
             {
                 float pulse = 0.5f + 0.5f * Mathf.Sin(t * 2.8f);
-                GUI.color = new Color(0.98f, 0.22f, 0.14f, 0.22f + 0.12f * pulse);
-                GUI.DrawTexture(new Rect(sw * 0.586f - 170f, sh * 0.452f - 165f, 340f, 330f), softGlowTex);
+                float beamPulse = 0.5f + 0.5f * Mathf.Sin(t * 2.2f + 1.0f);
 
-                GUI.color = new Color(1.0f, 0.78f, 0.34f, 0.24f + 0.12f * Mathf.Sin(t * 3.4f + 1f));
-                GUI.DrawTexture(new Rect(sw * 0.240f - 105f, sh * 0.411f - 105f, 210f, 210f), softGlowTex);
+                // Crucible Blade crimson glow
+                GUI.color = new Color(1.0f, 0.30f, 0.16f, 0.26f + 0.14f * pulse);
+                GUI.DrawTexture(new Rect(sw * 0.605f - 120f, sh * 0.625f - 120f, 240f, 240f), softGlowTex);
 
-                // Shimmering lake reflection pulse
-                GUI.color = new Color(0.96f, 0.20f, 0.14f, 0.16f + 0.08f * Mathf.Sin(t * 4.2f));
-                GUI.DrawTexture(new Rect(sw * 0.56f + Mathf.Sin(t * 2.5f) * 12f, sh * 0.76f, 160f, sh * 0.22f), softGlowTex);
+                // Citadel Magma Archway glow
+                GUI.color = new Color(0.98f, 0.22f, 0.14f, 0.22f + 0.11f * beamPulse);
+                GUI.DrawTexture(new Rect(sw * 0.735f - 140f, sh * 0.595f - 140f, 280f, 280f), softGlowTex);
 
-                // Drifting Crimson Petals / Embers sweeping from left gnarled demon-tree across the Blood Eclipse!
+                // Citadel Ascension Sky Beam shimmer
+                GUI.color = new Color(0.65f, 0.88f, 1.0f, 0.20f + 0.10f * beamPulse);
+                GUI.DrawTexture(new Rect(sw * 0.742f - 90f, sh * 0.175f - 110f, 180f, 220f), softGlowTex);
+
+                // Drifting Crimson Petals / Embers sweeping across the demonic citadel sky!
                 if (menuEmbers != null)
                 {
                     for (int i = 0; i < menuEmbers.Length; i++)

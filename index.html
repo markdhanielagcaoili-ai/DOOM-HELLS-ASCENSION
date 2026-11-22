@@ -1318,7 +1318,7 @@
 
       const loadBgImg = new Image();
       loadBgImg.decoding = "async";
-      loadBgImg.src = "assets/hero/loading_god_warrior.jpg";
+      loadBgImg.src = "assets/hero/loading_god_warrior.jpg?v=2";
 
       let lcw = 1920, lch = 1080;
       function resizeLoadCanvas() {
@@ -1410,47 +1410,54 @@
 
           lctx.drawImage(loadBgImg, dx, dy, drawW, drawH);
 
-          // 2. LIVE RIPPLING BLOOD-MOON LAKE REFLECTION (Exact wavy water motion from reference video!)
-          const lakeStartY = Math.floor(lch * 0.77);
-          const lakeH = lch - lakeStartY;
-          const sliceH = Math.max(2, Math.floor(lch / 220));
-          for (let sy = 0; sy < lakeH; sy += sliceH) {
-            const norm = sy / Math.max(1, lakeH);
-            const waveX = Math.sin(elapsed * 2.6 + sy * 0.14) * (2.5 + norm * 8.5) * (lcw / 1920);
-            const srcY = Math.floor(((lakeStartY + sy - dy) / drawH) * loadBgImg.naturalHeight);
-            const srcSliceH = Math.max(1, Math.ceil((sliceH / drawH) * loadBgImg.naturalHeight));
-            if (srcY >= 0 && srcY + srcSliceH <= loadBgImg.naturalHeight) {
-              lctx.drawImage(
-                loadBgImg,
-                0, srcY, loadBgImg.naturalWidth, srcSliceH,
-                dx + waveX, lakeStartY + sy, drawW, sliceH + 1
-              );
-            }
-          }
-
-          // 3. Pulsing Blood Eclipse Corona + God-Warrior Celestial Halo Radiance
+          // 2. Pulsing Crucible Blade, Hell Citadel Furnace, Ascension Sky Beam & Slayer Visor Glows
           lctx.save();
           lctx.globalCompositeOperation = "screen";
-          const eclipsePulse = 0.5 + 0.5 * Math.sin(elapsed * 2.4);
-          const moonX = dx + drawW * 0.586;
-          const moonY = dy + drawH * 0.452;
-          const moonR = drawW * 0.14;
-          const mg = lctx.createRadialGradient(moonX, moonY, moonR * 0.15, moonX, moonY, moonR);
-          mg.addColorStop(0, `rgba(255, 68, 28, ${(0.24 + 0.14 * eclipsePulse).toFixed(3)})`);
-          mg.addColorStop(0.5, `rgba(210, 24, 16, ${(0.11 + 0.06 * eclipsePulse).toFixed(3)})`);
-          mg.addColorStop(1, "rgba(0, 0, 0, 0)");
-          lctx.fillStyle = mg;
-          lctx.fillRect(moonX - moonR, moonY - moonR, moonR * 2, moonR * 2);
+          const bladePulse = 0.5 + 0.5 * Math.sin(elapsed * 3.0);
+          const beamPulse = 0.5 + 0.5 * Math.sin(elapsed * 2.2 + 1.0);
 
-          const haloX = dx + drawW * 0.240;
-          const haloY = dy + drawH * 0.411;
-          const haloR = drawW * 0.095;
-          const hg = lctx.createRadialGradient(haloX, haloY, haloR * 0.08, haloX, haloY, haloR);
-          hg.addColorStop(0, `rgba(255, 224, 130, ${(0.28 + 0.14 * Math.sin(elapsed * 3.1 + 1.2)).toFixed(3)})`);
-          hg.addColorStop(0.5, `rgba(235, 78, 28, ${(0.12 + 0.06 * eclipsePulse).toFixed(3)})`);
-          hg.addColorStop(1, "rgba(0, 0, 0, 0)");
-          lctx.fillStyle = hg;
-          lctx.fillRect(haloX - haloR, haloY - haloR, haloR * 2, haloR * 2);
+          // Glowing Crimson Crucible Blade radiance
+          const bladeX = dx + drawW * 0.605;
+          const bladeY = dy + drawH * 0.625;
+          const bladeR = drawW * 0.105;
+          const bg1 = lctx.createRadialGradient(bladeX, bladeY, bladeR * 0.08, bladeX, bladeY, bladeR);
+          bg1.addColorStop(0, `rgba(255, 92, 42, ${(0.34 + 0.16 * bladePulse).toFixed(3)})`);
+          bg1.addColorStop(0.5, `rgba(220, 28, 22, ${(0.14 + 0.08 * bladePulse).toFixed(3)})`);
+          bg1.addColorStop(1, "rgba(0, 0, 0, 0)");
+          lctx.fillStyle = bg1;
+          lctx.fillRect(bladeX - bladeR, bladeY - bladeR, bladeR * 2, bladeR * 2);
+
+          // Hell Citadel Crimson Furnace & Magma Archway pulse
+          const citX = dx + drawW * 0.735;
+          const citY = dy + drawH * 0.595;
+          const citR = drawW * 0.125;
+          const cg = lctx.createRadialGradient(citX, citY, citR * 0.1, citX, citY, citR);
+          cg.addColorStop(0, `rgba(255, 68, 28, ${(0.24 + 0.13 * beamPulse).toFixed(3)})`);
+          cg.addColorStop(0.5, `rgba(195, 22, 18, ${(0.10 + 0.06 * beamPulse).toFixed(3)})`);
+          cg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          lctx.fillStyle = cg;
+          lctx.fillRect(citX - citR, citY - citR, citR * 2, citR * 2);
+
+          // Soaring Citadel Ascension Sky Beam shimmer
+          const skyX = dx + drawW * 0.742;
+          const skyY = dy + drawH * 0.175;
+          const skyR = drawW * 0.095;
+          const sg = lctx.createRadialGradient(skyX, skyY, skyR * 0.06, skyX, skyY, skyR);
+          sg.addColorStop(0, `rgba(186, 232, 255, ${(0.26 + 0.14 * beamPulse).toFixed(3)})`);
+          sg.addColorStop(0.5, `rgba(96, 175, 255, ${(0.10 + 0.05 * beamPulse).toFixed(3)})`);
+          sg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          lctx.fillStyle = sg;
+          lctx.fillRect(skyX - skyR, skyY - skyR, skyR * 2, skyR * 2);
+
+          // DOOM Slayer Visor subtle cyan-blue glint
+          const visX = dx + drawW * 0.512;
+          const visY = dy + drawH * 0.345;
+          const visR = drawW * 0.036;
+          const vg = lctx.createRadialGradient(visX, visY, visR * 0.05, visX, visY, visR);
+          vg.addColorStop(0, `rgba(120, 240, 255, ${(0.22 + 0.10 * bladePulse).toFixed(3)})`);
+          vg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          lctx.fillStyle = vg;
+          lctx.fillRect(visX - visR, visY - visR, visR * 2, visR * 2);
           lctx.restore();
         }
 
