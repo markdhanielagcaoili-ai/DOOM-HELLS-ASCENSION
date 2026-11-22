@@ -180,28 +180,28 @@ namespace DoomHellsAscension
                 new MeleeDef
                 {
                     id = 0, name = "REAVER KARAMBIT",
-                    desc = "Curved obsidian claw-blade with demonic mist edge. Ultra-fast Valorant karambit ring-slash ([V]).",
+                    desc = "Curved forged-steel & obsidian claw knife with finger-ring spin draw ([0]), LMB slash combo, RMB heavy stab, and [Y] spin.",
                     damage = 75f, range = 3.4f, cooldown = 0.38f, bladeColor = new Color(0.72f, 0.25f, 1f),
                     owned = true, cost = 0
                 },
                 new MeleeDef
                 {
                     id = 1, name = "ONI BLOOD-KATANA",
-                    desc = "Superheated demonic katana that cleaves multiple hostiles in a wide 4.6m crimson energy arc ([V]).",
+                    desc = "Curved superheated demonic katana with unsheathe draw ([0]) that cleaves multiple hostiles in a wide 4.6m crimson arc.",
                     damage = 145f, range = 4.6f, cooldown = 0.46f, bladeColor = new Color(1f, 0.16f, 0.12f),
                     owned = false, cost = 250
                 },
                 new MeleeDef
                 {
                     id = 2, name = "RIPPER CHAINSWORD",
-                    desc = "Motorized demonic chainsaw blade. Shreds armor and leeches +20 Vitality HP per hit ([V]).",
+                    desc = "Motorized demonic chainsaw blade ([0]) with live spinning saw teeth. Shreds armor and leeches +20 Vitality HP per hit.",
                     damage = 195f, range = 4.0f, cooldown = 0.52f, lifesteal = 20f, bladeColor = new Color(1f, 0.67f, 0.13f),
                     owned = false, cost = 400
                 },
                 new MeleeDef
                 {
                     id = 3, name = "HELL-BREAKER WARHAMMER",
-                    desc = "Colossal obsidian maul. Slams the ground to unleash a 7.5m 360-degree seismic shockwave ([V]).",
+                    desc = "Colossal obsidian-steel warhammer ([0]). Slams the ground to unleash a 7.5m 360-degree seismic shockwave.",
                     damage = 270f, range = 7.5f, cooldown = 0.72f, isShockwave = true, bladeColor = new Color(1f, 0.82f, 0.30f),
                     owned = false, cost = 550
                 }

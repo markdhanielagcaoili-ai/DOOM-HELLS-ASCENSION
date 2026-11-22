@@ -35,8 +35,9 @@ namespace DoomHellsAscension
         public int weaponIndex = 0;
         public int meleeIndex = 0;
 
+        public bool IsMeleeEquipped { get; private set; }
         public bool IsADS { get; private set; }
-        public bool IsSniperScoped => IsADS && weapons != null && weaponIndex < weapons.Count && weapons[weaponIndex].isSniper && !IsReloading;
+        public bool IsSniperScoped => !IsMeleeEquipped && IsADS && weapons != null && weaponIndex < weapons.Count && weapons[weaponIndex].isSniper && !IsReloading;
         public bool IsReloading { get; private set; }
         public float DashCooldownRatio => Mathf.Clamp01(1f - dashCooldown / 1.4f);
         public bool DashReady => dashCooldown <= 0f;
@@ -126,10 +127,32 @@ namespace DoomHellsAscension
                 return;
             }
             weaponIndex = idx;
+            IsMeleeEquipped = false;
             IsReloading = false;
             odinSpinup = 0f;
             if (viewmodel != null) viewmodel.SetActiveWeaponModel(idx);
             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayEquip();
+        }
+
+        public void SelectMelee()
+        {
+            if (melees == null || melees.Count == 0) return;
+            IsMeleeEquipped = true;
+            IsReloading = false;
+            IsADS = false;
+            odinSpinup = 0f;
+            MeleeDef m = melees[meleeIndex];
+            if (viewmodel != null) viewmodel.SetMeleeMode(true, m.id, m.bladeColor);
+            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayMeleeEquip(m.id);
+        }
+
+        public void EquipMeleeFromShop(int idx)
+        {
+            if (melees == null || idx < 0 || idx >= melees.Count) return;
+            meleeIndex = idx;
+            MeleeDef m = melees[meleeIndex];
+            if (viewmodel != null) viewmodel.SetActiveMeleeVariant(m.id, m.bladeColor);
+            SelectMelee();
         }
 
         private void Update()
@@ -250,7 +273,8 @@ namespace DoomHellsAscension
                 float h = Input.GetAxisRaw("Horizontal");
                 float v = Input.GetAxisRaw("Vertical");
                 Vector3 dir = (transform.forward * v + transform.right * h).normalized;
-                float speed = (GameManager.Instance.OverdriveActive ? 13.5f : 10.2f) * (IsADS ? 0.65f : 1.0f);
+                float meleeSpeedBoost = IsMeleeEquipped ? 1.12f : 1.0f;
+                float speed = (GameManager.Instance.OverdriveActive ? 13.5f : 10.2f) * (IsADS ? 0.65f : meleeSpeedBoost);
                 horizMove = dir * speed;
                 if (dir.sqrMagnitude > 0.01f)
                 {
@@ -278,26 +302,39 @@ namespace DoomHellsAscension
             if (Input.GetKeyDown(KeyCode.Alpha3)) SelectWeapon(2);
             if (Input.GetKeyDown(KeyCode.Alpha4)) SelectWeapon(3);
             if (Input.GetKeyDown(KeyCode.Alpha5)) SelectWeapon(4);
+            if (Input.GetKeyDown(KeyCode.Alpha0) || Input.GetKeyDown(KeyCode.Keypad0)) SelectMelee();
 
             float scroll = Input.GetAxis("Mouse ScrollWheel");
             if (Mathf.Abs(scroll) > 0.05f)
             {
+                int totalSlots = weapons.Count + 1; // 0..4 firearms + slot 5 = Melee ([0])
+                int curSlot = IsMeleeEquipped ? weapons.Count : weaponIndex;
                 int dir = scroll > 0 ? 1 : -1;
-                SelectWeapon((weaponIndex + dir + weapons.Count) % weapons.Count);
+                int nextSlot = (curSlot + dir + totalSlots) % totalSlots;
+                if (nextSlot == weapons.Count) SelectMelee();
+                else SelectWeapon(nextSlot);
             }
 
-            IsADS = Input.GetMouseButton(1) && !IsReloading;
+            IsADS = !IsMeleeEquipped && Input.GetMouseButton(1) && !IsReloading;
             if (IsADS != prevADS)
             {
                 prevADS = IsADS;
                 if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayADS(IsADS);
             }
 
-            if (Input.GetKeyDown(KeyCode.R)) StartReload();
+            if (Input.GetKeyDown(KeyCode.R) && !IsMeleeEquipped) StartReload();
             if (Input.GetKeyDown(KeyCode.Y) && viewmodel != null && !IsReloading) viewmodel.TriggerInspect();
-            if (Input.GetKeyDown(KeyCode.V)) TriggerMeleeAttack();
+            if (Input.GetKeyDown(KeyCode.V)) TriggerMeleeAttack(false);
             if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.E))
                 GameManager.Instance.TriggerAscensionOverdrive();
+
+            if (IsMeleeEquipped)
+            {
+                odinSpinup = Mathf.Max(0f, odinSpinup - dt * 1.8f);
+                if (Input.GetMouseButtonDown(0)) TriggerMeleeAttack(false);
+                else if (Input.GetMouseButtonDown(1)) TriggerMeleeAttack(true);
+                return;
+            }
 
             WeaponDef w = weapons[weaponIndex];
             bool wantsFire = w.isAuto ? Input.GetMouseButton(0) : Input.GetMouseButtonDown(0);
@@ -420,13 +457,16 @@ namespace DoomHellsAscension
             }
         }
 
-        public void TriggerMeleeAttack()
+        public void TriggerMeleeAttack(bool isHeavy = false)
         {
             if (meleeCooldown > 0f) return;
             MeleeDef m = melees[meleeIndex];
-            meleeCooldown = m.cooldown;
-            if (viewmodel != null) viewmodel.TriggerMeleeSwing(m.bladeColor);
+            meleeCooldown = isHeavy ? (m.cooldown * 1.38f) : m.cooldown;
+            if (viewmodel != null) viewmodel.TriggerMeleeSwing(m.bladeColor, m.id, isHeavy);
             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayMelee(m.id);
+
+            float attackRange = isHeavy ? (m.range * 1.15f) : m.range;
+            float heavyMult = isHeavy ? 1.45f : 1.0f;
 
             int hits = 0;
             foreach (var enemy in GameManager.Instance.ActiveEnemies.ToArray())
@@ -435,7 +475,7 @@ namespace DoomHellsAscension
                 Vector3 toE = enemy.transform.position - transform.position;
                 toE.y = 0f;
                 float dist = toE.magnitude;
-                if (dist > m.range) continue;
+                if (dist > attackRange) continue;
 
                 if (!m.isShockwave)
                 {
@@ -444,9 +484,9 @@ namespace DoomHellsAscension
                 }
 
                 hits++;
-                float dmg = m.damage * (GameManager.Instance.OverdriveActive ? 2.0f : 1.0f);
-                enemy.TakeDamage(dmg, 14f, false);
-                GameManager.Instance.SpawnBurstParticles(enemy.transform.position + Vector3.up * 1.2f, m.bladeColor, 10);
+                float dmg = m.damage * heavyMult * (GameManager.Instance.OverdriveActive ? 2.0f : 1.0f);
+                enemy.TakeDamage(dmg, 14f, isHeavy);
+                GameManager.Instance.SpawnBurstParticles(enemy.transform.position + Vector3.up * 1.2f, m.bladeColor, isHeavy ? 16 : 10);
                 if (m.lifesteal > 0f) hp = Mathf.Min(maxHp, hp + Mathf.RoundToInt(m.lifesteal));
             }
 
@@ -457,9 +497,9 @@ namespace DoomHellsAscension
             }
             else if (hits > 0)
             {
-                HitmarkerTimer = 0.14f;
-                LastHitWasHeadshot = false;
-                GameManager.Instance.AddKillfeed($"{m.name} CLEAVED {hits} HOSTILE(S)!");
+                HitmarkerTimer = isHeavy ? 0.18f : 0.14f;
+                LastHitWasHeadshot = isHeavy;
+                GameManager.Instance.AddKillfeed($"{m.name} {(isHeavy ? "HEAVY STABBED" : "SLASHED")} {hits} HOSTILE(S)!");
             }
         }
 

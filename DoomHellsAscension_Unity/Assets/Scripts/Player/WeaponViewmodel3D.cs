@@ -37,11 +37,39 @@ namespace DoomHellsAscension
         private ParticleSystem reaverMuzzleSmokePS;
         private ParticleSystem reaverReloadAuraPS;
 
+        // Dedicated Articulated 3D Melee Hand + Realistic Knife/Blade System ([0] Equip!)
+        private GameObject[] meleeModels = new GameObject[4];
+        private Transform meleeRightArmPivot;
+        private Transform meleeLeftArmPivot;
+        private Transform meleeWeaponSocket;
+        private Transform karambitRingPivot;
+        private Transform chainswordTeethRoot;
+        private GameObject meleeSlashArcObj;
+        private Material meleeSlashArcMat;
+        private Material karambitRuneMat;
+        private ParticleSystem karambitMistPS;
+
+        private bool isMeleeEquipped;
+        private int activeMeleeId = 0;
+        private float meleeEquipTimer;
+        private float meleeEquipDuration = 0.72f;
+        private float meleeInspectTimer;
+        private float meleeInspectDuration = 2.6f;
+        private float meleeSwingDuration = 0.36f;
+        private int meleeComboIndex = 0;
+        private bool meleeLastHeavy = false;
+        private bool quickMeleeActive = false;
+
         // Base poses
         private readonly Vector3 hipPos = new Vector3(0.245f, -0.225f, 0.455f);
         private readonly Vector3 hipEuler = new Vector3(1.2f, -3.8f, 0.8f);
         private readonly Vector3 adsPos = new Vector3(0.0f, -0.146f, 0.355f);
         private readonly Vector3 adsEuler = Vector3.zero;
+        private readonly Vector3 meleeRigPos = new Vector3(0.0f, -0.19f, 0.44f);
+        private readonly Vector3 meleeRightHandBasePos = new Vector3(0.23f, -0.045f, 0.02f);
+        private readonly Vector3 meleeRightHandBaseEuler = new Vector3(10f, -18f, 12f);
+        private readonly Vector3 meleeLeftHandBasePos = new Vector3(-0.26f, -0.11f, -0.02f);
+        private readonly Vector3 meleeLeftHandBaseEuler = new Vector3(18f, 24f, -18f);
 
         private readonly Vector3 leftHandBasePos = new Vector3(-0.036f, -0.044f, 0.235f);
         private readonly Vector3 leftHandBaseEuler = Vector3.zero;
@@ -98,6 +126,15 @@ namespace DoomHellsAscension
                 DestroySafe(weaponRig.gameObject);
                 weaponRig = null;
             }
+            if (meleeGroup != null)
+            {
+                DestroySafe(meleeGroup.gameObject);
+                meleeGroup = null;
+            }
+            Transform staleRig = transform.Find("WeaponRig");
+            if (staleRig != null) DestroySafe(staleRig.gameObject);
+            Transform staleMelee = transform.Find("MeleeViewGroup");
+            if (staleMelee != null) DestroySafe(staleMelee.gameObject);
 
             // Strip any legacy MuzzleLight gizmo objects if present
             if (muzzleLight != null)
@@ -288,17 +325,258 @@ namespace DoomHellsAscension
             muzzleFlashObj.SetActive(false);
             muzzleLight = null;
 
-            // 3D Melee Group (Reaver Karambit / Oni Katana / Ripper Chainsword / Warhammer)
-            GameObject meleeGo = new GameObject("MeleeViewGroup");
-            meleeGo.transform.SetParent(weaponRig, false);
-            meleeGroup = meleeGo.transform;
-            meleeBladeMat = CitadelWorldBuilder.MakeEmissiveMat(new Color(0.72f, 0.25f, 1f), 1.6f);
-            Part(meleeGroup, "MeleeRing", PrimitiveType.Cylinder, new Vector3(0, -0.07f, 0), new Vector3(0.042f, 0.012f, 0.042f), obsidianMetal).transform.localRotation = Quaternion.Euler(0, 0, 90f);
-            Part(meleeGroup, "MeleeHilt", PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.030f, 0.075f, 0.030f), darkPolymer);
-            Part(meleeGroup, "MeleeBlade", PrimitiveType.Cube, new Vector3(0f, 0.28f, 0.03f), new Vector3(0.014f, 0.50f, 0.058f), meleeBladeMat).transform.localRotation = Quaternion.Euler(14f, 0, 0);
-            meleeGroup.gameObject.SetActive(false);
+            // =====================================================================
+            // ULTRA-REALISTIC 3D MELEE WEAPONS ATTACHED TO ARTICULATED GLOVED HANDS ([0])
+            // =====================================================================
+            BuildArticulatedMeleeSystem(
+                reaverIndigoPlate, reaverDarkChassis, reaverSilverFiligree,
+                reaverSteelDark, reaverCoreGlowMat, gloveArmorMat,
+                gloveDarkMat, cuffAccentMat, brassGold
+            );
 
             SetActiveWeaponModel(activeWeaponId);
+        }
+
+        private void BuildArticulatedMeleeSystem(
+            Material indigoPlate, Material darkChassis, Material silverFiligree,
+            Material steelDark, Material violetGlow, Material gloveArmorMat,
+            Material gloveDarkMat, Material cuffAccentMat, Material brassGold)
+        {
+            GameObject meleeGo = new GameObject("MeleeViewGroup");
+            meleeGo.transform.SetParent(transform, false); // Mounted cleanly to Main Camera so Melee Rig moves independently of gun recoil!
+            meleeGo.transform.localPosition = meleeRigPos;
+            meleeGo.transform.localRotation = Quaternion.identity;
+            meleeGroup = meleeGo.transform;
+
+            meleeBladeMat = CitadelWorldBuilder.MakeEmissiveMat(new Color(0.72f, 0.28f, 1.0f), 2.4f);
+            karambitRuneMat = CitadelWorldBuilder.MakeEmissiveMat(new Color(0.68f, 0.26f, 1.0f), 2.8f);
+            Material crimsonGlow = CitadelWorldBuilder.MakeEmissiveMat(new Color(1.0f, 0.14f, 0.12f), 2.8f);
+            Material emberGlow = CitadelWorldBuilder.MakeEmissiveMat(new Color(1.0f, 0.58f, 0.10f), 2.8f);
+            Material goldGlow = CitadelWorldBuilder.MakeEmissiveMat(new Color(1.0f, 0.82f, 0.24f), 2.8f);
+            Material polishedBladeSteel = CitadelWorldBuilder.MakeStdMat(new Color(0.86f, 0.89f, 0.96f), 0.96f, 0.91f, cachedReaverSilverTex);
+            Material darkBladeSpine = CitadelWorldBuilder.MakeStdMat(new Color(0.14f, 0.11f, 0.22f), 0.72f, 0.72f, cachedReaverBodyTex);
+
+            Mesh finMesh = CreateGothicFinMesh();
+            Mesh bevelMesh = CreateBeveledRailMesh();
+            Mesh karambitBladeMesh = CreateKarambitBladeMesh();
+            Mesh katanaBladeMesh = CreateKatanaBladeMesh();
+            Mesh fingerRingMesh = CreateTorusRingMesh(0.0185f, 0.0046f, 20, 10);
+
+            // -----------------------------------------------------------------
+            // 1. ARTICULATED RIGHT GLOVED COMBAT HAND (Holds & grips all 4 melee weapons!)
+            // -----------------------------------------------------------------
+            GameObject rArmGo = new GameObject("MeleeRightArmPivot");
+            rArmGo.transform.SetParent(meleeGroup, false);
+            rArmGo.transform.localPosition = meleeRightHandBasePos;
+            rArmGo.transform.localEulerAngles = meleeRightHandBaseEuler;
+            meleeRightArmPivot = rArmGo.transform;
+
+            // Sculpted Right Forearm + Wrist Cuff + Armored Tactical Palm
+            Part(meleeRightArmPivot, "MeleeR_Forearm", PrimitiveType.Cylinder, new Vector3(0.055f, -0.105f, -0.175f), new Vector3(0.088f, 0.165f, 0.088f), gloveDarkMat).transform.localRotation = Quaternion.Euler(64f, -14f, -16f);
+            Part(meleeRightArmPivot, "MeleeR_WristCuff", PrimitiveType.Cylinder, new Vector3(0.024f, -0.042f, -0.072f), new Vector3(0.072f, 0.044f, 0.072f), gloveDarkMat).transform.localRotation = Quaternion.Euler(64f, -12f, -12f);
+            Part(meleeRightArmPivot, "MeleeR_CuffAccent", PrimitiveType.Cylinder, new Vector3(0.034f, -0.062f, -0.102f), new Vector3(0.074f, 0.006f, 0.074f), cuffAccentMat).transform.localRotation = Quaternion.Euler(64f, -12f, -12f);
+            PartMesh(meleeRightArmPivot, "MeleeR_Palm", bevelMesh, new Vector3(0.006f, -0.004f, -0.002f), new Vector3(0.062f, 0.046f, 0.084f), new Vector3(6f, -8f, -14f), gloveDarkMat);
+            PartMesh(meleeRightArmPivot, "MeleeR_KnuckleArmor", bevelMesh, new Vector3(0.018f, 0.014f, 0.006f), new Vector3(0.044f, 0.022f, 0.068f), new Vector3(6f, -8f, -18f), gloveArmorMat);
+
+            // Individual Sculpted Gloved Fingers Curled Tightly Around Weapon Handle & Karambit Ring!
+            // Index finger passes cleanly through the Karambit pommel ring!
+            Part(meleeRightArmPivot, "MeleeR_IndexFinger", PrimitiveType.Capsule, new Vector3(-0.010f, 0.018f, 0.040f), new Vector3(0.016f, 0.026f, 0.016f), gloveArmorMat).transform.localRotation = Quaternion.Euler(22f, 12f, 78f);
+            // Middle, Ring, and Pinky fingers tightly gripping the curved handle
+            Part(meleeRightArmPivot, "MeleeR_MiddleFinger", PrimitiveType.Capsule, new Vector3(-0.016f, 0.001f, 0.026f), new Vector3(0.017f, 0.028f, 0.017f), gloveDarkMat).transform.localRotation = Quaternion.Euler(8f, 8f, 82f);
+            Part(meleeRightArmPivot, "MeleeR_RingFinger", PrimitiveType.Capsule, new Vector3(-0.016f, -0.016f, 0.014f), new Vector3(0.016f, 0.026f, 0.016f), gloveDarkMat).transform.localRotation = Quaternion.Euler(2f, 6f, 84f);
+            Part(meleeRightArmPivot, "MeleeR_PinkyFinger", PrimitiveType.Capsule, new Vector3(-0.012f, -0.031f, 0.004f), new Vector3(0.014f, 0.022f, 0.014f), gloveDarkMat).transform.localRotation = Quaternion.Euler(-4f, 4f, 86f);
+            // Thumb locked along the bolster side of the handle
+            Part(meleeRightArmPivot, "MeleeR_Thumb", PrimitiveType.Capsule, new Vector3(-0.024f, 0.014f, 0.006f), new Vector3(0.019f, 0.028f, 0.019f), gloveArmorMat).transform.localRotation = Quaternion.Euler(46f, -24f, 22f);
+
+            // -----------------------------------------------------------------
+            // 2. ARTICULATED LEFT GUARD HAND (Classic FPS tactical knife balance stance!)
+            // -----------------------------------------------------------------
+            GameObject lArmGo = new GameObject("MeleeLeftArmPivot");
+            lArmGo.transform.SetParent(meleeGroup, false);
+            lArmGo.transform.localPosition = meleeLeftHandBasePos;
+            lArmGo.transform.localEulerAngles = meleeLeftHandBaseEuler;
+            meleeLeftArmPivot = lArmGo.transform;
+            Part(meleeLeftArmPivot, "MeleeL_Forearm", PrimitiveType.Cylinder, new Vector3(-0.055f, -0.095f, -0.155f), new Vector3(0.086f, 0.155f, 0.086f), gloveDarkMat).transform.localRotation = Quaternion.Euler(62f, 16f, 18f);
+            Part(meleeLeftArmPivot, "MeleeL_CuffAccent", PrimitiveType.Cylinder, new Vector3(-0.032f, -0.055f, -0.088f), new Vector3(0.072f, 0.006f, 0.072f), cuffAccentMat).transform.localRotation = Quaternion.Euler(62f, 14f, 14f);
+            PartMesh(meleeLeftArmPivot, "MeleeL_Palm", bevelMesh, Vector3.zero, new Vector3(0.060f, 0.044f, 0.082f), new Vector3(12f, 18f, 16f), gloveDarkMat);
+            PartMesh(meleeLeftArmPivot, "MeleeL_Knuckles", bevelMesh, new Vector3(-0.014f, 0.012f, 0.010f), new Vector3(0.042f, 0.020f, 0.064f), new Vector3(12f, 18f, 18f), gloveArmorMat);
+            Part(meleeLeftArmPivot, "MeleeL_Fingers", PrimitiveType.Cube, new Vector3(0.010f, 0.004f, 0.044f), new Vector3(0.044f, 0.022f, 0.040f), gloveArmorMat).transform.localRotation = Quaternion.Euler(26f, 12f, 10f);
+            Part(meleeLeftArmPivot, "MeleeL_Thumb", PrimitiveType.Capsule, new Vector3(0.026f, 0.012f, 0.014f), new Vector3(0.018f, 0.026f, 0.018f), gloveDarkMat).transform.localRotation = Quaternion.Euler(52f, 20f, -26f);
+
+            // -----------------------------------------------------------------
+            // 3. WEAPON SOCKET ATTACHED DIRECTLY INSIDE RIGHT HAND PALM!
+            // -----------------------------------------------------------------
+            GameObject socketGo = new GameObject("MeleeWeaponSocket");
+            socketGo.transform.SetParent(meleeRightArmPivot, false);
+            socketGo.transform.localPosition = new Vector3(-0.012f, 0.018f, 0.040f); // Anchored cleanly on index finger & palm axis!
+            socketGo.transform.localRotation = Quaternion.identity;
+            meleeWeaponSocket = socketGo.transform;
+
+            meleeModels = new GameObject[4];
+
+            // =================================================================
+            // MELEE 0: ULTRA-REALISTIC REAVER KARAMBIT (Curved Claw Blade + Real Finger Ring!)
+            // =================================================================
+            GameObject karambitRoot = new GameObject("Melee_ReaverKarambit");
+            karambitRoot.transform.SetParent(meleeWeaponSocket, false);
+            meleeModels[0] = karambitRoot;
+
+            // Dedicated Spin Pivot centered right at the index finger ring!
+            GameObject spinGo = new GameObject("KarambitRingPivot");
+            spinGo.transform.SetParent(karambitRoot.transform, false);
+            spinGo.transform.localPosition = Vector3.zero;
+            spinGo.transform.localRotation = Quaternion.identity;
+            karambitRingPivot = spinGo.transform;
+
+            // Real Hollow 3D Sculpted Finger Ring encircling the gloved index finger!
+            PartMesh(karambitRingPivot, "KarambitFingerRing", fingerRingMesh,
+                Vector3.zero, Vector3.one, new Vector3(0f, 90f, 0f), silverFiligree);
+            // Gothic spiked ring pommel crest
+            PartMesh(karambitRingPivot, "KarambitRingSpike", finMesh,
+                new Vector3(0f, 0.021f, -0.008f), new Vector3(0.008f, 0.016f, 0.024f),
+                new Vector3(-30f, 0f, 0f), silverFiligree);
+            Part(karambitRingPivot, "KarambitRingJewel", PrimitiveType.Sphere,
+                new Vector3(0f, 0.019f, 0.004f), Vector3.one * 0.007f, karambitRuneMat);
+
+            // Ergonomic Curved Ribbed Handle passing right down through the curled fingers!
+            PartMesh(karambitRingPivot, "KarambitGripUpper", bevelMesh,
+                new Vector3(0f, -0.036f, -0.010f), new Vector3(0.016f, 0.050f, 0.024f),
+                new Vector3(14f, 0f, 0f), darkChassis);
+            PartMesh(karambitRingPivot, "KarambitGripLower", bevelMesh,
+                new Vector3(0f, -0.078f, -0.008f), new Vector3(0.018f, 0.048f, 0.026f),
+                new Vector3(-12f, 0f, 0f), indigoPlate);
+            // Forged Silver Gothic Handle Spine + Glowing Violet Channel
+            PartMesh(karambitRingPivot, "KarambitGripSilver", bevelMesh,
+                new Vector3(0f, -0.056f, -0.022f), new Vector3(0.010f, 0.088f, 0.009f),
+                new Vector3(4f, 0f, 0f), silverFiligree);
+            Part(karambitRingPivot, "KarambitGripRune", PrimitiveType.Cube,
+                new Vector3(0f, -0.056f, -0.010f), new Vector3(0.019f, 0.058f, 0.007f), karambitRuneMat);
+
+            // Forged Silver Gothic Bolster Guard connecting grip to curved talon blade!
+            PartMesh(karambitRingPivot, "KarambitBolster", bevelMesh,
+                new Vector3(0f, -0.104f, 0.004f), new Vector3(0.020f, 0.020f, 0.038f),
+                new Vector3(-24f, 0f, 0f), silverFiligree);
+            PartMesh(karambitRingPivot, "KarambitGuardFang", finMesh,
+                new Vector3(0f, -0.102f, -0.018f), new Vector3(0.010f, 0.026f, 0.024f),
+                new Vector3(-110f, 0f, 0f), silverFiligree);
+
+            // Sculpted Curved Tiger-Claw Karambit Blade sweeping fiercely forward & upward in reverse grip!
+            GameObject bladeAnchor = new GameObject("KarambitBladeAnchor");
+            bladeAnchor.transform.SetParent(karambitRingPivot, false);
+            bladeAnchor.transform.localPosition = new Vector3(0f, -0.108f, 0.012f);
+            bladeAnchor.transform.localEulerAngles = new Vector3(-22f, 0f, 0f);
+            // Gleaming Forged Steel Beveled Razor Blade
+            PartMesh(bladeAnchor.transform, "KarambitSteelBlade", karambitBladeMesh,
+                Vector3.zero, Vector3.one, Vector3.zero, polishedBladeSteel);
+            // Deep Midnight-Indigo Forged Inner Spine Plate
+            PartMesh(bladeAnchor.transform, "KarambitIndigoSpine", karambitBladeMesh,
+                new Vector3(0f, 0.003f, -0.004f), new Vector3(1.18f, 0.88f, 0.86f), Vector3.zero, darkBladeSpine);
+            // Glowing Electric-Violet Carved Arcane Fuller Vein along the curved blade!
+            PartMesh(bladeAnchor.transform, "KarambitRuneVein", karambitBladeMesh,
+                new Vector3(0f, 0.001f, 0.002f), new Vector3(1.28f, 0.60f, 0.78f), Vector3.zero, karambitRuneMat);
+            // 3 Swept Silver Gothic Spine Thorns along outer curve of blade
+            PartMesh(bladeAnchor.transform, "KarambitThorn1", finMesh, new Vector3(0f, -0.016f, 0.042f), new Vector3(0.006f, 0.016f, 0.026f), new Vector3(-160f, 0f, 0f), silverFiligree);
+            PartMesh(bladeAnchor.transform, "KarambitThorn2", finMesh, new Vector3(0f, -0.012f, 0.095f), new Vector3(0.005f, 0.015f, 0.024f), new Vector3(-140f, 0f, 0f), silverFiligree);
+            PartMesh(bladeAnchor.transform, "KarambitThorn3", finMesh, new Vector3(0f, 0.014f, 0.145f), new Vector3(0.004f, 0.013f, 0.022f), new Vector3(-115f, 0f, 0f), silverFiligree);
+
+            // Drifting Soft Transparent Dark-Violet Spectral Smoke Wisps off the Karambit Blade!
+            karambitMistPS = CreateWispParticleSystem(
+                bladeAnchor.transform, "KarambitSpectralMist",
+                new Vector3(0f, 0.01f, 0.11f),
+                rateOverTime: 9.0f,
+                lifeMin: 0.35f, lifeMax: 0.68f,
+                speedMin: 0.06f, speedMax: 0.18f,
+                sizeMin: 0.045f, sizeMax: 0.115f,
+                shapeRadius: 0.06f,
+                startColA: new Color(0.14f, 0.02f, 0.28f, 0.45f),
+                startColB: new Color(0.62f, 0.24f, 1.0f, 0.38f),
+                gravity: -0.25f
+            );
+
+            // =================================================================
+            // MELEE 1: REALISTIC ONI BLOOD-KATANA (Curved Steel Blade + Ornate Tsuba!)
+            // =================================================================
+            GameObject katana = new GameObject("Melee_OniKatana");
+            katana.transform.SetParent(meleeWeaponSocket, false);
+            katana.transform.localPosition = new Vector3(0f, -0.04f, -0.01f);
+            katana.transform.localEulerAngles = new Vector3(12f, 0f, 0f);
+            meleeModels[1] = katana;
+
+            // Diamond-wrapped Tsuka Hilt inside hand + Gold Pommel Kashira
+            PartMesh(katana.transform, "KatanaHilt", bevelMesh, new Vector3(0f, -0.04f, 0f), new Vector3(0.022f, 0.18f, 0.030f), Vector3.zero, darkChassis);
+            PartMesh(katana.transform, "KatanaPommel", bevelMesh, new Vector3(0f, -0.135f, 0f), new Vector3(0.026f, 0.020f, 0.034f), Vector3.zero, brassGold);
+            // Ornate Gothic Tsuba Handguard + Brass Habaki Collar
+            Part(katana.transform, "KatanaTsuba", PrimitiveType.Cylinder, new Vector3(0f, 0.056f, 0f), new Vector3(0.072f, 0.007f, 0.072f), darkChassis);
+            Part(katana.transform, "KatanaTsubaRim", PrimitiveType.Cylinder, new Vector3(0f, 0.056f, 0f), new Vector3(0.076f, 0.004f, 0.076f), brassGold);
+            PartMesh(katana.transform, "KatanaHabaki", bevelMesh, new Vector3(0f, 0.074f, 0f), new Vector3(0.016f, 0.026f, 0.026f), Vector3.zero, brassGold);
+            // Curved Forged Steel Katana Blade + Glowing Crimson Blood-Vein Fuller!
+            PartMesh(katana.transform, "KatanaSteelBlade", katanaBladeMesh, new Vector3(0f, 0.084f, 0f), Vector3.one, Vector3.zero, polishedBladeSteel);
+            PartMesh(katana.transform, "KatanaBloodVein", katanaBladeMesh, new Vector3(0f, 0.088f, -0.002f), new Vector3(1.22f, 0.94f, 0.52f), Vector3.zero, crimsonGlow);
+
+            // =================================================================
+            // MELEE 2: REALISTIC RIPPER CHAINSWORD (Armored Saw-Housing + Animated Teeth!)
+            // =================================================================
+            GameObject chainsword = new GameObject("Melee_RipperChainsword");
+            chainsword.transform.SetParent(meleeWeaponSocket, false);
+            chainsword.transform.localPosition = new Vector3(0f, -0.04f, 0f);
+            chainsword.transform.localEulerAngles = new Vector3(10f, 0f, 0f);
+            meleeModels[2] = chainsword;
+
+            PartMesh(chainsword.transform, "ChainGrip", bevelMesh, new Vector3(0f, -0.03f, 0f), new Vector3(0.028f, 0.14f, 0.036f), Vector3.zero, darkChassis);
+            PartMesh(chainsword.transform, "ChainKnuckleGuard", bevelMesh, new Vector3(0f, -0.02f, 0.036f), new Vector3(0.016f, 0.14f, 0.012f), Vector3.zero, steelDark);
+            PartMesh(chainsword.transform, "ChainMotorHousing", bevelMesh, new Vector3(0f, 0.095f, 0.010f), new Vector3(0.062f, 0.11f, 0.088f), Vector3.zero, steelDark);
+            Part(chainsword.transform, "ChainCoreVent", PrimitiveType.Cube, new Vector3(0f, 0.095f, 0.010f), new Vector3(0.066f, 0.042f, 0.056f), emberGlow);
+            PartMesh(chainsword.transform, "ChainBladeBar", bevelMesh, new Vector3(0f, 0.34f, 0.016f), new Vector3(0.022f, 0.44f, 0.064f), Vector3.zero, indigoPlate);
+            PartMesh(chainsword.transform, "ChainSpineRail", bevelMesh, new Vector3(0f, 0.34f, -0.018f), new Vector3(0.032f, 0.45f, 0.022f), Vector3.zero, silverFiligree);
+
+            GameObject teethRoot = new GameObject("ChainswordTeethRoot");
+            teethRoot.transform.SetParent(chainsword.transform, false);
+            teethRoot.transform.localPosition = new Vector3(0f, 0.34f, 0.052f);
+            chainswordTeethRoot = teethRoot.transform;
+            for (int t = 0; t < 10; t++)
+            {
+                float ty = -0.20f + t * 0.044f;
+                PartMesh(chainswordTeethRoot, $"SawTooth_{t}", finMesh, new Vector3(0f, ty, 0f), new Vector3(0.014f, 0.022f, 0.022f), new Vector3(90f, 0f, 0f), silverFiligree);
+            }
+
+            // =================================================================
+            // MELEE 3: REALISTIC HELL-BREAKER WARHAMMER (Reinforced Haft + Twin Rune Head!)
+            // =================================================================
+            GameObject hammer = new GameObject("Melee_HellBreakerWarhammer");
+            hammer.transform.SetParent(meleeWeaponSocket, false);
+            hammer.transform.localPosition = new Vector3(0f, -0.05f, 0f);
+            hammer.transform.localEulerAngles = new Vector3(14f, 0f, 0f);
+            meleeModels[3] = hammer;
+
+            Part(hammer.transform, "HammerShaft", PrimitiveType.Cylinder, new Vector3(0f, 0.14f, 0f), new Vector3(0.028f, 0.30f, 0.028f), darkChassis);
+            Part(hammer.transform, "HammerCollar", PrimitiveType.Cylinder, new Vector3(0f, 0.39f, 0f), new Vector3(0.044f, 0.035f, 0.044f), brassGold);
+            PartMesh(hammer.transform, "HammerHeadMain", bevelMesh, new Vector3(0f, 0.45f, 0.01f), new Vector3(0.095f, 0.115f, 0.21f), Vector3.zero, steelDark);
+            PartMesh(hammer.transform, "HammerFaceFront", bevelMesh, new Vector3(0f, 0.45f, 0.125f), new Vector3(0.105f, 0.125f, 0.030f), Vector3.zero, silverFiligree);
+            PartMesh(hammer.transform, "HammerBackSpike", finMesh, new Vector3(0f, 0.45f, -0.115f), new Vector3(0.048f, 0.095f, 0.095f), new Vector3(-90f, 0f, 0f), silverFiligree);
+            Part(hammer.transform, "HammerRuneCore", PrimitiveType.Cube, new Vector3(0f, 0.45f, 0.01f), new Vector3(0.102f, 0.036f, 0.12f), goldGlow);
+
+            // -----------------------------------------------------------------
+            // 4. GLOWING CURVED SLASH ARC TRAIL (Flashes dynamically during attacks!)
+            // -----------------------------------------------------------------
+            Shader spriteSh = Shader.Find("Sprites/Default");
+            if (spriteSh == null) spriteSh = Shader.Find("Unlit/Transparent");
+            meleeSlashArcMat = new Material(spriteSh);
+            meleeSlashArcMat.mainTexture = CreateSlashArcTexture();
+            meleeSlashArcMat.color = new Color(0.76f, 0.38f, 1.0f, 0f);
+            meleeSlashArcObj = Part(meleeGroup, "MeleeSlashArc", PrimitiveType.Quad, new Vector3(0f, 0.05f, 0.14f), new Vector3(0.72f, 0.42f, 1f), meleeSlashArcMat);
+            meleeSlashArcObj.SetActive(false);
+
+            UpdateActiveMeleeMesh();
+            meleeGroup.gameObject.SetActive(isMeleeEquipped);
+        }
+
+        private void UpdateActiveMeleeMesh()
+        {
+            if (meleeModels == null) return;
+            for (int i = 0; i < meleeModels.Length; i++)
+            {
+                if (meleeModels[i] != null) meleeModels[i].SetActive(i == activeMeleeId);
+            }
         }
 
         // =========================================================================
@@ -706,6 +984,209 @@ namespace DoomHellsAscension
             return m;
         }
 
+        private static Mesh CreateTorusRingMesh(float majorR, float minorR, int majorSegs, int minorSegs)
+        {
+            Mesh m = new Mesh { name = "KarambitFingerRing" };
+            Vector3[] verts = new Vector3[majorSegs * minorSegs];
+            Vector2[] uvs = new Vector2[verts.Length];
+            int[] tris = new int[majorSegs * minorSegs * 6];
+
+            for (int i = 0; i < majorSegs; i++)
+            {
+                float u = (i / (float)majorSegs) * Mathf.PI * 2f;
+                float cu = Mathf.Cos(u), su = Mathf.Sin(u);
+                Vector3 center = new Vector3(majorR * cu, majorR * su, 0f);
+                Vector3 rad = new Vector3(cu, su, 0f);
+                for (int j = 0; j < minorSegs; j++)
+                {
+                    float v = (j / (float)minorSegs) * Mathf.PI * 2f;
+                    int idx = i * minorSegs + j;
+                    verts[idx] = center + minorR * (Mathf.Cos(v) * rad + Mathf.Sin(v) * Vector3.forward);
+                    uvs[idx] = new Vector2(i / (float)majorSegs, j / (float)minorSegs);
+                }
+            }
+
+            int t = 0;
+            for (int i = 0; i < majorSegs; i++)
+            {
+                int iN = (i + 1) % majorSegs;
+                for (int j = 0; j < minorSegs; j++)
+                {
+                    int jN = (j + 1) % minorSegs;
+                    int a = i * minorSegs + j;
+                    int c = iN * minorSegs + j;
+                    int d = iN * minorSegs + jN;
+                    int b = i * minorSegs + jN;
+                    tris[t++] = a; tris[t++] = c; tris[t++] = d;
+                    tris[t++] = a; tris[t++] = d; tris[t++] = b;
+                }
+            }
+            m.vertices = verts;
+            m.uv = uvs;
+            m.triangles = tris;
+            m.RecalculateNormals();
+            m.RecalculateBounds();
+            return m;
+        }
+
+        private static Mesh CreateKarambitBladeMesh()
+        {
+            Mesh m = new Mesh { name = "ReaverKarambitBlade" };
+            int segs = 14;
+            Vector3[] verts = new Vector3[(segs + 1) * 4 + 1];
+            Vector2[] uvs = new Vector2[verts.Length];
+            int tipIdx = (segs + 1) * 4;
+
+            // Curved tiger-claw Karambit sweep in YZ plane (sweeps forward +Z and hooks sharply up +Y!)
+            for (int i = 0; i <= segs; i++)
+            {
+                float u = i / (float)segs;
+                float ang = Mathf.Lerp(-0.28f, 1.28f, u);
+                float radius = 0.145f;
+                Vector3 center = new Vector3(0f, (1f - Mathf.Cos(ang)) * radius * 0.92f - 0.015f, Mathf.Sin(ang) * radius * 1.32f);
+
+                // Tangent along curve and outward normal pointing toward the sharp outer spine
+                Vector3 tang = new Vector3(0f, Mathf.Sin(ang) * 0.92f, Mathf.Cos(ang) * 1.32f).normalized;
+                Vector3 norm = new Vector3(0f, tang.z, -tang.y).normalized;
+
+                // Blade widens smoothly through belly then tapers to a razor claw point
+                float widthEnv = Mathf.Sin(Mathf.Clamp01(u * 0.92f + 0.08f) * Mathf.PI * 0.88f) * (1f - u * 0.72f);
+                float halfW = Mathf.Max(0.002f, 0.025f * (0.45f + widthEnv * 1.05f) * (1f - u * 0.82f));
+                float thick = Mathf.Max(0.0012f, 0.0055f * (1f - u * 0.78f));
+
+                int bIdx = i * 4;
+                verts[bIdx + 0] = center + norm * (halfW * 0.85f);          // Outer back spine
+                verts[bIdx + 1] = center + new Vector3(thick, 0f, 0f);      // Right bevel ridge
+                verts[bIdx + 2] = center - norm * (halfW * 1.25f);          // Inner razor hawk-bill edge!
+                verts[bIdx + 3] = center + new Vector3(-thick, 0f, 0f);     // Left bevel ridge
+
+                for (int j = 0; j < 4; j++) uvs[bIdx + j] = new Vector2(j / 4f, u);
+            }
+
+            // Needle-sharp hooked talon tip!
+            verts[tipIdx] = new Vector3(0f, 0.118f, 0.186f);
+            uvs[tipIdx] = new Vector2(0.5f, 1f);
+
+            int[] tris = new int[segs * 4 * 6 + 4 * 3 + 2 * 3];
+            int t = 0;
+            for (int i = 0; i < segs; i++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    int jN = (j + 1) % 4;
+                    int a = i * 4 + j;
+                    int c = (i + 1) * 4 + j;
+                    int d = (i + 1) * 4 + jN;
+                    int b = i * 4 + jN;
+                    tris[t++] = a; tris[t++] = c; tris[t++] = d;
+                    tris[t++] = a; tris[t++] = d; tris[t++] = b;
+                }
+            }
+            // Tip pyramid cap
+            int lastRing = segs * 4;
+            for (int j = 0; j < 4; j++)
+            {
+                int jN = (j + 1) % 4;
+                tris[t++] = lastRing + j;
+                tris[t++] = tipIdx;
+                tris[t++] = lastRing + jN;
+            }
+            // Base cap
+            tris[t++] = 0; tris[t++] = 1; tris[t++] = 2;
+            tris[t++] = 0; tris[t++] = 2; tris[t++] = 3;
+
+            m.vertices = verts;
+            m.uv = uvs;
+            m.triangles = tris;
+            m.RecalculateNormals();
+            m.RecalculateBounds();
+            return m;
+        }
+
+        private static Mesh CreateKatanaBladeMesh()
+        {
+            Mesh m = new Mesh { name = "OniKatanaBlade" };
+            int segs = 12;
+            Vector3[] verts = new Vector3[(segs + 1) * 4 + 1];
+            Vector2[] uvs = new Vector2[verts.Length];
+            int tipIdx = (segs + 1) * 4;
+
+            for (int i = 0; i <= segs; i++)
+            {
+                float u = i / (float)segs;
+                float y = u * 0.56f;
+                float soriZ = u * u * 0.048f; // Graceful katana upward curve
+                float halfW = Mathf.Lerp(0.016f, 0.010f, u);
+                float thick = Mathf.Lerp(0.0048f, 0.0022f, u);
+
+                int bIdx = i * 4;
+                verts[bIdx + 0] = new Vector3(0f, y, soriZ + halfW);    // Sharp front cutting edge (+Z)
+                verts[bIdx + 1] = new Vector3(thick, y, soriZ);         // Right shinogi ridge
+                verts[bIdx + 2] = new Vector3(0f, y, soriZ - halfW);    // Rear mune spine (-Z)
+                verts[bIdx + 3] = new Vector3(-thick, y, soriZ);        // Left shinogi ridge
+                for (int j = 0; j < 4; j++) uvs[bIdx + j] = new Vector2(j / 4f, u);
+            }
+            verts[tipIdx] = new Vector3(0f, 0.61f, 0.062f);
+            uvs[tipIdx] = new Vector2(0.5f, 1f);
+
+            int[] tris = new int[segs * 4 * 6 + 4 * 3];
+            int t = 0;
+            for (int i = 0; i < segs; i++)
+            {
+                for (int j = 0; j < 4; j++)
+                {
+                    int jN = (j + 1) % 4;
+                    int a = i * 4 + j;
+                    int c = (i + 1) * 4 + j;
+                    int d = (i + 1) * 4 + jN;
+                    int b = i * 4 + jN;
+                    tris[t++] = a; tris[t++] = d; tris[t++] = c;
+                    tris[t++] = a; tris[t++] = b; tris[t++] = d;
+                }
+            }
+            int lastRing = segs * 4;
+            for (int j = 0; j < 4; j++)
+            {
+                int jN = (j + 1) % 4;
+                tris[t++] = lastRing + j;
+                tris[t++] = lastRing + jN;
+                tris[t++] = tipIdx;
+            }
+            m.vertices = verts;
+            m.uv = uvs;
+            m.triangles = tris;
+            m.RecalculateNormals();
+            m.RecalculateBounds();
+            return m;
+        }
+
+        private static Texture2D CreateSlashArcTexture()
+        {
+            int s = 256;
+            Texture2D tex = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            for (int y = 0; y < s; y++)
+            {
+                float ny = (y / (float)(s - 1)) * 2f - 1f;
+                for (int x = 0; x < s; x++)
+                {
+                    float nx = (x / (float)(s - 1)) * 2f - 1f;
+                    // Sleek crescent blade slash smear!
+                    float r = Mathf.Sqrt(nx * nx + (ny + 0.45f) * (ny + 0.45f));
+                    float band = Mathf.Exp(-Mathf.Abs(r - 0.82f) * 14f);
+                    float arcFade = Mathf.Clamp01(1f - Mathf.Abs(nx) * 1.08f) * (ny > -0.35f ? 1f : 0f);
+                    float core = Mathf.Exp(-Mathf.Abs(r - 0.84f) * 32f) * arcFade;
+                    float alpha = Mathf.Clamp01((band * 0.85f + core * 0.9f) * arcFade);
+                    if (Mathf.Abs(nx) > 0.96f || Mathf.Abs(ny) > 0.96f) alpha = 0f;
+                    Color c = Color.Lerp(new Color(0.55f, 0.18f, 1.0f, alpha), new Color(1f, 0.95f, 1f, alpha), Mathf.Clamp01(core * 1.2f));
+                    c.a = alpha;
+                    tex.SetPixel(x, y, c);
+                }
+            }
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.Apply();
+            return tex;
+        }
+
         // =========================================================================
         // PROCEDURAL HIGH-RES PBR, RUNE, STAR FLASH & SOFT WISP TEXTURES
         // =========================================================================
@@ -963,6 +1444,8 @@ namespace DoomHellsAscension
         // =========================================================================
         public void SetActiveWeaponModel(int weaponId)
         {
+            isMeleeEquipped = false;
+            quickMeleeActive = false;
             activeWeaponId = Mathf.Clamp(weaponId, 0, 4);
             for (int i = 0; i < weaponModels.Length; i++)
             {
@@ -973,6 +1456,8 @@ namespace DoomHellsAscension
                 muzzleFlashObj.transform.localPosition = muzzlePoints[activeWeaponId].localPosition;
             }
             if (reaverMuzzleFlash != null) reaverMuzzleFlash.gameObject.SetActive(false);
+            if (meleeGroup != null) meleeGroup.gameObject.SetActive(false);
+            if (gunPivot != null) gunPivot.gameObject.SetActive(true);
 
             equipTimer = (activeWeaponId == 0) ? 0.36f : 0.28f;
             inspectTimer = 0f;
@@ -985,8 +1470,59 @@ namespace DoomHellsAscension
             }
         }
 
+        public void SetMeleeMode(bool equipped, int meleeId, Color bladeColor)
+        {
+            activeMeleeId = Mathf.Clamp(meleeId, 0, 3);
+            isMeleeEquipped = equipped;
+            quickMeleeActive = false;
+            UpdateActiveMeleeMesh();
+
+            if (meleeBladeMat != null)
+            {
+                meleeBladeMat.color = bladeColor;
+                if (meleeBladeMat.HasProperty("_EmissionColor"))
+                    meleeBladeMat.SetColor("_EmissionColor", bladeColor * 2.2f);
+            }
+            if (meleeSlashArcMat != null) meleeSlashArcMat.color = new Color(bladeColor.r, bladeColor.g, bladeColor.b, 0f);
+
+            if (equipped)
+            {
+                meleeEquipDuration = (activeMeleeId == 0) ? 0.74f : 0.56f;
+                meleeEquipTimer = meleeEquipDuration;
+                meleeInspectTimer = 0f;
+                meleeSwingTimer = 0f;
+                if (meleeGroup != null) meleeGroup.gameObject.SetActive(true);
+                if (gunPivot != null) gunPivot.gameObject.SetActive(false);
+                if (activeMeleeId == 0 && karambitMistPS != null && Application.isPlaying) karambitMistPS.Emit(14);
+            }
+            else
+            {
+                if (meleeGroup != null) meleeGroup.gameObject.SetActive(false);
+                if (gunPivot != null) gunPivot.gameObject.SetActive(true);
+            }
+        }
+
+        public void SetActiveMeleeVariant(int meleeId, Color bladeColor)
+        {
+            activeMeleeId = Mathf.Clamp(meleeId, 0, 3);
+            UpdateActiveMeleeMesh();
+            if (meleeBladeMat != null)
+            {
+                meleeBladeMat.color = bladeColor;
+                if (meleeBladeMat.HasProperty("_EmissionColor"))
+                    meleeBladeMat.SetColor("_EmissionColor", bladeColor * 2.2f);
+            }
+        }
+
         public void TriggerInspect()
         {
+            if (isMeleeEquipped)
+            {
+                meleeInspectDuration = (activeMeleeId == 0) ? 2.65f : 2.2f;
+                meleeInspectTimer = meleeInspectDuration;
+                if (activeMeleeId == 0 && karambitMistPS != null && Application.isPlaying) karambitMistPS.Emit(10);
+                return;
+            }
             inspectDuration = (activeWeaponId == 0) ? 3.2f : 2.1f;
             inspectTimer = inspectDuration;
             if (activeWeaponId == 0 && reaverAmbientMistPS != null && Application.isPlaying)
@@ -1049,14 +1585,34 @@ namespace DoomHellsAscension
             SpawnBrassCasing();
         }
 
-        public void TriggerMeleeSwing(Color bladeColor)
+        public void TriggerMeleeSwing(Color bladeColor, int meleeId = -1, bool isHeavy = false)
         {
-            meleeSwingTimer = 0.34f;
+            if (meleeId >= 0)
+            {
+                activeMeleeId = Mathf.Clamp(meleeId, 0, 3);
+                UpdateActiveMeleeMesh();
+            }
+            meleeLastHeavy = isHeavy;
+            meleeSwingDuration = isHeavy ? 0.48f : 0.34f;
+            meleeSwingTimer = meleeSwingDuration;
+            meleeInspectTimer = 0f;
+            meleeEquipTimer = 0f;
+            meleeComboIndex = (meleeComboIndex + 1) % 2;
+            quickMeleeActive = !isMeleeEquipped;
+
             if (meleeBladeMat != null)
             {
                 meleeBladeMat.color = bladeColor;
                 if (meleeBladeMat.HasProperty("_EmissionColor"))
-                    meleeBladeMat.SetColor("_EmissionColor", bladeColor * 1.8f);
+                    meleeBladeMat.SetColor("_EmissionColor", bladeColor * (isHeavy ? 3.2f : 2.2f));
+            }
+            if (meleeSlashArcMat != null)
+            {
+                meleeSlashArcMat.color = new Color(bladeColor.r, bladeColor.g, bladeColor.b, 0.92f);
+            }
+            if (activeMeleeId == 0 && karambitMistPS != null && Application.isPlaying)
+            {
+                karambitMistPS.Emit(isHeavy ? 14 : 7);
             }
         }
 
@@ -1131,8 +1687,18 @@ namespace DoomHellsAscension
             if (weaponRig == null || gunPivot == null) return;
             float clampedDt = Mathf.Min(dt, 0.045f);
 
-            // Hide 3D gun mesh cleanly when looking through the Operator's full-screen sniper scope!
-            gunPivot.gameObject.SetActive(!isSniperScoped);
+            // Hide 3D gun mesh cleanly when Sniper Scoped OR when Melee Weapon ([0]) is equipped in hand!
+            bool showGun = !isSniperScoped && !isMeleeEquipped && !quickMeleeActive;
+            gunPivot.gameObject.SetActive(showGun);
+
+            // Update Articulated Melee Hands, Realistic Unsheathe Draw, Karambit Spin, & Slash Attacks!
+            UpdateMeleeAnimation(dt, bobPhase);
+            if (!showGun)
+            {
+                if (muzzleFlashObj != null) muzzleFlashObj.SetActive(false);
+                if (reaverMuzzleFlash != null) reaverMuzzleFlash.gameObject.SetActive(false);
+                return;
+            }
 
             // 1. MUZZLE FLASH (Reaver Spectral Star vs Standard Flash)
             if (muzzleTimer > 0f && !isSniperScoped)
@@ -1454,22 +2020,223 @@ namespace DoomHellsAscension
                 float coverAngle = (activeWeaponId == 3 && reloading && reloadProgress > 0.08f && reloadProgress < 0.75f) ? -68f : 0f;
                 odinTopCover.localRotation = Quaternion.Slerp(odinTopCover.localRotation, Quaternion.Euler(coverAngle, 0f, 0f), dt * 12f);
             }
+        }
 
-            // 7. 3D MELEE BLADE SWING ([V])
-            if (meleeGroup != null)
+        private void UpdateMeleeAnimation(float dt, float bobPhase)
+        {
+            if (meleeGroup == null || meleeRightArmPivot == null) return;
+
+            if (meleeSwingTimer > 0f)
             {
-                if (meleeSwingTimer > 0f)
+                meleeSwingTimer = Mathf.Max(0f, meleeSwingTimer - dt);
+                if (meleeSwingTimer <= 0f) quickMeleeActive = false;
+            }
+            if (meleeEquipTimer > 0f) meleeEquipTimer = Mathf.Max(0f, meleeEquipTimer - dt);
+            if (meleeInspectTimer > 0f) meleeInspectTimer = Mathf.Max(0f, meleeInspectTimer - dt);
+
+            bool showMelee = isMeleeEquipped || quickMeleeActive;
+            meleeGroup.gameObject.SetActive(showMelee);
+            if (!showMelee)
+            {
+                if (meleeSlashArcObj != null) meleeSlashArcObj.SetActive(false);
+                return;
+            }
+
+            // Animate pulsing Karambit runes & motorized Chainsword saw teeth!
+            if (activeMeleeId == 0 && karambitRuneMat != null && karambitRuneMat.HasProperty("_EmissionColor"))
+            {
+                float kPulse = 1.95f + 0.45f * Mathf.Sin(Time.time * 4.0f) + (meleeSwingTimer > 0f ? 1.8f : 0f) + (meleeEquipTimer > 0f ? 1.2f : 0f);
+                karambitRuneMat.SetColor("_EmissionColor", new Color(0.68f, 0.26f, 1.0f) * kPulse);
+            }
+            if (activeMeleeId == 2 && chainswordTeethRoot != null)
+            {
+                float revSpeed = meleeSwingTimer > 0f ? 32f : 11f;
+                float sawJitter = Mathf.Repeat(Time.time * revSpeed, 1f) * 0.044f;
+                chainswordTeethRoot.localPosition = new Vector3(0f, 0.34f + sawJitter - 0.022f, 0.052f);
+            }
+
+            // Base combat-ready stance with smooth breathing + sprint sway
+            float swayX = Mathf.Cos(bobPhase * 0.5f) * 0.015f;
+            float swayY = Mathf.Abs(Mathf.Sin(bobPhase)) * 0.015f + Mathf.Sin(Time.time * 2.2f) * 0.004f;
+            float revVib = (activeMeleeId == 2) ? Mathf.Sin(Time.time * 58f) * 0.0022f : 0f;
+
+            Vector3 rPos = meleeRightHandBasePos + new Vector3(swayX + revVib, swayY + revVib, 0f);
+            Vector3 rEuler = meleeRightHandBaseEuler + new Vector3(0f, 0f, -swayX * 180f);
+            Vector3 lPos = meleeLeftHandBasePos + new Vector3(-swayX * 0.7f, swayY * 0.8f, 0f);
+            Vector3 lEuler = meleeLeftHandBaseEuler;
+            float karambitSpinX = 0f;
+
+            // Adjust natural grip stance for Katana/Chainsword/Warhammer vs Karambit reverse grip
+            if (activeMeleeId == 1)
+            {
+                rPos += new Vector3(0.02f, -0.05f, 0.02f);
+                rEuler += new Vector3(8f, -12f, 24f);
+                lPos += new Vector3(0.11f, -0.02f, 0.04f);
+            }
+            else if (activeMeleeId == 2 || activeMeleeId == 3)
+            {
+                rPos += new Vector3(0.03f, -0.07f, 0.03f);
+                rEuler += new Vector3(14f, -10f, 18f);
+            }
+
+            // 1. REALISTIC UNSHEATHING / EQUIP DRAW ANIMATION (Press [0]!)
+            if (meleeEquipTimer > 0f && meleeSwingTimer <= 0f)
+            {
+                float ep = 1f - (meleeEquipTimer / Mathf.Max(0.1f, meleeEquipDuration));
+                if (activeMeleeId == 0)
                 {
-                    meleeSwingTimer -= dt;
-                    meleeGroup.gameObject.SetActive(true);
-                    float p = 1f - (meleeSwingTimer / 0.34f);
-                    meleeGroup.localPosition = new Vector3(-0.36f + p * 0.68f, -0.08f, 0.44f);
-                    meleeGroup.localEulerAngles = new Vector3(32f, -20f, 68f - p * 136f);
+                    // Authentic VALORANT Reaver Karambit Draw: Pull from lower-right hip -> 360-deg Index-Finger Twirl -> Reverse-Grip Snap!
+                    if (ep < 0.28f)
+                    {
+                        float p1 = Mathf.SmoothStep(0f, 1f, ep / 0.28f);
+                        rPos = Vector3.Lerp(meleeRightHandBasePos + new Vector3(0.14f, -0.34f, -0.18f), meleeRightHandBasePos + new Vector3(-0.02f, 0.02f, 0.04f), p1);
+                        rEuler = Vector3.Lerp(new Vector3(52f, -35f, -28f), new Vector3(-6f, -28f, 24f), p1);
+                        lPos = Vector3.Lerp(meleeLeftHandBasePos + new Vector3(-0.12f, -0.26f, -0.12f), meleeLeftHandBasePos, p1);
+                    }
+                    else if (ep < 0.78f)
+                    {
+                        // High-speed 360-degree Finger-Ring Spin around the gloved index finger!
+                        float p2 = (ep - 0.28f) / 0.50f;
+                        float spinEase = 1f - Mathf.Pow(1f - p2, 3f);
+                        karambitSpinX = -395f * spinEase;
+                        float liftArc = Mathf.Sin(p2 * Mathf.PI);
+                        rPos += new Vector3(-0.03f * liftArc, 0.035f * liftArc, 0.045f * liftArc);
+                        rEuler += new Vector3(-12f * liftArc, -10f * liftArc, 18f * liftArc);
+                    }
+                    else
+                    {
+                        // Crisp Reverse-Grip Lock Snap!
+                        float p3 = (ep - 0.78f) / 0.22f;
+                        float settle = 1f - Mathf.SmoothStep(0f, 1f, p3);
+                        karambitSpinX = -35f * settle;
+                        rPos += new Vector3(0f, -0.015f * Mathf.Sin(p3 * Mathf.PI), -0.022f * Mathf.Sin(p3 * Mathf.PI));
+                        rEuler += new Vector3(9f * Mathf.Sin(p3 * Mathf.PI), 0f, -8f * settle);
+                    }
+                }
+                else if (activeMeleeId == 1)
+                {
+                    // Oni Katana: Diagonal sweep out of lower-left scabbard!
+                    float drawEase = Mathf.SmoothStep(0f, 1f, ep);
+                    float arc = Mathf.Sin(drawEase * Mathf.PI);
+                    rPos = Vector3.Lerp(new Vector3(-0.32f, -0.28f, -0.10f), rPos, drawEase) + new Vector3(0f, 0.05f * arc, 0.06f * arc);
+                    rEuler = Vector3.Lerp(new Vector3(40f, 55f, -72f), rEuler, drawEase);
+                    lPos = Vector3.Lerp(meleeLeftHandBasePos + new Vector3(0f, -0.22f, 0f), lPos, drawEase);
                 }
                 else
                 {
-                    meleeGroup.gameObject.SetActive(false);
+                    // Chainsword / Warhammer: Heavy upward heave + wrist lock
+                    float drawEase = Mathf.SmoothStep(0f, 1f, ep);
+                    rPos = Vector3.Lerp(rPos + new Vector3(0.10f, -0.36f, -0.14f), rPos, drawEase);
+                    rEuler = Vector3.Lerp(rEuler + new Vector3(48f, -20f, -35f), rEuler, drawEase);
+                    lPos = Vector3.Lerp(lPos + new Vector3(-0.10f, -0.26f, -0.10f), lPos, drawEase);
                 }
+            }
+
+            // 2. KARAMBIT CONTINUOUS FINGER-RING SPIN INSPECT ([Y] while Melee Equipped!)
+            if (meleeInspectTimer > 0f && meleeSwingTimer <= 0f)
+            {
+                float ip = 1f - (meleeInspectTimer / Mathf.Max(0.1f, meleeInspectDuration));
+                float env = Mathf.Sin(Mathf.Clamp01(ip) * Mathf.PI);
+                if (activeMeleeId == 0)
+                {
+                    // 3 Continuous Smooth Finger-Ring Spins (1080 deg!) around the index finger!
+                    float spinCurve = Mathf.SmoothStep(0f, 1f, ip);
+                    karambitSpinX = -1080f * spinCurve;
+                    rPos += new Vector3(-0.085f * env, 0.042f * env, 0.065f * env);
+                    rEuler += new Vector3(-14f * env, -22f * env, 26f * env);
+                }
+                else
+                {
+                    rPos += new Vector3(-0.09f * env, 0.03f * env, 0.05f * env);
+                    rEuler += new Vector3(-10f * env, -42f * env, 38f * Mathf.Sin(ip * Mathf.PI * 2f));
+                }
+            }
+
+            // 3. REALISTIC SLASH & HEAVY STAB ANIMATIONS (LMB Light Combo / RMB Heavy Rip!)
+            bool showArc = false;
+            if (meleeSwingTimer > 0f)
+            {
+                float sp = 1f - (meleeSwingTimer / Mathf.Max(0.05f, meleeSwingDuration));
+                if (meleeLastHeavy)
+                {
+                    // RMB HEAVY STAB / OVERHEAD RIP: Wind-up high-right -> Explosive deep forward thrust -> Recoil pull!
+                    if (sp < 0.26f)
+                    {
+                        float w = Mathf.SmoothStep(0f, 1f, sp / 0.26f);
+                        rPos += new Vector3(0.10f * w, 0.14f * w, -0.09f * w);
+                        rEuler += new Vector3(-42f * w, -24f * w, -28f * w);
+                        lPos += new Vector3(-0.06f * w, -0.04f * w, -0.06f * w);
+                    }
+                    else if (sp < 0.62f)
+                    {
+                        float st = Mathf.SmoothStep(0f, 1f, (sp - 0.26f) / 0.36f);
+                        rPos += Vector3.Lerp(new Vector3(0.10f, 0.14f, -0.09f), new Vector3(-0.24f, -0.09f, 0.22f), st);
+                        rEuler += Vector3.Lerp(new Vector3(-42f, -24f, -28f), new Vector3(62f, 38f, 68f), st);
+                        lPos += new Vector3(-0.08f, -0.08f, -0.10f);
+                        showArc = true;
+                        if (meleeSlashArcObj != null)
+                        {
+                            meleeSlashArcObj.transform.localPosition = new Vector3(-0.02f, 0.03f, 0.16f);
+                            meleeSlashArcObj.transform.localEulerAngles = new Vector3(0f, 0f, -38f);
+                            meleeSlashArcObj.transform.localScale = new Vector3(0.86f, 0.50f, 1f);
+                        }
+                    }
+                    else
+                    {
+                        float rec = Mathf.SmoothStep(0f, 1f, (sp - 0.62f) / 0.38f);
+                        rPos += Vector3.Lerp(new Vector3(-0.24f, -0.09f, 0.22f), Vector3.zero, rec);
+                        rEuler += Vector3.Lerp(new Vector3(62f, 38f, 68f), Vector3.zero, rec);
+                    }
+                }
+                else
+                {
+                    // LMB LIGHT COMBO: Alternating crisp Right->Left forehand & Left->Right backhand slashes!
+                    float dir = (meleeComboIndex == 0) ? 1f : -1f;
+                    if (sp < 0.22f)
+                    {
+                        float w = Mathf.SmoothStep(0f, 1f, sp / 0.22f);
+                        rPos += new Vector3(0.12f * dir * w, 0.05f * w, -0.05f * w);
+                        rEuler += new Vector3(-16f * w, -28f * dir * w, -34f * dir * w);
+                    }
+                    else if (sp < 0.62f)
+                    {
+                        float sw = Mathf.SmoothStep(0f, 1f, (sp - 0.22f) / 0.40f);
+                        rPos += Vector3.Lerp(new Vector3(0.12f * dir, 0.05f, -0.05f), new Vector3(-0.34f * dir, -0.06f, 0.16f), sw);
+                        rEuler += Vector3.Lerp(new Vector3(-16f, -28f * dir, -34f * dir), new Vector3(36f, 54f * dir, 72f * dir), sw);
+                        lPos += new Vector3(-0.05f * sw, -0.05f * sw, -0.06f * sw);
+                        showArc = true;
+                        if (meleeSlashArcObj != null)
+                        {
+                            meleeSlashArcObj.transform.localPosition = new Vector3(0f, 0.02f, 0.14f);
+                            meleeSlashArcObj.transform.localEulerAngles = new Vector3(0f, 0f, dir > 0f ? -16f : 164f);
+                            meleeSlashArcObj.transform.localScale = new Vector3(0.72f, 0.38f, 1f);
+                        }
+                    }
+                    else
+                    {
+                        float rec = Mathf.SmoothStep(0f, 1f, (sp - 0.62f) / 0.38f);
+                        rPos += Vector3.Lerp(new Vector3(-0.34f * dir, -0.06f, 0.16f), Vector3.zero, rec);
+                        rEuler += Vector3.Lerp(new Vector3(36f, 54f * dir, 72f * dir), Vector3.zero, rec);
+                    }
+                }
+            }
+
+            // Apply transforms smoothly
+            meleeRightArmPivot.localPosition = Vector3.Lerp(meleeRightArmPivot.localPosition, rPos, dt * 28f);
+            meleeRightArmPivot.localRotation = Quaternion.Slerp(meleeRightArmPivot.localRotation, Quaternion.Euler(rEuler), dt * 28f);
+
+            if (meleeLeftArmPivot != null)
+            {
+                meleeLeftArmPivot.localPosition = Vector3.Lerp(meleeLeftArmPivot.localPosition, lPos, dt * 20f);
+                meleeLeftArmPivot.localRotation = Quaternion.Slerp(meleeLeftArmPivot.localRotation, Quaternion.Euler(lEuler), dt * 20f);
+            }
+            if (karambitRingPivot != null)
+            {
+                karambitRingPivot.localRotation = Quaternion.Euler(karambitSpinX, 0f, 0f);
+            }
+            if (meleeSlashArcObj != null)
+            {
+                meleeSlashArcObj.SetActive(showArc);
             }
         }
 

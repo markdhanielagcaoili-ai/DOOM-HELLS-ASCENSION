@@ -578,7 +578,7 @@ namespace DoomHellsAscension
                 AddKillfeed($"{(isHeadshot ? "HEADSHOT! " : "")}{enemy.displayName} (+{pts} PTS // +${bounty})");
             }
 
-            if (FPSPlayerController.Instance != null && FPSPlayerController.Instance.weaponIndex == 0)
+            if (FPSPlayerController.Instance != null && !FPSPlayerController.Instance.IsMeleeEquipped && FPSPlayerController.Instance.weaponIndex == 0)
             {
                 // Iconic Reaver Vandal Soul-Pillar Finisher (1:08-1:12 in reference video!)
                 bool fullFinisher = (ActiveEnemies.Count == 0 || enemy.isBoss);
@@ -2285,7 +2285,7 @@ namespace DoomHellsAscension
             y += 54f;
             DrawRect(new Rect(sx, y, swIn, 48f), new Color(0.03f, 0.02f, 0.02f, 0.80f));
             GUI.Label(new Rect(sx + 8f, y + 4f, swIn - 16f, 40f),
-                "[WASD] Move · [MOUSE] Look · [LMB] Fire · [RMB] ADS/Scope · [1-5] Guns\n[R] Reload · [Y] Inspect · [V] Melee · [SHIFT] Dash · [Q/E] Overdrive · [B] Shop",
+                "[WASD] Move · [MOUSE] Look · [LMB] Fire/Slash · [RMB] ADS/Heavy · [1-5] Guns · [0] Knife\n[R] Reload · [Y] Inspect/Spin · [SHIFT] Dash · [Q/E] Overdrive · [B] Shop",
                 controlsCenterStyle);
         }
 
@@ -2434,28 +2434,42 @@ namespace DoomHellsAscension
             string ascLabel = OverdriveActive ? $"OVERDRIVE ACTIVE ({overdriveTimer:F1}s)!" : $"ASCENSION RESONANCE [Q/E]: {Mathf.RoundToInt(ascensionGauge)}%";
             GUI.Label(new Rect(bcX + 10f, botY + 8f, bcW - 20f, 22f), ascLabel, hudCenterSmallStyle);
             DrawBar(new Rect(bcX + 14f, botY + 34f, bcW - 28f, 14f), OverdriveActive ? (overdriveTimer / 8f) : (ascensionGauge / 100f), new Color(0.85f, 0.32f, 1f));
-            GUI.Label(new Rect(bcX + 10f, botY + 55f, bcW - 20f, 22f), $"[V] MELEE: {p.melees[p.meleeIndex].name}", hudCenterSmallStyle);
-            GUI.Label(new Rect(bcX + 10f, botY + 79f, bcW - 20f, 22f), "[B] SHOP  ·  [R] RELOAD  ·  [Y] INSPECT  ·  [RMB] ADS", hudCenterSmallStyle);
+            GUI.Label(new Rect(bcX + 10f, botY + 55f, bcW - 20f, 22f), $"[0] MELEE: {p.melees[p.meleeIndex].name}{(p.IsMeleeEquipped ? " (EQUIPPED)" : "")}", hudCenterSmallStyle);
+            GUI.Label(new Rect(bcX + 10f, botY + 79f, bcW - 20f, 22f), p.IsMeleeEquipped ? "[LMB] SLASH  ·  [RMB] HEAVY STAB  ·  [Y] SPIN  ·  [1-5] GUNS" : "[B] SHOP  ·  [R] RELOAD  ·  [Y] INSPECT  ·  [0] KNIFE", hudCenterSmallStyle);
 
-            // BOTTOM-RIGHT: Active Valorant-Style Weapon & 5-Slot Bar (Single-line Weapon Title + Right-Aligned Ammo + Centered Slots!)
+            // BOTTOM-RIGHT: Active Valorant-Style Weapon & 6-Slot Bar ([1-5] Firearms + [0] Melee Knife!)
             WeaponDef w = p.weapons[p.weaponIndex];
-            float brW = 370f;
+            MeleeDef activeM = p.melees[p.meleeIndex];
+            float brW = 416f;
             float brX = sw - brW - 14f;
             DrawRect(new Rect(brX, botY, brW, botH), new Color(0.06f, 0.05f, 0.08f, 0.88f));
-            GUI.Label(new Rect(brX + 10f, botY + 8f, 246f, 24f), $"{w.name} (MK-{w.level})", hudValueStyle);
-            string ammoStr = w.ammoType == "infinite" ? $"{p.mags[p.weaponIndex]} / INF" : $"{p.mags[p.weaponIndex]} / {(w.ammoType == "shells" ? p.shells : p.cells)}";
-            GUI.Label(new Rect(brX + 258f, botY + 8f, 102f, 24f), ammoStr, hudAmmoRightStyle);
-            GUI.Label(new Rect(brX + 10f, botY + 35f, brW - 20f, 20f), w.ammoLabel, smallMonoStyle);
+            if (p.IsMeleeEquipped)
+            {
+                GUI.Label(new Rect(brX + 10f, botY + 8f, 286f, 24f), activeM.name, hudValueStyle);
+                GUI.Label(new Rect(brX + 298f, botY + 8f, 108f, 24f), "MELEE [0]", hudAmmoRightStyle);
+                GUI.Label(new Rect(brX + 10f, botY + 35f, brW - 20f, 20f), "[LMB] SLASH // [RMB] HEAVY STAB // [Y] SPIN", smallMonoStyle);
+            }
+            else
+            {
+                GUI.Label(new Rect(brX + 10f, botY + 8f, 286f, 24f), $"{w.name} (MK-{w.level})", hudValueStyle);
+                string ammoStr = w.ammoType == "infinite" ? $"{p.mags[p.weaponIndex]} / INF" : $"{p.mags[p.weaponIndex]} / {(w.ammoType == "shells" ? p.shells : p.cells)}";
+                GUI.Label(new Rect(brX + 298f, botY + 8f, 108f, 24f), ammoStr, hudAmmoRightStyle);
+                GUI.Label(new Rect(brX + 10f, botY + 35f, brW - 20f, 20f), w.ammoLabel, smallMonoStyle);
+            }
 
-            float slotW = 66f;
+            float slotW = 62f;
             float slotGap = 5f;
             for (int i = 0; i < p.weapons.Count; i++)
             {
                 Rect sr = new Rect(brX + 10f + i * (slotW + slotGap), botY + 62f, slotW, 34f);
-                DrawRect(sr, i == p.weaponIndex ? new Color(0.85f, 0.20f, 0.14f, 0.85f) : new Color(0.14f, 0.12f, 0.16f, 0.88f));
+                bool activeSlot = !p.IsMeleeEquipped && i == p.weaponIndex;
+                DrawRect(sr, activeSlot ? new Color(0.85f, 0.20f, 0.14f, 0.88f) : new Color(0.14f, 0.12f, 0.16f, 0.88f));
                 string tag = p.weapons[i].owned ? $"{i + 1}:{p.weapons[i].shortName.Substring(0, Mathf.Min(4, p.weapons[i].shortName.Length))}" : "LCK";
                 GUI.Label(sr, tag, hudSlotStyle);
             }
+            Rect knifeSlot = new Rect(brX + 10f + p.weapons.Count * (slotW + slotGap), botY + 62f, slotW, 34f);
+            DrawRect(knifeSlot, p.IsMeleeEquipped ? new Color(0.58f, 0.22f, 0.92f, 0.92f) : new Color(0.14f, 0.12f, 0.16f, 0.88f));
+            GUI.Label(knifeSlot, "0:KNIF", hudSlotStyle);
         }
 
         private void DrawTopDownRadar(Rect r)
@@ -2510,7 +2524,7 @@ namespace DoomHellsAscension
             // Category Tabs
             shopCategory = Mathf.Clamp(shopCategory, 0, 1);
             if (GUI.Button(new Rect(box.x + 22, box.y + 56, 220, 32), shopCategory == 0 ? "[1] FIREARMS & UPGRADES" : "1. FIREARMS & UPGRADES", shopCategory == 0 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 0;
-            if (GUI.Button(new Rect(box.x + 252, box.y + 56, 220, 32), shopCategory == 1 ? "[2] MELEE WEAPONS [V]" : "2. MELEE WEAPONS [V]", shopCategory == 1 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 1;
+            if (GUI.Button(new Rect(box.x + 252, box.y + 56, 220, 32), shopCategory == 1 ? "[2] MELEE WEAPONS [0]" : "2. MELEE WEAPONS [0]", shopCategory == 1 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 1;
 
             Rect listView = new Rect(box.x + 22, box.y + 102, box.width - 44, box.height - 122);
             GUILayout.BeginArea(listView);
@@ -2573,19 +2587,18 @@ namespace DoomHellsAscension
                     if (!m.owned)
                     {
                         GUI.enabled = p.credits >= m.cost;
-                        if (GUILayout.Button($"BUY & EQUIP ON [V] (${m.cost})", buttonBrassStyle, GUILayout.Height(30)))
+                        if (GUILayout.Button($"BUY & EQUIP ON [0] (${m.cost})", buttonBrassStyle, GUILayout.Height(30)))
                         {
-                            p.credits -= m.cost; m.owned = true; p.meleeIndex = i;
-                            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayMelee(i);
+                            p.credits -= m.cost; m.owned = true;
+                            p.EquipMeleeFromShop(i);
                         }
                         GUI.enabled = true;
                     }
                     else
                     {
-                        if (GUILayout.Button(p.meleeIndex == i ? "EQUIPPED ON [V]" : "EQUIP ON [V]", buttonDarkStyle, GUILayout.Height(30)))
+                        if (GUILayout.Button(p.meleeIndex == i ? "EQUIPPED ON [0]" : "EQUIP ON [0]", buttonDarkStyle, GUILayout.Height(30)))
                         {
-                            p.meleeIndex = i;
-                            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayMelee(i);
+                            p.EquipMeleeFromShop(i);
                         }
                     }
                     GUILayout.EndVertical();

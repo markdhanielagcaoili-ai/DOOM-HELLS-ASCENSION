@@ -18,6 +18,7 @@ namespace DoomHellsAscension
         private AudioClip[] gunClips = new AudioClip[5];
         private AudioClip[] reloadClips = new AudioClip[5];
         private AudioClip[] meleeClips = new AudioClip[4];
+        private AudioClip[] meleeEquipClips = new AudioClip[4];
         private AudioClip[] killChimeClips = new AudioClip[5]; // Valorant 1K -> 2K -> 3K -> 4K -> 5K ACE!
         private AudioClip headshotDinkClip;
         private AudioClip bodyHitClip;
@@ -118,6 +119,13 @@ namespace DoomHellsAscension
             sfxSource.PlayOneShot(meleeClips[meleeId], 0.92f);
         }
 
+        public void PlayMeleeEquip(int meleeId)
+        {
+            if (!AudioEnabled || meleeEquipClips == null || meleeId < 0 || meleeId >= meleeEquipClips.Length || meleeEquipClips[meleeId] == null) return;
+            sfxSource.pitch = UnityEngine.Random.Range(0.97f, 1.03f);
+            sfxSource.PlayOneShot(meleeEquipClips[meleeId], 0.94f);
+        }
+
         public void PlayHit(bool isKill, bool isHeadshot = false, int streakCount = 1)
         {
             if (!AudioEnabled) return;
@@ -165,6 +173,12 @@ namespace DoomHellsAscension
             meleeClips[1] = SynthBladeSlash(0.32f, 2200f, false, false);
             meleeClips[2] = SynthBladeSlash(0.42f, 1200f, true, false);
             meleeClips[3] = SynthBladeSlash(0.55f, 450f, false, true);
+
+            // Realistic Melee Unsheathe / Karambit Finger-Ring Twirl Equip SFX ([0])
+            meleeEquipClips[0] = SynthKarambitDrawSpin();
+            meleeEquipClips[1] = SynthKatanaUnsheathe();
+            meleeEquipClips[2] = SynthBladeSlash(0.50f, 950f, true, false);
+            meleeEquipClips[3] = SynthBladeSlash(0.42f, 380f, false, true);
 
             // Valorant Escalating Multi-Kill Chimes (D minor / Phrygian Reaver bell chord progression!)
             float[] killNotes = { 293.66f, 349.23f, 440.00f, 523.25f, 587.33f }; // D4, F4, A4, C5, D5 (ACE!)
@@ -682,6 +696,62 @@ namespace DoomHellsAscension
                 s[i] = (float)Math.Tanh(val * 1.2f);
             }
             return MakeClip("MeleeSFX", s);
+        }
+
+        private AudioClip SynthKarambitDrawSpin()
+        {
+            float dur = 0.68f;
+            int len = Mathf.FloorToInt(SR * dur);
+            float[] s = new float[len];
+            System.Random rng = new System.Random(909);
+            float lp = 0f;
+            for (int i = 0; i < len; i++)
+            {
+                float t = (float)i / SR;
+                float n = (float)(rng.NextDouble() * 2.0 - 1.0);
+                lp += 0.22f * (n - lp);
+                float v = 0f;
+                // 0.02s: Leather sheath slide pull
+                v += FrictionSlideSample(t, 0.02f, 0.14f, lp, 0.48f);
+                // 0.16s-0.50s: High-speed metallic Karambit ring spin air-whir + steel glint!
+                if (t > 0.15f && t < 0.52f)
+                {
+                    float st = (t - 0.15f) / 0.37f;
+                    float env = Mathf.Sin(st * Mathf.PI);
+                    float whirFreq = Mathf.Lerp(950f, 3600f, st);
+                    v += ((n - lp) * 0.45f + Mathf.Sin(2f * Mathf.PI * whirFreq * t) * 0.30f) * env * 0.72f;
+                }
+                // 0.48s: Crisp reverse-grip steel lock SHING + subtle Reaver dark chime!
+                v += MechClickSample(t, 0.48f, 4200f, 2400f, 0.08f, n, 0.65f);
+                if (t > 0.46f)
+                {
+                    float bt = t - 0.46f;
+                    v += (Mathf.Sin(2f * Mathf.PI * 587.33f * bt) * 0.22f + Mathf.Sin(2f * Mathf.PI * 1174.66f * bt) * 0.14f) * Mathf.Exp(-bt * 12f);
+                }
+                s[i] = (float)Math.Tanh(v * 1.25f);
+            }
+            return MakeClip("KarambitDrawSpin", s);
+        }
+
+        private AudioClip SynthKatanaUnsheathe()
+        {
+            float dur = 0.56f;
+            int len = Mathf.FloorToInt(SR * dur);
+            float[] s = new float[len];
+            System.Random rng = new System.Random(910);
+            float lp = 0f;
+            for (int i = 0; i < len; i++)
+            {
+                float t = (float)i / SR;
+                float n = (float)(rng.NextDouble() * 2.0 - 1.0);
+                lp += 0.25f * (n - lp);
+                float env = Mathf.Sin(Mathf.Min(1f, t / 0.42f) * Mathf.PI);
+                float shing = (Mathf.Sin(2f * Mathf.PI * Mathf.Lerp(1800f, 4400f, t / dur) * t) * 0.42f
+                             + Mathf.Sin(2f * Mathf.PI * 3150f * t) * 0.28f
+                             + (n - lp) * 0.35f) * Mathf.Exp(-t * 4.5f);
+                s[i] = (float)Math.Tanh((shing + FrictionSlideSample(t, 0.01f, 0.26f, n - lp, 0.45f) * env) * 1.2f);
+            }
+            return MakeClip("KatanaUnsheathe", s);
         }
 
         private AudioClip SynthToneBurst(float dur, float f1, float f2, float vol)
