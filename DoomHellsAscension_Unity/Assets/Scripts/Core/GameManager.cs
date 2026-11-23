@@ -99,10 +99,9 @@ namespace DoomHellsAscension
         private Texture2D iconPinTex;
         private Texture2D landingPosterTex;
         private Texture2D loadingGodWarriorTex;
-        private VideoPlayer landingVideoPlayer;
-        private RenderTexture landingVideoRT;
-        private const float LandingVideoSlowSpeed = 0.72f;
-        private double savedLandingVideoTime;
+        private Material landingAnimMat;
+        private RenderTexture landingAnimRT;
+        private float landingAnimTime;
         private float unityLoadingTimer;
         private float unityLoadingDuration = 2.3f;
         private string unityLoadingHeadline = "ENTERING CITADEL REALM";
@@ -167,9 +166,9 @@ namespace DoomHellsAscension
             iconShopTex = GenerateShopIconTexture();
             iconGearTex = GenerateGearIconTexture();
             iconPinTex = GeneratePinIconTexture();
-            landingPosterTex = Resources.Load<Texture2D>("Hero/loading_god_warrior");
+            landingPosterTex = Resources.Load<Texture2D>("Hero/landing_abyssal_reign");
             loadingGodWarriorTex = Resources.Load<Texture2D>("Hero/loading_god_warrior");
-            InitLandingVideoPlayer();
+            InitLandingAnimShader();
             InitMenuParticles();
         }
 
@@ -206,12 +205,6 @@ namespace DoomHellsAscension
                     else
                     {
                         LockCursor(false);
-                        if (landingVideoPlayer != null && landingVideoPlayer.isPrepared)
-                        {
-                            landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
-                            landingVideoPlayer.skipOnDrop = false;
-                            landingVideoPlayer.Play();
-                        }
                     }
                 }
                 return;
@@ -242,7 +235,14 @@ namespace DoomHellsAscension
 
             if (!IsRunning)
             {
-                // Showcase camera angle overlooking the Citadel Plaza behind the BLACK landing screen
+                // Update 2.5D Abyssal Reign landing shader (moving background + breathing Slayer, clamped dt prevents tab-switch jump!)
+                if (Application.isFocused && landingAnimMat != null && landingAnimRT != null && landingPosterTex != null)
+                {
+                    landingAnimTime += Mathf.Min(0.033f, Time.unscaledDeltaTime);
+                    landingAnimMat.SetFloat("_AnimTime", landingAnimTime);
+                    Graphics.Blit(landingPosterTex, landingAnimRT, landingAnimMat);
+                }
+                // Showcase camera angle overlooking the Citadel Plaza behind the landing screen
                 if (Camera.main != null && FPSPlayerController.Instance != null)
                 {
                     Camera.main.transform.position = new Vector3(1.5f + Mathf.Sin(Time.time * 0.35f) * 0.6f, 2.2f, 11.5f);
@@ -329,7 +329,6 @@ namespace DoomHellsAscension
             IsRunning = true;
             IsPaused = false;
             LockCursor(true);
-            if (landingVideoPlayer != null && landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.StartMusic();
         }
 
@@ -350,71 +349,32 @@ namespace DoomHellsAscension
             IsPaused = true;
         }
 
-        private void InitLandingVideoPlayer()
+        private void InitLandingAnimShader()
         {
-            // On WebGL, index.html renders assets/hero/abyssal_reign_landing.mp4 directly via HTML5 <video>,
-            // avoiding duplicate downloads inside the WebGL runtime!
-            if (Application.platform != RuntimePlatform.WebGLPlayer)
+            Shader sh = Resources.Load<Shader>("Shaders/AbyssalLandingAnim");
+            if (sh == null) sh = Shader.Find("Hidden/DoomAbyssalLandingAnim");
+            if (sh != null && landingPosterTex != null)
             {
-                string vidUrl = Application.streamingAssetsPath + "/abyssal_reign_landing.mp4";
-                landingVideoRT = new RenderTexture(1280, 720, 0, RenderTextureFormat.ARGB32);
-                landingVideoRT.Create();
-                landingVideoPlayer = gameObject.AddComponent<VideoPlayer>();
-                landingVideoPlayer.playOnAwake = false;
-                landingVideoPlayer.isLooping = true;
-                landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
-                landingVideoPlayer.skipOnDrop = false;
-                landingVideoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
-                landingVideoPlayer.audioOutputMode = VideoAudioOutputMode.None;
-                landingVideoPlayer.renderMode = VideoRenderMode.RenderTexture;
-                landingVideoPlayer.targetTexture = landingVideoRT;
-                landingVideoPlayer.source = VideoSource.Url;
-                landingVideoPlayer.url = vidUrl;
-                landingVideoPlayer.errorReceived += (vp, msg) => Debug.LogWarning("[LandingVideo] Fallback to poster: " + msg);
-                landingVideoPlayer.prepareCompleted += (vp) =>
-                {
-                    vp.playbackSpeed = LandingVideoSlowSpeed;
-                    vp.skipOnDrop = false;
-                    if (!IsRunning && unityLoadingTimer <= 0f) vp.Play();
-                };
-                landingVideoPlayer.Prepare();
-            }
-        }
-
-        private void OnApplicationFocus(bool hasFocus)
-        {
-            HandleLandingVideoVisibility(hasFocus);
-        }
-
-        private void OnApplicationPause(bool paused)
-        {
-            HandleLandingVideoVisibility(!paused);
-        }
-
-        private void HandleLandingVideoVisibility(bool visible)
-        {
-            if (landingVideoPlayer == null || !landingVideoPlayer.isPrepared) return;
-            if (!visible)
-            {
-                savedLandingVideoTime = landingVideoPlayer.time;
-                if (landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
-            }
-            else if (!IsRunning && unityLoadingTimer <= 0f)
-            {
-                landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
-                landingVideoPlayer.skipOnDrop = false;
-                if (savedLandingVideoTime > 0.01) landingVideoPlayer.time = savedLandingVideoTime;
-                landingVideoPlayer.Play();
+                landingAnimMat = new Material(sh);
+                landingAnimRT = new RenderTexture(1024, 572, 0, RenderTextureFormat.ARGB32);
+                landingAnimRT.Create();
+                landingAnimMat.SetFloat("_AnimTime", 0f);
+                Graphics.Blit(landingPosterTex, landingAnimRT, landingAnimMat);
             }
         }
 
         private void OnDestroy()
         {
-            if (landingVideoRT != null)
+            if (landingAnimRT != null)
             {
-                landingVideoRT.Release();
-                Destroy(landingVideoRT);
-                landingVideoRT = null;
+                landingAnimRT.Release();
+                Destroy(landingAnimRT);
+                landingAnimRT = null;
+            }
+            if (landingAnimMat != null)
+            {
+                Destroy(landingAnimMat);
+                landingAnimMat = null;
             }
         }
 
@@ -1850,22 +1810,14 @@ namespace DoomHellsAscension
             // Pitch-black shadow canvas base
             DrawRect(new Rect(0, 0, sw, sh), new Color(0.014f, 0.018f, 0.032f, 1f));
 
-            // LIVE LOOPING SHADOW ARMY WALLPAPER VIDEO (locked slow-motion, zero tab-switch speedup!)
-            if (landingVideoPlayer != null && landingVideoPlayer.isPrepared)
-            {
-                if (Mathf.Abs(landingVideoPlayer.playbackSpeed - LandingVideoSlowSpeed) > 0.01f)
-                    landingVideoPlayer.playbackSpeed = LandingVideoSlowSpeed;
-                if (Application.isFocused && !landingVideoPlayer.isPlaying)
-                    landingVideoPlayer.Play();
-            }
-
-            Texture bgTex = (landingVideoPlayer != null && landingVideoPlayer.isPlaying && landingVideoRT != null)
-                ? (Texture)landingVideoRT
+            // LIVE 2.5D SHADER-ANIMATED ABYSSAL REIGN LANDING SCENE (Moving Background + Breathing Slayer!)
+            Texture bgTex = (landingAnimRT != null)
+                ? (Texture)landingAnimRT
                 : (Texture)landingPosterTex;
 
             if (bgTex != null)
             {
-                // Locked, rock-steady full-bleed framing (zero artificial pan/breath/shake!)
+                // Locked, rock-steady full-bleed framing (zero edge shake; motion comes strictly from shader layers!)
                 GUI.DrawTexture(new Rect(0, 0, sw, sh), bgTex, ScaleMode.ScaleAndCrop);
             }
             else
@@ -2711,7 +2663,6 @@ namespace DoomHellsAscension
 #endif
             if (!handledByWeb)
             {
-                if (landingVideoPlayer != null && landingVideoPlayer.isPlaying) landingVideoPlayer.Pause();
                 TriggerDemonicLoadingScreen("RETURNING // MAIN MENU", 4.4f);
             }
         }

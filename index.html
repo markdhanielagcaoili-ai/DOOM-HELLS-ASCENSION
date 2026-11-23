@@ -50,13 +50,11 @@
       pointer-events: none;
     }
 
-    #hero-video {
+    #hero-shader-canvas {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      object-position: center center;
       display: block;
       z-index: 0;
     }
@@ -799,11 +797,9 @@
   </div>
   <button id="fs-btn" title="Toggle Fullscreen">⛶ FULLSCREEN</button>
 
-  <!-- LIVE ABYSSAL REIGN ANIMATED LANDING PAGE (Play / Armory Shop / Settings stack intact!) -->
-  <section id="hero-stage" aria-label="DOOM Hell's Ascension Hero">
-    <video id="hero-video" autoplay loop muted playsinline preload="auto" poster="assets/hero/loading_god_warrior.jpg?v=2">
-      <source src="assets/hero/abyssal_reign_landing.mp4" type="video/mp4" />
-    </video>
+  <!-- LIVE 2.5D SHADER-ANIMATED ABYSSAL REIGN LANDING PAGE (Moving Background + Breathing Slayer + Play / Armory Shop / Settings) -->
+  <section id="hero-stage" aria-label="DEVIL: Abyssal Reign Hero">
+    <canvas id="hero-shader-canvas"></canvas>
     <canvas id="cinematic-canvas"></canvas>
     <div class="hero-vignette"></div>
 
@@ -881,10 +877,11 @@
   <script>
     (() => {
       // =========================================================================
-      // 1. LIVE SHADOW ARMY WALLPAPER VIDEO + SPECTRAL MANA PARTICLES
+      // 1. LIVE 2.5D GLSL SHADER LANDING ANIMATION (Moving Background + Breathing Slayer)
+      //    + VOLCANIC FOG & RISING MOLTEN EMBERS (Zero Shake, Zero Tab-Switch Speedup!)
       // =========================================================================
       const heroStage = document.getElementById("hero-stage");
-      const heroVideo = document.getElementById("hero-video");
+      const heroShaderCanvas = document.getElementById("hero-shader-canvas");
       const cineCanvas = document.getElementById("cinematic-canvas");
       const ctx = cineCanvas.getContext("2d");
       const popupBackdrop = document.getElementById("popup-backdrop");
@@ -892,77 +889,280 @@
       const engineDot = document.getElementById("engine-dot");
       const engineStatusText = document.getElementById("engine-status-text");
 
-      const HERO_VIDEO_SPEED = 0.72;
-      let savedHeroVideoTime = 0;
+      const heroBgImg = new Image();
+      heroBgImg.decoding = "async";
+      heroBgImg.src = "assets/hero/landing_abyssal_reign.jpg";
 
-      function lockHeroVideoSpeed() {
-        if (!heroVideo) return;
-        heroVideo.defaultPlaybackRate = HERO_VIDEO_SPEED;
-        if (Math.abs(heroVideo.playbackRate - HERO_VIDEO_SPEED) > 0.01) {
-          heroVideo.playbackRate = HERO_VIDEO_SPEED;
-        }
-      }
+      let gl = null;
+      let glProg = null;
+      let glTex = null;
+      let glTexReady = false;
+      let uTimeLoc = null;
+      let uCanvasSizeLoc = null;
+      let uTexSizeLoc = null;
 
-      if (heroVideo) {
-        heroVideo.muted = true;
-        lockHeroVideoSpeed();
-        heroVideo.addEventListener("loadedmetadata", lockHeroVideoSpeed);
-        heroVideo.addEventListener("play", lockHeroVideoSpeed);
-        heroVideo.addEventListener("ratechange", lockHeroVideoSpeed);
-        heroVideo.play().catch(() => { });
-        window.addEventListener("pointerdown", () => {
-          if (heroActive && !document.hidden && heroVideo.paused) {
-            lockHeroVideoSpeed();
-            heroVideo.play().catch(() => { });
-          }
-        }, { once: true });
-      }
+      function initHeroWebGL() {
+        try {
+          gl = heroShaderCanvas.getContext("webgl", { alpha: false, antialias: false, preserveDrawingBuffer: false })
+            || heroShaderCanvas.getContext("experimental-webgl", { alpha: false, antialias: false });
+          if (!gl) return;
 
-      // Prevent browser video fast-forward catch-up burst when switching tabs!
-      let resumeVideoTimer = null;
-      document.addEventListener("visibilitychange", () => {
-        if (!heroVideo) return;
-        if (resumeVideoTimer) { clearTimeout(resumeVideoTimer); resumeVideoTimer = null; }
-        if (document.hidden) {
-          savedHeroVideoTime = heroVideo.currentTime || 0;
-          if (!heroVideo.paused) heroVideo.pause();
-        } else {
-          lastFrameTs = performance.now();
-          if (heroActive) {
-            if (!heroVideo.paused) heroVideo.pause();
-            resumeVideoTimer = setTimeout(() => {
-              resumeVideoTimer = null;
-              if (document.hidden || !heroActive) return;
-              if (Number.isFinite(savedHeroVideoTime)) {
-                try { heroVideo.currentTime = savedHeroVideoTime; } catch (_) { }
+          const vsSrc = `
+            attribute vec2 aPos;
+            varying vec2 vUv;
+            void main() {
+              vUv = vec2(aPos.x * 0.5 + 0.5, 0.5 - aPos.y * 0.5);
+              gl_Position = vec4(aPos, 0.0, 1.0);
+            }
+          `;
+          const fsSrc = `
+            precision highp float;
+            uniform sampler2D uTex;
+            uniform float uTime;
+            uniform vec2 uCanvasSize;
+            uniform vec2 uTexSize;
+            varying vec2 vUv;
+
+            float gauss(vec2 p, vec2 c, vec2 r) {
+              vec2 d = (p - c) / r;
+              return exp(-dot(d, d));
+            }
+
+            vec2 rotAround(vec2 p, vec2 pivot, float ang) {
+              float s = sin(ang), c = cos(ang);
+              vec2 d = p - pivot;
+              return pivot + vec2(d.x * c - d.y * s, d.x * s + d.y * c);
+            }
+
+            void main() {
+              float t = uTime;
+              float canA = uCanvasSize.x / max(1.0, uCanvasSize.y);
+              float texA = uTexSize.x / max(1.0, uTexSize.y);
+              vec2 p = vUv;
+              if (canA > texA) {
+                float sy = texA / canA;
+                p.y = (vUv.y - 0.5) * sy + 0.5;
+              } else {
+                float sx = canA / texA;
+                p.x = (vUv.x - 0.5) * sx + 0.5;
               }
-              lockHeroVideoSpeed();
-              heroVideo.play().catch(() => { });
-            }, 60);
+
+              vec2 uv = p;
+
+              // Protect DEVIL: ABYSSAL REIGN title & Slayer silhouette from sky cloud drift
+              float titleMask = gauss(p, vec2(0.495, 0.165), vec2(0.185, 0.125));
+              float slayerProtect = gauss(p, vec2(0.505, 0.505), vec2(0.135, 0.220));
+              float skyMask = smoothstep(0.52, 0.14, p.y)
+                            * (1.0 - clamp(titleMask * 1.45, 0.0, 1.0))
+                            * (1.0 - clamp(slayerProtect * 1.30, 0.0, 1.0));
+
+              // 1. LIVING BACKGROUND: Drifting apocalyptic storm clouds & atmospheric sky waves
+              float cloudWave = sin(p.y * 18.0 + t * 0.75) * 0.0044 + cos(p.x * 11.0 - t * 0.55) * 0.0034;
+              uv.x -= (cloudWave + sin(t * 0.42 + p.y * 7.0) * 0.0040) * skyMask;
+              uv.y += sin(p.x * 14.0 + t * 0.65) * 0.0020 * skyMask;
+
+              // 2. Left Fortress Hanging Crimson Banner cloth ripple in wind
+              float bannerMask = gauss(p, vec2(0.145, 0.345), vec2(0.056, 0.145));
+              float bannerHang = smoothstep(0.19, 0.44, p.y);
+              uv.x += sin(p.y * 30.0 - t * 3.3) * 0.0090 * bannerMask * bannerHang;
+              uv.y += cos(p.y * 22.0 - t * 3.3) * 0.0024 * bannerMask * bannerHang;
+
+              // 3. Left Hanging Heavy Iron Chain gentle pendulum sway
+              float chainMask = gauss(p, vec2(0.232, 0.405), vec2(0.045, 0.095));
+              uv.x += sin(t * 1.65 + 0.5) * 0.0050 * chainMask;
+
+              // 4. Right Citadel Crimson Banner cloth ripple
+              float citBanner = gauss(p, vec2(0.746, 0.388), vec2(0.032, 0.092));
+              uv.x += sin(p.y * 34.0 - t * 3.6 + 1.2) * 0.0052 * citBanner;
+
+              // 5. Floating Island / Dark Monolith levitation bob
+              float floatIsland = gauss(p, vec2(0.628, 0.415), vec2(0.032, 0.048));
+              uv.y += sin(t * 1.35) * 0.0070 * floatIsland;
+
+              // 6. Upper-Right & Lower-Right Winged Gargoyles hovering + flapping wings!
+              float g1 = gauss(p, vec2(0.903, 0.228), vec2(0.044, 0.044));
+              float g1Wing = abs(p.x - 0.903) * 14.0;
+              uv.y += (sin(t * 2.7) * 0.0105 + sin(t * 5.4) * 0.0095 * g1Wing) * g1;
+              uv.x += cos(t * 1.35) * 0.0048 * g1;
+
+              float g2 = gauss(p, vec2(0.858, 0.652), vec2(0.056, 0.066));
+              float g2Wing = abs(p.x - 0.858) * 11.0;
+              uv.y += (sin(t * 2.3 + 1.3) * 0.0092 + sin(t * 4.6 + 1.3) * 0.0085 * g2Wing) * g2;
+
+              // 7. Foreground & Midground Demon Horde snarling breath
+              float dRight = gauss(p, vec2(0.946, 0.665), vec2(0.065, 0.115));
+              uv.y += sin(t * 2.0 + 0.7) * 0.0060 * dRight;
+              float dMid = gauss(p, vec2(0.732, 0.748), vec2(0.060, 0.075));
+              uv.y += sin(t * 2.2 + 2.1) * 0.0054 * dMid;
+              float dLeft = gauss(p, vec2(0.165, 0.715), vec2(0.055, 0.070));
+              uv.y += sin(t * 1.9 + 3.0) * 0.0052 * dLeft;
+
+              // 8. Citadel Magma Furnace rising heat-haze distortion
+              float magmaHaze = gauss(p, vec2(0.738, 0.605), vec2(0.058, 0.095))
+                              + gauss(p, vec2(0.916, 0.455), vec2(0.045, 0.075));
+              uv.x += sin(p.y * 65.0 - t * 5.2) * 0.0030 * magmaHaze;
+
+              // 9. THE DOOM SLAYER ("YUNG TAO"): Heavy Combat Breathing + Helmet Scan + Shotgun & Crucible Sway!
+              float breath = sin(t * 1.55);
+              float breathLag = sin(t * 1.55 - 0.48);
+              float breathLead = sin(t * 1.55 + 0.42);
+              float footAnchor = smoothstep(0.74, 0.56, p.y); // Boots stay 100% locked onto the obsidian skulls!
+
+              // Armored Torso & Shoulders heavy breathing rise + chest expansion
+              float torsoMask = gauss(p, vec2(0.502, 0.445), vec2(0.088, 0.125)) * footAnchor;
+              uv.y += breath * 0.0125 * torsoMask;
+              uv.x -= (p.x - 0.502) * breath * 0.056 * torsoMask;
+
+              // Helmet & Cyan Visor combat readiness nod + gentle horizontal scan
+              float headMask = gauss(p, vec2(0.508, 0.342), vec2(0.044, 0.056));
+              uv.y += sin(t * 1.55 - 0.22) * 0.0115 * headMask;
+              uv.x += sin(t * 0.85) * 0.0042 * headMask;
+
+              // Right Arm + Double-Barrel Shotgun pivoting smoothly from right shoulder
+              float rArmMask = gauss(p, vec2(0.408, 0.575), vec2(0.068, 0.155)) * smoothstep(0.77, 0.62, p.y);
+              vec2 rRot = rotAround(p, vec2(0.446, 0.425), breathLag * 0.026);
+              uv += (rRot - p) * rArmMask;
+              uv.y += breathLag * 0.0080 * rArmMask;
+
+              // Left Arm + Blazing Crucible Blade pivoting from left elbow + crackling fiery shimmer
+              float lArmMask = gauss(p, vec2(0.596, 0.595), vec2(0.070, 0.128)) * smoothstep(0.75, 0.60, p.y);
+              vec2 lRot = rotAround(p, vec2(0.548, 0.505), -breathLead * 0.030);
+              uv += (lRot - p) * lArmMask;
+              uv.y += breathLead * 0.0072 * lArmMask;
+              float bladeMask = gauss(p, vec2(0.614, 0.635), vec2(0.048, 0.065));
+              uv.x += sin(p.y * 72.0 - t * 6.8) * 0.0024 * bladeMask;
+
+              vec2 sampleUV = clamp(uv, vec2(0.002), vec2(0.998));
+              vec4 col = texture2D(uTex, sampleUV);
+
+              // 10. Living blazing flames licking off the top of the DEVIL title (letters stay sharp!)
+              float fireTopMask = gauss(p, vec2(0.495, 0.115), vec2(0.165, 0.068));
+              float fireLum = smoothstep(0.45, 0.88, col.r - col.b * 0.5) * fireTopMask;
+              if (fireLum > 0.02) {
+                vec2 fuv = sampleUV + vec2(sin(p.y * 55.0 - t * 6.5) * 0.0036, -cos(p.x * 42.0 + t * 5.2) * 0.0026) * fireLum;
+                col = mix(col, texture2D(uTex, clamp(fuv, vec2(0.002), vec2(0.998))), fireLum * 0.85);
+              }
+
+              // 11. Dynamic Lighting Pulses (Crucible Blade, Cyan Visor, Ascension Sky Beam, Magma Arch, Demon Eyes)
+              float pulse1 = 0.5 + 0.5 * sin(t * 3.1);
+              float pulse2 = 0.5 + 0.5 * sin(t * 2.3 + 1.1);
+              float flicker = 0.5 + 0.5 * sin(t * 7.4) * cos(t * 4.3);
+
+              float bladeGlow = gauss(p, vec2(0.612, 0.632), vec2(0.065, 0.080));
+              col.rgb += vec3(0.55, 0.11, 0.04) * bladeGlow * (0.28 + 0.32 * pulse1);
+
+              float visorGlow = gauss(p, vec2(0.515, 0.348), vec2(0.024, 0.020));
+              col.rgb += vec3(0.10, 0.52, 0.65) * visorGlow * (0.22 + 0.25 * pulse2);
+
+              float beamX = exp(-pow((p.x - 0.742) / 0.018, 2.0)) * smoothstep(0.32, 0.02, p.y);
+              float beamSurge = 0.65 + 0.35 * sin(p.y * 28.0 + t * 5.5);
+              col.rgb += vec3(0.32, 0.52, 0.75) * beamX * beamSurge * (0.22 + 0.18 * pulse2);
+
+              float archGlow = gauss(p, vec2(0.738, 0.612), vec2(0.068, 0.085));
+              col.rgb += vec3(0.45, 0.12, 0.03) * archGlow * (0.20 + 0.26 * flicker);
+
+              float eyeGlow = gauss(p, vec2(0.945, 0.620), vec2(0.022, 0.018))
+                            + gauss(p, vec2(0.733, 0.718), vec2(0.018, 0.016));
+              col.rgb += vec3(0.65, 0.08, 0.04) * eyeGlow * (0.25 + 0.35 * pulse1);
+
+              col.rgb += vec3(0.28, 0.09, 0.02) * fireLum * (0.18 + 0.28 * flicker);
+
+              gl_FragColor = vec4(col.rgb, 1.0);
+            }
+          `;
+
+          function compile(type, src) {
+            const s = gl.createShader(type);
+            gl.shaderSource(s, src);
+            gl.compileShader(s);
+            if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+              console.warn("Hero shader compile:", gl.getShaderInfoLog(s));
+              return null;
+            }
+            return s;
           }
+          const vs = compile(gl.VERTEX_SHADER, vsSrc);
+          const fs = compile(gl.FRAGMENT_SHADER, fsSrc);
+          if (!vs || !fs) { gl = null; return; }
+
+          glProg = gl.createProgram();
+          gl.attachShader(glProg, vs);
+          gl.attachShader(glProg, fs);
+          gl.linkProgram(glProg);
+          if (!gl.getProgramParameter(glProg, gl.LINK_STATUS)) { gl = null; return; }
+          gl.useProgram(glProg);
+
+          const buf = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+          const loc = gl.getAttribLocation(glProg, "aPos");
+          gl.enableVertexAttribArray(loc);
+          gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+          uTimeLoc = gl.getUniformLocation(glProg, "uTime");
+          uCanvasSizeLoc = gl.getUniformLocation(glProg, "uCanvasSize");
+          uTexSizeLoc = gl.getUniformLocation(glProg, "uTexSize");
+
+          glTex = gl.createTexture();
+          gl.bindTexture(gl.TEXTURE_2D, glTex);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+          const uploadTex = () => {
+            if (!gl || !glTex || !heroBgImg.naturalWidth) return;
+            gl.bindTexture(gl.TEXTURE_2D, glTex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, heroBgImg);
+            glTexReady = true;
+          };
+          if (heroBgImg.complete && heroBgImg.naturalWidth > 0) uploadTex();
+          else heroBgImg.addEventListener("load", uploadTex);
+        } catch (err) {
+          console.warn("Hero WebGL fallback:", err);
+          gl = null;
         }
-      });
+      }
+      initHeroWebGL();
 
       let cw = 1920, ch = 1080;
       function resizeCanvas() {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         cw = Math.max(1, Math.floor(window.innerWidth * dpr));
         ch = Math.max(1, Math.floor(window.innerHeight * dpr));
+        heroShaderCanvas.width = cw;
+        heroShaderCanvas.height = ch;
         cineCanvas.width = cw;
         cineCanvas.height = ch;
+        if (gl) gl.viewport(0, 0, cw, ch);
       }
       window.addEventListener("resize", resizeCanvas);
       resizeCanvas();
 
-      const manaSparks = Array.from({ length: 64 }, (_, i) => ({
+      // Rising molten volcanic embers + creeping demonic valley fog banks
+      const manaSparks = Array.from({ length: 68 }, (_, i) => ({
         x: Math.random(), y: Math.random(),
-        vx: (Math.random() - 0.5) * 0.009, vy: -(0.014 + Math.random() * 0.036),
-        size: 1.4 + Math.random() * 3.4, phase: Math.random() * Math.PI * 2, cyan: i % 3 !== 0
+        vx: (Math.random() - 0.45) * 0.014, vy: -(0.018 + Math.random() * 0.044),
+        size: 1.5 + Math.random() * 3.5, phase: Math.random() * Math.PI * 2, gold: i % 3 !== 0
+      }));
+      const heroFog = Array.from({ length: 8 }, (_, i) => ({
+        x: (i / 8) * 1.3 - 0.15,
+        y: 0.68 + (i % 3) * 0.09,
+        vx: 0.008 + (i % 3) * 0.004,
+        rx: 0.24 + (i % 3) * 0.08,
+        ry: 0.075 + (i % 2) * 0.03,
+        crimson: i % 3 === 0,
+        alpha: 0.085 + (i % 3) * 0.025
       }));
 
       let heroActive = true;
       let lastFrameTs = performance.now();
       let heroSimTime = 0;
+
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) lastFrameTs = performance.now();
+      });
 
       function renderHero(now) {
         if (!heroActive) return;
@@ -978,21 +1178,65 @@
         heroSimTime += dt;
         const t = heroSimTime;
 
-        ctx.clearRect(0, 0, cw, ch);
+        // 1. Render living 2.5D shader background & breathing Slayer at 60fps
+        if (gl && glProg && glTexReady) {
+          gl.useProgram(glProg);
+          gl.uniform1f(uTimeLoc, t);
+          gl.uniform2f(uCanvasSizeLoc, cw, ch);
+          gl.uniform2f(uTexSizeLoc, heroBgImg.naturalWidth, heroBgImg.naturalHeight);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+          ctx.clearRect(0, 0, cw, ch);
+        } else {
+          ctx.fillStyle = "#080304";
+          ctx.fillRect(0, 0, cw, ch);
+          if (heroBgImg.complete && heroBgImg.naturalWidth > 0) {
+            const imgA = heroBgImg.naturalWidth / heroBgImg.naturalHeight;
+            const canA = cw / ch;
+            const dw = canA > imgA ? cw : ch * imgA;
+            const dh = canA > imgA ? cw / imgA : ch;
+            ctx.drawImage(heroBgImg, (cw - dw) * 0.5, (ch - dh) * 0.5, dw, dh);
+          }
+        }
+
+        // 2. Render drifting demonic ground fog + swirling volcanic embers on foreground canvas
         ctx.save();
         ctx.globalCompositeOperation = "screen";
+        for (let i = 0; i < heroFog.length; i++) {
+          const m = heroFog[i];
+          m.x += m.vx * dt;
+          if (m.x > 1.25) m.x = -0.25;
+          const mx = m.x * cw, my = m.y * ch;
+          const rx = m.rx * cw, ry = m.ry * ch;
+          ctx.save();
+          ctx.translate(mx, my);
+          ctx.scale(1, ry / Math.max(1, rx));
+          const fg = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+          if (m.crimson) {
+            fg.addColorStop(0, `rgba(215, 48, 24, ${m.alpha.toFixed(3)})`);
+            fg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          } else {
+            fg.addColorStop(0, `rgba(205, 178, 165, ${(m.alpha * 0.65).toFixed(3)})`);
+            fg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          }
+          ctx.fillStyle = fg;
+          ctx.beginPath();
+          ctx.arc(0, 0, rx, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
         for (let i = 0; i < manaSparks.length; i++) {
           const e = manaSparks[i];
-          e.x += (e.vx + Math.sin(t * 1.1 + e.phase) * 0.005) * dt;
+          e.x += (e.vx + Math.sin(t * 1.15 + e.phase) * 0.007) * dt;
           e.y += e.vy * dt;
           if (e.y < -0.05) { e.y = 1.05; e.x = Math.random(); }
           if (e.x > 1.05) e.x = -0.04;
           if (e.x < -0.05) e.x = 1.04;
           const ex = e.x * cw, ey = e.y * ch;
-          const flicker = 0.45 + 0.55 * Math.sin(t * 2.4 + e.phase);
-          const r = e.size * (cw / 1920) * (0.85 + 0.3 * flicker);
+          const flicker = 0.45 + 0.55 * Math.sin(t * 2.8 + e.phase);
+          const r = e.size * (cw / 1920) * (0.85 + 0.32 * flicker);
           const eg = ctx.createRadialGradient(ex, ey, 0, ex, ey, r * 3.4);
-          if (e.cyan) {
+          if (e.gold) {
             eg.addColorStop(0, `rgba(255, 224, 148, ${(0.88 * flicker).toFixed(3)})`);
             eg.addColorStop(0.42, `rgba(255, 118, 36, ${(0.56 * flicker).toFixed(3)})`);
             eg.addColorStop(1, "rgba(220, 32, 16, 0)");
@@ -1050,21 +1294,21 @@
           <button class="mode-card active" data-mode="Campaign">
             <div class="mode-card-head">&gt; OP // 01  CAMPAIGN (100 LEVELS)</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/loading_god_warrior.jpg?v=2" alt="Campaign" />
+              <img src="assets/hero/landing_abyssal_reign.jpg" alt="Campaign" />
               <div class="mode-card-desc">Sequential Level 1 → 100 · 10 Unique Realm Bosses · Acid Demons</div>
             </div>
           </button>
           <button class="mode-card" data-mode="EndlessHorde">
             <div class="mode-card-head">&gt; OP // 02  ENDLESS HORDE</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/loading_god_warrior.jpg?v=2" alt="Endless Horde" />
+              <img src="assets/hero/landing_abyssal_reign.jpg" alt="Endless Horde" />
               <div class="mode-card-desc">Infinite Escalating Waves · Unique Realm Boss every 3rd Wave</div>
             </div>
           </button>
           <button class="mode-card" data-mode="PurgatoryBlitz">
             <div class="mode-card-head">&gt; OP // 03  PURGATORY BLITZ</div>
             <div class="mode-card-thumb">
-              <img src="assets/hero/loading_god_warrior.jpg?v=2" alt="Purgatory Blitz" />
+              <img src="assets/hero/landing_abyssal_reign.jpg" alt="Purgatory Blitz" />
               <div class="mode-card-desc">150s Doomsday Clock (+2.5s / Kill) across unlocked levels</div>
             </div>
           </button>
@@ -1193,7 +1437,6 @@
         heroDismissTimer = setTimeout(() => {
           heroDismissTimer = null;
           heroActive = false;
-          if (heroVideo && !heroVideo.paused) heroVideo.pause();
         }, 850);
       }
 
@@ -1204,10 +1447,6 @@
           heroActive = true;
           lastFrameTs = performance.now();
           requestAnimationFrame(renderHero);
-        }
-        if (heroVideo && heroVideo.paused && !document.hidden) {
-          lockHeroVideoSpeed();
-          heroVideo.play().catch(() => { });
         }
       }
 
