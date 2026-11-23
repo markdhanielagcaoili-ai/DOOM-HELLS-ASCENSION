@@ -706,21 +706,6 @@
       visibility: visible;
       pointer-events: auto;
     }
-    #loading-video {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center center;
-      display: block;
-      opacity: 0;
-      z-index: 0;
-      pointer-events: none;
-    }
-    #loading-video.active {
-      opacity: 1;
-    }
     #loading-canvas {
       position: absolute;
       inset: 0;
@@ -873,11 +858,8 @@
     <div id="popup-box-root" class="popup-box"></div>
   </div>
 
-  <!-- SHUFFLED DEMONIC ANIMATED LOADING SCREEN (Hellscape Eclipse Video + DOOM Slayer Citadel) -->
+  <!-- DOOM SLAYER HELL CITADEL 60FPS ANIMATED LOADING SCREEN -->
   <section id="loading-screen" aria-label="Loading DOOM Hell's Ascension">
-    <video id="loading-video" loop muted playsinline preload="auto" poster="assets/hero/loading_god_warrior.jpg?v=2">
-      <source src="assets/hero/hellscape_loop.mp4" type="video/mp4" />
-    </video>
     <canvas id="loading-canvas"></canvas>
     <div class="loading-vignette"></div>
     <div class="loading-hud">
@@ -1271,9 +1253,8 @@
       // rolling volcanic ash mist, pulsing eclipse corona & God-Warrior celestial halo!
       // =========================================================================
       const loadScreenEl = document.getElementById("loading-screen");
-      const loadingVideo = document.getElementById("loading-video");
       const loadCanvas = document.getElementById("loading-canvas");
-      const lctx = loadCanvas.getContext("2d", { alpha: true });
+      const lctx = loadCanvas.getContext("2d", { alpha: false });
       const loadTitleEl = document.getElementById("loading-title");
       const loadStatusEl = document.getElementById("loading-status");
       const loadPctEl = document.getElementById("loading-pct");
@@ -1342,39 +1323,6 @@
         alpha: 0.10 + (i % 3) * 0.04
       }));
 
-      // Fiery volcanic embers rising upward during the Hellscape Solar Eclipse video loading screen
-      const hellEmbers = Array.from({ length: 58 }, (_, i) => ({
-        x: Math.random(),
-        y: Math.random(),
-        vx: (Math.random() - 0.42) * 0.036,
-        vy: -(0.045 + Math.random() * 0.095),
-        size: 1.8 + Math.random() * 3.8,
-        phase: Math.random() * Math.PI * 2,
-        gold: i % 3 === 0
-      }));
-
-      // Non-repeating Fisher-Yates shuffle bag so every Play or Back-to-Main-Menu plays a fresh loading animation!
-      const LOADING_THEMES = ["hellscape_video", "slayer_citadel"];
-      let loadingShuffleQueue = [];
-      let lastLoadingTheme = null;
-      let activeLoadTheme = "hellscape_video";
-
-      function pickNextLoadingTheme() {
-        if (loadingShuffleQueue.length === 0) {
-          loadingShuffleQueue = [...LOADING_THEMES];
-          for (let i = loadingShuffleQueue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [loadingShuffleQueue[i], loadingShuffleQueue[j]] = [loadingShuffleQueue[j], loadingShuffleQueue[i]];
-          }
-          if (lastLoadingTheme && loadingShuffleQueue[0] === lastLoadingTheme && loadingShuffleQueue.length > 1) {
-            const swapIdx = 1 + Math.floor(Math.random() * (loadingShuffleQueue.length - 1));
-            [loadingShuffleQueue[0], loadingShuffleQueue[swapIdx]] = [loadingShuffleQueue[swapIdx], loadingShuffleQueue[0]];
-          }
-        }
-        lastLoadingTheme = loadingShuffleQueue.shift();
-        return lastLoadingTheme;
-      }
-
       let loadActive = false;
       let loadStartTs = 0;
       let loadLastTs = 0;
@@ -1386,23 +1334,7 @@
       function startGodWarriorLoadingScreen(modeName, onComplete, options = {}) {
         const wasActive = loadActive;
         loadIsReturn = !!options.isReturn;
-        activeLoadTheme = pickNextLoadingTheme();
-        if (activeLoadTheme === "hellscape_video") {
-          loadMinDur = loadIsReturn ? 6.0 : 4.5;
-          if (loadingVideo) {
-            loadingVideo.muted = true;
-            loadingVideo.playbackRate = 1.0;
-            try { loadingVideo.currentTime = 0; } catch (_) { }
-            loadingVideo.classList.add("active");
-            loadingVideo.play().catch(() => { });
-          }
-        } else {
-          loadMinDur = loadIsReturn ? 4.4 : 2.8;
-          if (loadingVideo) {
-            loadingVideo.classList.remove("active");
-            if (!loadingVideo.paused) loadingVideo.pause();
-          }
-        }
+        loadMinDur = loadIsReturn ? 4.4 : 2.8;
         loadCallback = onComplete;
         loadTitleEl.textContent = loadIsReturn ? `RETURNING // ${modeName}` : `DEPLOYING // ${modeName}`;
         loadStatusEl.textContent = loadIsReturn ? returnLoadStages[0] : loadStages[0];
@@ -1414,7 +1346,7 @@
         loadActive = true;
         loadScreenEl.classList.add("active");
         if (loadIsReturn) {
-          // Pre-reveal the Sung Jinwoo main menu silently behind the opaque loading screen so fade-out is seamless!
+          // Pre-reveal the main menu silently behind the opaque loading screen so fade-out is seamless!
           setTimeout(() => { if (loadActive && loadIsReturn) restoreHero(); }, 480);
         } else {
           dismissHero();
@@ -1428,170 +1360,125 @@
         loadLastTs = now;
         const elapsed = (now - loadStartTs) / 1000;
 
-        if (activeLoadTheme === "hellscape_video") {
-          // Transparent canvas over live hellscape_loop.mp4 video -> draw pulsing solar eclipse corona + rising volcanic embers!
-          lctx.clearRect(0, 0, lcw, lch);
+        lctx.fillStyle = "#020102";
+        lctx.fillRect(0, 0, lcw, lch);
 
+        // 1. Draw DOOM Slayer & Hell Citadel scene with slow cinematic breathing zoom
+        if (loadBgImg.complete && loadBgImg.naturalWidth > 0) {
+          const imgA = loadBgImg.naturalWidth / loadBgImg.naturalHeight;
+          const canA = lcw / lch;
+          const baseW = canA > imgA ? lcw : lch * imgA;
+          const baseH = canA > imgA ? lcw / imgA : lch;
+          const zoom = 1.01 + Math.min(0.045, elapsed * 0.011) + Math.sin(elapsed * 0.7) * 0.004;
+          const drawW = baseW * zoom;
+          const drawH = baseH * zoom;
+          const dx = (lcw - drawW) * 0.5;
+          const dy = (lch - drawH) * 0.5;
+
+          lctx.drawImage(loadBgImg, dx, dy, drawW, drawH);
+
+          // 2. Pulsing Crucible Blade, Hell Citadel Furnace, Ascension Sky Beam & Slayer Visor Glows
           lctx.save();
           lctx.globalCompositeOperation = "screen";
-          const ecPulse = 0.5 + 0.5 * Math.sin(elapsed * 3.2);
-          const ecX = lcw * 0.50;
-          const ecY = lch * 0.27;
-          const ecR = lcw * 0.19;
-          const eg = lctx.createRadialGradient(ecX, ecY, ecR * 0.08, ecX, ecY, ecR);
-          eg.addColorStop(0, `rgba(255, 118, 42, ${(0.20 + 0.12 * ecPulse).toFixed(3)})`);
-          eg.addColorStop(0.5, `rgba(220, 32, 18, ${(0.10 + 0.06 * ecPulse).toFixed(3)})`);
-          eg.addColorStop(1, "rgba(0, 0, 0, 0)");
-          lctx.fillStyle = eg;
-          lctx.fillRect(ecX - ecR, ecY - ecR, ecR * 2, ecR * 2);
+          const bladePulse = 0.5 + 0.5 * Math.sin(elapsed * 3.0);
+          const beamPulse = 0.5 + 0.5 * Math.sin(elapsed * 2.2 + 1.0);
 
-          for (let i = 0; i < hellEmbers.length; i++) {
-            const em = hellEmbers[i];
-            em.x += (em.vx + Math.sin(elapsed * 2.1 + em.phase) * 0.018) * dt;
-            em.y += em.vy * dt;
-            if (em.y < -0.05) { em.y = 1.05; em.x = Math.random(); }
-            if (em.x > 1.06) em.x = -0.04;
-            if (em.x < -0.06) em.x = 1.04;
-            const ex = em.x * lcw, ey = em.y * lch;
-            const fl = 0.45 + 0.55 * Math.sin(elapsed * 5.8 + em.phase);
-            const r = em.size * (lcw / 1920) * (0.85 + 0.35 * fl);
-            const g = lctx.createRadialGradient(ex, ey, 0, ex, ey, r * 3.4);
-            if (em.gold) {
-              g.addColorStop(0, `rgba(255, 224, 148, ${(0.92 * fl).toFixed(3)})`);
-              g.addColorStop(0.45, `rgba(255, 118, 32, ${(0.58 * fl).toFixed(3)})`);
-              g.addColorStop(1, "rgba(220, 32, 16, 0)");
-            } else {
-              g.addColorStop(0, `rgba(255, 142, 86, ${(0.88 * fl).toFixed(3)})`);
-              g.addColorStop(0.45, `rgba(235, 42, 24, ${(0.52 * fl).toFixed(3)})`);
-              g.addColorStop(1, "rgba(150, 14, 12, 0)");
-            }
-            lctx.fillStyle = g;
-            lctx.beginPath();
-            lctx.arc(ex, ey, r * 3.4, 0, Math.PI * 2);
-            lctx.fill();
-          }
+          const bladeX = dx + drawW * 0.605;
+          const bladeY = dy + drawH * 0.625;
+          const bladeR = drawW * 0.105;
+          const bg1 = lctx.createRadialGradient(bladeX, bladeY, bladeR * 0.08, bladeX, bladeY, bladeR);
+          bg1.addColorStop(0, `rgba(255, 92, 42, ${(0.34 + 0.16 * bladePulse).toFixed(3)})`);
+          bg1.addColorStop(0.5, `rgba(220, 28, 22, ${(0.14 + 0.08 * bladePulse).toFixed(3)})`);
+          bg1.addColorStop(1, "rgba(0, 0, 0, 0)");
+          lctx.fillStyle = bg1;
+          lctx.fillRect(bladeX - bladeR, bladeY - bladeR, bladeR * 2, bladeR * 2);
+
+          const citX = dx + drawW * 0.735;
+          const citY = dy + drawH * 0.595;
+          const citR = drawW * 0.125;
+          const cg = lctx.createRadialGradient(citX, citY, citR * 0.1, citX, citY, citR);
+          cg.addColorStop(0, `rgba(255, 68, 28, ${(0.24 + 0.13 * beamPulse).toFixed(3)})`);
+          cg.addColorStop(0.5, `rgba(195, 22, 18, ${(0.10 + 0.06 * beamPulse).toFixed(3)})`);
+          cg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          lctx.fillStyle = cg;
+          lctx.fillRect(citX - citR, citY - citR, citR * 2, citR * 2);
+
+          const skyX = dx + drawW * 0.742;
+          const skyY = dy + drawH * 0.175;
+          const skyR = drawW * 0.095;
+          const sg = lctx.createRadialGradient(skyX, skyY, skyR * 0.06, skyX, skyY, skyR);
+          sg.addColorStop(0, `rgba(186, 232, 255, ${(0.26 + 0.14 * beamPulse).toFixed(3)})`);
+          sg.addColorStop(0.5, `rgba(96, 175, 255, ${(0.10 + 0.05 * beamPulse).toFixed(3)})`);
+          sg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          lctx.fillStyle = sg;
+          lctx.fillRect(skyX - skyR, skyY - skyR, skyR * 2, skyR * 2);
+
+          const visX = dx + drawW * 0.512;
+          const visY = dy + drawH * 0.345;
+          const visR = drawW * 0.036;
+          const vg = lctx.createRadialGradient(visX, visY, visR * 0.05, visX, visY, visR);
+          vg.addColorStop(0, `rgba(120, 240, 255, ${(0.22 + 0.10 * bladePulse).toFixed(3)})`);
+          vg.addColorStop(1, "rgba(0, 0, 0, 0)");
+          lctx.fillStyle = vg;
+          lctx.fillRect(visX - visR, visY - visR, visR * 2, visR * 2);
           lctx.restore();
-        } else {
-          lctx.fillStyle = "#020102";
-          lctx.fillRect(0, 0, lcw, lch);
+        }
 
-          // 1. Draw DOOM Slayer & Hell Citadel scene with slow cinematic breathing zoom
-          if (loadBgImg.complete && loadBgImg.naturalWidth > 0) {
-            const imgA = loadBgImg.naturalWidth / loadBgImg.naturalHeight;
-            const canA = lcw / lch;
-            const baseW = canA > imgA ? lcw : lch * imgA;
-            const baseH = canA > imgA ? lcw / imgA : lch;
-            const zoom = 1.01 + Math.min(0.045, elapsed * 0.011) + Math.sin(elapsed * 0.7) * 0.004;
-            const drawW = baseW * zoom;
-            const drawH = baseH * zoom;
-            const dx = (lcw - drawW) * 0.5;
-            const dy = (lch - drawH) * 0.5;
-
-            lctx.drawImage(loadBgImg, dx, dy, drawW, drawH);
-
-            // 2. Pulsing Crucible Blade, Hell Citadel Furnace, Ascension Sky Beam & Slayer Visor Glows
-            lctx.save();
-            lctx.globalCompositeOperation = "screen";
-            const bladePulse = 0.5 + 0.5 * Math.sin(elapsed * 3.0);
-            const beamPulse = 0.5 + 0.5 * Math.sin(elapsed * 2.2 + 1.0);
-
-            const bladeX = dx + drawW * 0.605;
-            const bladeY = dy + drawH * 0.625;
-            const bladeR = drawW * 0.105;
-            const bg1 = lctx.createRadialGradient(bladeX, bladeY, bladeR * 0.08, bladeX, bladeY, bladeR);
-            bg1.addColorStop(0, `rgba(255, 92, 42, ${(0.34 + 0.16 * bladePulse).toFixed(3)})`);
-            bg1.addColorStop(0.5, `rgba(220, 28, 22, ${(0.14 + 0.08 * bladePulse).toFixed(3)})`);
-            bg1.addColorStop(1, "rgba(0, 0, 0, 0)");
-            lctx.fillStyle = bg1;
-            lctx.fillRect(bladeX - bladeR, bladeY - bladeR, bladeR * 2, bladeR * 2);
-
-            const citX = dx + drawW * 0.735;
-            const citY = dy + drawH * 0.595;
-            const citR = drawW * 0.125;
-            const cg = lctx.createRadialGradient(citX, citY, citR * 0.1, citX, citY, citR);
-            cg.addColorStop(0, `rgba(255, 68, 28, ${(0.24 + 0.13 * beamPulse).toFixed(3)})`);
-            cg.addColorStop(0.5, `rgba(195, 22, 18, ${(0.10 + 0.06 * beamPulse).toFixed(3)})`);
-            cg.addColorStop(1, "rgba(0, 0, 0, 0)");
-            lctx.fillStyle = cg;
-            lctx.fillRect(citX - citR, citY - citR, citR * 2, citR * 2);
-
-            const skyX = dx + drawW * 0.742;
-            const skyY = dy + drawH * 0.175;
-            const skyR = drawW * 0.095;
-            const sg = lctx.createRadialGradient(skyX, skyY, skyR * 0.06, skyX, skyY, skyR);
-            sg.addColorStop(0, `rgba(186, 232, 255, ${(0.26 + 0.14 * beamPulse).toFixed(3)})`);
-            sg.addColorStop(0.5, `rgba(96, 175, 255, ${(0.10 + 0.05 * beamPulse).toFixed(3)})`);
-            sg.addColorStop(1, "rgba(0, 0, 0, 0)");
-            lctx.fillStyle = sg;
-            lctx.fillRect(skyX - skyR, skyY - skyR, skyR * 2, skyR * 2);
-
-            const visX = dx + drawW * 0.512;
-            const visY = dy + drawH * 0.345;
-            const visR = drawW * 0.036;
-            const vg = lctx.createRadialGradient(visX, visY, visR * 0.05, visX, visY, visR);
-            vg.addColorStop(0, `rgba(120, 240, 255, ${(0.22 + 0.10 * bladePulse).toFixed(3)})`);
-            vg.addColorStop(1, "rgba(0, 0, 0, 0)");
-            lctx.fillStyle = vg;
-            lctx.fillRect(visX - visR, visY - visR, visR * 2, visR * 2);
-            lctx.restore();
-          }
-
-          // 3. Rolling Silver-Ash & Demonic Crimson Valley Mist
+        // 3. Rolling Silver-Ash & Demonic Crimson Valley Mist
+        lctx.save();
+        lctx.globalCompositeOperation = "screen";
+        for (let i = 0; i < valleyMist.length; i++) {
+          const m = valleyMist[i];
+          m.x += m.vx * dt;
+          if (m.x > 1.25) m.x = -0.25;
+          const mx = m.x * lcw, my = m.y * lch;
+          const rx = m.rx * lcw, ry = m.ry * lch;
           lctx.save();
-          lctx.globalCompositeOperation = "screen";
-          for (let i = 0; i < valleyMist.length; i++) {
-            const m = valleyMist[i];
-            m.x += m.vx * dt;
-            if (m.x > 1.25) m.x = -0.25;
-            const mx = m.x * lcw, my = m.y * lch;
-            const rx = m.rx * lcw, ry = m.ry * lch;
-            lctx.save();
-            lctx.translate(mx, my);
-            lctx.scale(1, ry / Math.max(1, rx));
-            const g = lctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-            if (m.crimson) {
-              g.addColorStop(0, `rgba(210, 32, 22, ${m.alpha.toFixed(3)})`);
-              g.addColorStop(1, "rgba(0,0,0,0)");
-            } else {
-              g.addColorStop(0, `rgba(195, 185, 190, ${(m.alpha * 0.72).toFixed(3)})`);
-              g.addColorStop(1, "rgba(0,0,0,0)");
-            }
-            lctx.fillStyle = g;
-            lctx.beginPath();
-            lctx.arc(0, 0, rx, 0, Math.PI * 2);
-            lctx.fill();
-            lctx.restore();
+          lctx.translate(mx, my);
+          lctx.scale(1, ry / Math.max(1, rx));
+          const g = lctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+          if (m.crimson) {
+            g.addColorStop(0, `rgba(210, 32, 22, ${m.alpha.toFixed(3)})`);
+            g.addColorStop(1, "rgba(0,0,0,0)");
+          } else {
+            g.addColorStop(0, `rgba(195, 185, 190, ${(m.alpha * 0.72).toFixed(3)})`);
+            g.addColorStop(1, "rgba(0,0,0,0)");
           }
+          lctx.fillStyle = g;
+          lctx.beginPath();
+          lctx.arc(0, 0, rx, 0, Math.PI * 2);
+          lctx.fill();
           lctx.restore();
+        }
+        lctx.restore();
 
-          // 4. 3D-Tumbling Glowing Blood-Red Leaves & Embers
-          for (let i = 0; i < bloodLeaves.length; i++) {
-            const lf = bloodLeaves[i];
-            lf.x += (lf.vx + Math.sin(elapsed * 1.9 + lf.tumble) * 0.015) * dt;
-            lf.y += (lf.vy + Math.cos(elapsed * 2.3 + lf.tumble) * 0.010) * dt;
-            lf.rot += lf.vrot * dt;
-            lf.tumble += lf.vtumble * dt;
-            if (lf.x > 1.08 || lf.y > 0.92) {
-              lf.x = -0.05 + Math.random() * 0.36;
-              lf.y = -0.04 + Math.random() * 0.42;
-            }
-            const lx = lf.x * lcw, ly = lf.y * lch;
-            const sc = lf.size * (lcw / 1920);
-            const flip = 0.28 + 0.72 * Math.abs(Math.cos(lf.tumble));
-            lctx.save();
-            lctx.translate(lx, ly);
-            lctx.rotate(lf.rot);
-            lctx.scale(1, flip);
-            lctx.fillStyle = lf.bright ? "rgba(248, 56, 42, 0.92)" : "rgba(182, 20, 22, 0.85)";
-            lctx.shadowColor = "rgba(239, 68, 68, 0.75)";
-            lctx.shadowBlur = 10;
-            lctx.beginPath();
-            lctx.moveTo(-sc, 0);
-            lctx.quadraticCurveTo(0, -sc * 0.65, sc, 0);
-            lctx.quadraticCurveTo(0, sc * 0.65, -sc, 0);
-            lctx.fill();
-            lctx.restore();
+        // 4. 3D-Tumbling Glowing Blood-Red Leaves & Embers
+        for (let i = 0; i < bloodLeaves.length; i++) {
+          const lf = bloodLeaves[i];
+          lf.x += (lf.vx + Math.sin(elapsed * 1.9 + lf.tumble) * 0.015) * dt;
+          lf.y += (lf.vy + Math.cos(elapsed * 2.3 + lf.tumble) * 0.010) * dt;
+          lf.rot += lf.vrot * dt;
+          lf.tumble += lf.vtumble * dt;
+          if (lf.x > 1.08 || lf.y > 0.92) {
+            lf.x = -0.05 + Math.random() * 0.36;
+            lf.y = -0.04 + Math.random() * 0.42;
           }
+          const lx = lf.x * lcw, ly = lf.y * lch;
+          const sc = lf.size * (lcw / 1920);
+          const flip = 0.28 + 0.72 * Math.abs(Math.cos(lf.tumble));
+          lctx.save();
+          lctx.translate(lx, ly);
+          lctx.rotate(lf.rot);
+          lctx.scale(1, flip);
+          lctx.fillStyle = lf.bright ? "rgba(248, 56, 42, 0.92)" : "rgba(182, 20, 22, 0.85)";
+          lctx.shadowColor = "rgba(239, 68, 68, 0.75)";
+          lctx.shadowBlur = 10;
+          lctx.beginPath();
+          lctx.moveTo(-sc, 0);
+          lctx.quadraticCurveTo(0, -sc * 0.65, sc, 0);
+          lctx.quadraticCurveTo(0, sc * 0.65, -sc, 0);
+          lctx.fill();
+          lctx.restore();
         }
 
         // 5. Compute smooth unified progress (blends cinematic timer + real Unity WebGL preload progress!)
@@ -1608,10 +1495,6 @@
 
         if (unityReady && elapsed >= loadMinDur + 0.25) {
           loadActive = false;
-          if (loadingVideo) {
-            loadingVideo.classList.remove("active");
-            if (!loadingVideo.paused) loadingVideo.pause();
-          }
           const cb = loadCallback;
           loadCallback = null;
           if (cb) cb();

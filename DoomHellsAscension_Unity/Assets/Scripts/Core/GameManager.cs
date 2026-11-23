@@ -101,10 +101,6 @@ namespace DoomHellsAscension
         private Texture2D loadingGodWarriorTex;
         private VideoPlayer landingVideoPlayer;
         private RenderTexture landingVideoRT;
-        private VideoPlayer loadingHellscapePlayer;
-        private RenderTexture loadingHellscapeRT;
-        private int activeLoadingTheme = 0; // 0 = DOOM Slayer Citadel, 1 = Hellscape Solar Eclipse Video
-        private int lastLoadingTheme = -1;
         private const float LandingVideoSlowSpeed = 0.72f;
         private double savedLandingVideoTime;
         private float unityLoadingTimer;
@@ -202,8 +198,6 @@ namespace DoomHellsAscension
                 unityLoadingTimer = Mathf.Max(0f, unityLoadingTimer - Time.unscaledDeltaTime);
                 if (unityLoadingTimer <= 0f)
                 {
-                    if (loadingHellscapePlayer != null && loadingHellscapePlayer.isPlaying)
-                        loadingHellscapePlayer.Pause();
                     IsPaused = false;
                     if (IsRunning)
                     {
@@ -349,33 +343,6 @@ namespace DoomHellsAscension
                 "TIP: Purge 100% of hostiles to unseal the Golden Ascension Portal and unlock the next Level",
                 "TIP: Press [SHIFT] to Phase-Dash through demon swarms and [Q/E] at 100% Resonance for Overdrive"
             };
-            // Non-repeating shuffle between DOOM Slayer Citadel (0) and Hellscape Solar Eclipse Video (1)!
-            bool canPlayHellscape = loadingHellscapePlayer != null && loadingHellscapePlayer.isPrepared;
-            if (canPlayHellscape)
-            {
-                activeLoadingTheme = lastLoadingTheme == -1 ? Random.Range(0, 2) : (1 - lastLoadingTheme);
-                lastLoadingTheme = activeLoadingTheme;
-            }
-            else
-            {
-                activeLoadingTheme = 0;
-                lastLoadingTheme = 0;
-            }
-
-            if (activeLoadingTheme == 1 && canPlayHellscape)
-            {
-                bool isReturnScreen = !string.IsNullOrEmpty(headline) && headline.StartsWith("RETURNING");
-                duration = Mathf.Max(duration, isReturnScreen ? 6.0f : 4.5f);
-                loadingHellscapePlayer.time = 0;
-                loadingHellscapePlayer.playbackSpeed = 1.0f;
-                loadingHellscapePlayer.skipOnDrop = false;
-                loadingHellscapePlayer.Play();
-            }
-            else if (loadingHellscapePlayer != null && loadingHellscapePlayer.isPlaying)
-            {
-                loadingHellscapePlayer.Pause();
-            }
-
             unityLoadingHeadline = headline;
             unityLoadingDuration = duration;
             unityLoadingTimer = duration;
@@ -385,7 +352,7 @@ namespace DoomHellsAscension
 
         private void InitLandingVideoPlayer()
         {
-            // On WebGL, index.html renders assets/hero/abyssal_reign_landing.mp4 & hellscape_loop.mp4 directly via HTML5 <video>,
+            // On WebGL, index.html renders assets/hero/abyssal_reign_landing.mp4 directly via HTML5 <video>,
             // avoiding duplicate downloads inside the WebGL runtime!
             if (Application.platform != RuntimePlatform.WebGLPlayer)
             {
@@ -411,22 +378,6 @@ namespace DoomHellsAscension
                     if (!IsRunning && unityLoadingTimer <= 0f) vp.Play();
                 };
                 landingVideoPlayer.Prepare();
-
-                loadingHellscapeRT = new RenderTexture(1280, 720, 0, RenderTextureFormat.ARGB32);
-                loadingHellscapeRT.Create();
-                loadingHellscapePlayer = gameObject.AddComponent<VideoPlayer>();
-                loadingHellscapePlayer.playOnAwake = false;
-                loadingHellscapePlayer.isLooping = true;
-                loadingHellscapePlayer.playbackSpeed = 1.0f;
-                loadingHellscapePlayer.skipOnDrop = false;
-                loadingHellscapePlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
-                loadingHellscapePlayer.audioOutputMode = VideoAudioOutputMode.None;
-                loadingHellscapePlayer.renderMode = VideoRenderMode.RenderTexture;
-                loadingHellscapePlayer.targetTexture = loadingHellscapeRT;
-                loadingHellscapePlayer.source = VideoSource.Url;
-                loadingHellscapePlayer.url = Application.streamingAssetsPath + "/hellscape_loop.mp4";
-                loadingHellscapePlayer.errorReceived += (vp, msg) => Debug.LogWarning("[LoadingVideo] Fallback to image: " + msg);
-                loadingHellscapePlayer.Prepare();
             }
         }
 
@@ -464,12 +415,6 @@ namespace DoomHellsAscension
                 landingVideoRT.Release();
                 Destroy(landingVideoRT);
                 landingVideoRT = null;
-            }
-            if (loadingHellscapeRT != null)
-            {
-                loadingHellscapeRT.Release();
-                Destroy(loadingHellscapeRT);
-                loadingHellscapeRT = null;
             }
         }
 
@@ -2779,82 +2724,45 @@ namespace DoomHellsAscension
 
             DrawRect(new Rect(0, 0, sw, sh), new Color(0.01f, 0.005f, 0.008f, 1f));
 
-            bool useHellscapeVideo = activeLoadingTheme == 1
-                && loadingHellscapePlayer != null
-                && loadingHellscapePlayer.isPlaying
-                && loadingHellscapeRT != null;
-
-            if (useHellscapeVideo)
+            // 1. DOOM Slayer & Hell Citadel with slow cinematic breathing zoom
+            if (loadingGodWarriorTex != null)
             {
-                // Shuffled Loading Animation #2: Live Hellscape Solar Eclipse Video + Rising Volcanic Embers
-                GUI.DrawTexture(new Rect(0, 0, sw, sh), loadingHellscapeRT, ScaleMode.ScaleAndCrop);
-                if (softGlowTex != null)
-                {
-                    float ecPulse = 0.5f + 0.5f * Mathf.Sin(t * 3.2f);
-                    GUI.color = new Color(1.0f, 0.36f, 0.14f, 0.22f + 0.12f * ecPulse);
-                    GUI.DrawTexture(new Rect(sw * 0.50f - 170f, sh * 0.27f - 170f, 340f, 340f), softGlowTex);
-
-                    if (menuEmbers != null)
-                    {
-                        for (int i = 0; i < menuEmbers.Length; i++)
-                        {
-                            MenuParticle em = menuEmbers[i];
-                            float ex = (em.x + t * (em.vx * 0.45f) + Mathf.Sin(t * 2.0f + em.phase) * 18f) % (sw + 40f);
-                            if (ex < -20f) ex += sw + 40f;
-                            float ey = (em.y - t * (48f + (i % 5) * 16f)) % (sh + 40f);
-                            if (ey < -20f) ey += sh + 40f;
-                            float fl = 0.5f + 0.5f * Mathf.Sin(t * 5.2f + em.phase);
-                            float sz = em.size * 1.05f;
-                            GUI.color = i % 3 == 0
-                                ? new Color(1.0f, 0.78f, 0.32f, 0.85f * fl)
-                                : new Color(0.98f, 0.28f, 0.12f, 0.80f * fl);
-                            GUI.DrawTexture(new Rect(ex - sz, ey - sz, sz * 2f, sz * 2f), softGlowTex);
-                        }
-                    }
-                }
+                float imgAspect = (float)loadingGodWarriorTex.width / Mathf.Max(1, loadingGodWarriorTex.height);
+                float canAspect = sw / Mathf.Max(1f, sh);
+                float baseW = canAspect > imgAspect ? sw : sh * imgAspect;
+                float baseH = canAspect > imgAspect ? sw / imgAspect : sh;
+                float zoom = 1.01f + prog * 0.042f;
+                float drawW = baseW * zoom;
+                float drawH = baseH * zoom;
+                GUI.DrawTexture(new Rect((sw - drawW) * 0.5f, (sh - drawH) * 0.5f, drawW, drawH), loadingGodWarriorTex, ScaleMode.StretchToFill);
             }
-            else
+
+            // 2. Pulsing Crucible Blade, Hell Citadel Magma Furnace, Ascension Sky Beam & Drifting Crimson Embers/Leaves
+            if (softGlowTex != null)
             {
-                // Shuffled Loading Animation #1: DOOM Slayer & Hell Citadel with slow cinematic breathing zoom
-                if (loadingGodWarriorTex != null)
+                float pulse = 0.5f + 0.5f * Mathf.Sin(t * 2.8f);
+                float beamPulse = 0.5f + 0.5f * Mathf.Sin(t * 2.2f + 1.0f);
+
+                GUI.color = new Color(1.0f, 0.30f, 0.16f, 0.26f + 0.14f * pulse);
+                GUI.DrawTexture(new Rect(sw * 0.605f - 120f, sh * 0.625f - 120f, 240f, 240f), softGlowTex);
+
+                GUI.color = new Color(0.98f, 0.22f, 0.14f, 0.22f + 0.11f * beamPulse);
+                GUI.DrawTexture(new Rect(sw * 0.735f - 140f, sh * 0.595f - 140f, 280f, 280f), softGlowTex);
+
+                GUI.color = new Color(0.65f, 0.88f, 1.0f, 0.20f + 0.10f * beamPulse);
+                GUI.DrawTexture(new Rect(sw * 0.742f - 90f, sh * 0.175f - 110f, 180f, 220f), softGlowTex);
+
+                if (menuEmbers != null)
                 {
-                    float imgAspect = (float)loadingGodWarriorTex.width / Mathf.Max(1, loadingGodWarriorTex.height);
-                    float canAspect = sw / Mathf.Max(1f, sh);
-                    float baseW = canAspect > imgAspect ? sw : sh * imgAspect;
-                    float baseH = canAspect > imgAspect ? sw / imgAspect : sh;
-                    float zoom = 1.01f + prog * 0.042f;
-                    float drawW = baseW * zoom;
-                    float drawH = baseH * zoom;
-                    GUI.DrawTexture(new Rect((sw - drawW) * 0.5f, (sh - drawH) * 0.5f, drawW, drawH), loadingGodWarriorTex, ScaleMode.StretchToFill);
-                }
-
-                // Pulsing Crucible Blade, Hell Citadel Magma Furnace, Ascension Sky Beam & Drifting Crimson Embers/Leaves
-                if (softGlowTex != null)
-                {
-                    float pulse = 0.5f + 0.5f * Mathf.Sin(t * 2.8f);
-                    float beamPulse = 0.5f + 0.5f * Mathf.Sin(t * 2.2f + 1.0f);
-
-                    GUI.color = new Color(1.0f, 0.30f, 0.16f, 0.26f + 0.14f * pulse);
-                    GUI.DrawTexture(new Rect(sw * 0.605f - 120f, sh * 0.625f - 120f, 240f, 240f), softGlowTex);
-
-                    GUI.color = new Color(0.98f, 0.22f, 0.14f, 0.22f + 0.11f * beamPulse);
-                    GUI.DrawTexture(new Rect(sw * 0.735f - 140f, sh * 0.595f - 140f, 280f, 280f), softGlowTex);
-
-                    GUI.color = new Color(0.65f, 0.88f, 1.0f, 0.20f + 0.10f * beamPulse);
-                    GUI.DrawTexture(new Rect(sw * 0.742f - 90f, sh * 0.175f - 110f, 180f, 220f), softGlowTex);
-
-                    if (menuEmbers != null)
+                    for (int i = 0; i < menuEmbers.Length; i++)
                     {
-                        for (int i = 0; i < menuEmbers.Length; i++)
-                        {
-                            MenuParticle em = menuEmbers[i];
-                            float ex = (em.x + t * (48f + (i % 5) * 14f)) % (sw + 60f) - 30f;
-                            float ey = (em.y + t * (16f + (i % 4) * 7f) + Mathf.Sin(t * 2.2f + em.phase) * 18f) % (sh * 0.88f);
-                            float fl = 0.55f + 0.45f * Mathf.Sin(t * 5.0f + em.phase);
-                            float sz = em.size * 1.15f;
-                            GUI.color = new Color(0.96f, i % 3 == 0 ? 0.26f : 0.12f, 0.12f, 0.82f * fl);
-                            GUI.DrawTexture(new Rect(ex - sz, ey - sz * 0.55f, sz * 2.2f, sz * 1.1f), softGlowTex);
-                        }
+                        MenuParticle em = menuEmbers[i];
+                        float ex = (em.x + t * (48f + (i % 5) * 14f)) % (sw + 60f) - 30f;
+                        float ey = (em.y + t * (16f + (i % 4) * 7f) + Mathf.Sin(t * 2.2f + em.phase) * 18f) % (sh * 0.88f);
+                        float fl = 0.55f + 0.45f * Mathf.Sin(t * 5.0f + em.phase);
+                        float sz = em.size * 1.15f;
+                        GUI.color = new Color(0.96f, i % 3 == 0 ? 0.26f : 0.12f, 0.12f, 0.82f * fl);
+                        GUI.DrawTexture(new Rect(ex - sz, ey - sz * 0.55f, sz * 2.2f, sz * 1.1f), softGlowTex);
                     }
                 }
             }
