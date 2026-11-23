@@ -98,6 +98,7 @@ namespace DoomHellsAscension
         private Texture2D iconGearTex;
         private Texture2D iconPinTex;
         private Texture2D landingPosterTex;
+        private Texture2D campaignModeTex;
         private Texture2D loadingGodWarriorTex;
         private Material landingAnimMat;
         private RenderTexture landingAnimRT;
@@ -167,6 +168,7 @@ namespace DoomHellsAscension
             iconGearTex = GenerateGearIconTexture();
             iconPinTex = GeneratePinIconTexture();
             landingPosterTex = Resources.Load<Texture2D>("Hero/landing_abyssal_reign");
+            campaignModeTex = Resources.Load<Texture2D>("Hero/mode_campaign");
             loadingGodWarriorTex = Resources.Load<Texture2D>("Hero/loading_god_warrior");
             InitLandingAnimShader();
             InitMenuParticles();
@@ -2026,7 +2028,7 @@ namespace DoomHellsAscension
             if (DrawVisualModeCard(new Rect(0f, 0f, innerW, cardH),
                 $"> OP // 01  CAMPAIGN (LVL {selectedStartLevel} / UNLOCKED {highestLevelUnlocked})",
                 campDesc,
-                landingPosterTex != null ? landingPosterTex : blackHeroBgTex,
+                campaignModeTex != null ? campaignModeTex : (landingPosterTex != null ? landingPosterTex : blackHeroBgTex),
                 currentMode == GameModeType.Campaign))
             {
                 currentMode = GameModeType.Campaign;
