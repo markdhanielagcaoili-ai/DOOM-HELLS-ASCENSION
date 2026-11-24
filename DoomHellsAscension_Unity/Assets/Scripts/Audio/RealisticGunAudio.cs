@@ -29,6 +29,7 @@ namespace DoomHellsAscension
         private AudioClip pickupClip;
         private AudioClip dashClip;
         private AudioClip overdriveClip;
+        private AudioClip portalUnlockClip;
         private AudioClip musicLoop;
 
         public bool AudioEnabled { get; private set; } = true;
@@ -151,6 +152,7 @@ namespace DoomHellsAscension
         public void PlayPickup() { if (AudioEnabled) { sfxSource.pitch = 1f; sfxSource.PlayOneShot(pickupClip, 0.75f); } }
         public void PlayDash() { if (AudioEnabled) { sfxSource.pitch = 1f; sfxSource.PlayOneShot(dashClip, 0.72f); } }
         public void PlayOverdrive() { if (AudioEnabled) { sfxSource.pitch = 1f; sfxSource.PlayOneShot(overdriveClip, 0.92f); } }
+        public void PlayPortalUnlock() { if (AudioEnabled && portalUnlockClip != null) { sfxSource.pitch = 1f; sfxSource.PlayOneShot(portalUnlockClip, 0.96f); } }
 
         private void GenerateAllClips()
         {
@@ -196,6 +198,7 @@ namespace DoomHellsAscension
             pickupClip = SynthPickupChime(0.22f);
             dashClip = SynthToneBurst(0.16f, 260f, 680f, 0.55f);
             overdriveClip = SynthOverdriveRoar(0.55f);
+            portalUnlockClip = SynthPortalUnlock(1.55f);
             musicLoop = SynthIndustrialMetalLoop(3.04f);
         }
 
@@ -793,6 +796,33 @@ namespace DoomHellsAscension
                 s[i] = (Mathf.Sin(2f * Mathf.PI * f1 * t) * 0.5f + Mathf.Sin(2f * Mathf.PI * f2 * t) * 0.4f) * Mathf.Exp(-t * 3.5f);
             }
             return MakeClip("OverdriveSFX", s);
+        }
+
+        private AudioClip SynthPortalUnlock(float dur)
+        {
+            int len = Mathf.FloorToInt(SR * dur);
+            float[] s = new float[len];
+            System.Random rng = new System.Random(777);
+            for (int i = 0; i < len; i++)
+            {
+                float t = (float)i / SR;
+                float env = Mathf.Min(1f, t / 0.04f) * Mathf.Exp(-t * 2.1f);
+                // Deep obsidian gate unsealing sub-bass boom
+                float subFreq = Mathf.Lerp(92f, 36f, Mathf.Min(1f, t / 0.45f));
+                float sub = Mathf.Sin(2f * Mathf.PI * subFreq * t) * Mathf.Exp(-t * 3.2f) * 0.52f;
+                // Rising golden-crimson demonic harmonic chord (D3, A3, D4, F#4)
+                float lift = Mathf.Lerp(0.85f, 1.0f, Mathf.Min(1f, t / 0.35f));
+                float chord = (
+                    Mathf.Sin(2f * Mathf.PI * 146.83f * lift * t) * 0.28f +
+                    Mathf.Sin(2f * Mathf.PI * 220.00f * lift * t) * 0.24f +
+                    Mathf.Sin(2f * Mathf.PI * 293.66f * lift * t) * 0.20f +
+                    Mathf.Sin(2f * Mathf.PI * 369.99f * lift * t) * 0.14f
+                ) * env;
+                // Subtle molten fire whoosh
+                float whoosh = (float)(rng.NextDouble() * 2.0 - 1.0) * Mathf.Exp(-Mathf.Abs(t - 0.16f) * 8.5f) * 0.16f;
+                s[i] = Mathf.Clamp((float)Math.Tanh((sub + chord + whoosh) * 1.15f), -0.92f, 0.92f);
+            }
+            return MakeClip("PortalUnlockSFX", s);
         }
 
         private AudioClip SynthIndustrialMetalLoop(float dur)

@@ -90,8 +90,8 @@ namespace DoomHellsAscension.Editor
             sunGo.transform.position = new Vector3(0f, 95f, 0f);
             Light sun = sunGo.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1.0f, 0.90f, 0.72f);
-            sun.intensity = 1.65f;
+            sun.color = new Color(1.0f, 0.62f, 0.38f);
+            sun.intensity = 1.28f;
             sun.shadows = LightShadows.Soft;
             sunGo.transform.rotation = Quaternion.Euler(42f, -38f, 0f);
 
@@ -121,7 +121,7 @@ namespace DoomHellsAscension.Editor
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 260f;
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.68f, 0.60f, 0.44f);
+            cam.backgroundColor = new Color(0.05f, 0.018f, 0.015f);
             camGo.AddComponent<AudioListener>();
 
             WeaponViewmodel3D vm = camGo.AddComponent<WeaponViewmodel3D>();

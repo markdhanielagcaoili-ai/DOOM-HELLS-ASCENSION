@@ -680,6 +680,7 @@ namespace DoomHellsAscension
                 {
                     BeaconUnlocked = true;
                     if (worldBuilder != null) worldBuilder.SetPortalUnlocked(true);
+                    if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayPortalUnlock();
                     AddKillfeed("PORTAL UNSEALED! ENTER THE GOLDEN RIFT!");
                 }
             }
