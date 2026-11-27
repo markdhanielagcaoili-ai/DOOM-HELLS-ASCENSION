@@ -103,6 +103,9 @@ namespace DoomHellsAscension
         private Material landingAnimMat;
         private RenderTexture landingAnimRT;
         private float landingAnimTime;
+        private Material loadingAnimMat;
+        private RenderTexture loadingAnimRT;
+        private float loadingAnimTime;
         private float unityLoadingTimer;
         private float unityLoadingDuration = 2.3f;
         private string unityLoadingHeadline = "ENTERING CITADEL REALM";
@@ -196,7 +199,14 @@ namespace DoomHellsAscension
             // Keep gameplay frozen cleanly while the God Warrior Loading Screen plays (Deploy OR Return to Main Menu)
             if (unityLoadingTimer > 0f)
             {
-                unityLoadingTimer = Mathf.Max(0f, unityLoadingTimer - Time.unscaledDeltaTime);
+                float dtLoad = Mathf.Min(0.033f, Time.unscaledDeltaTime);
+                unityLoadingTimer = Mathf.Max(0f, unityLoadingTimer - dtLoad);
+                loadingAnimTime += dtLoad;
+                if (loadingAnimMat != null && loadingAnimRT != null && loadingGodWarriorTex != null)
+                {
+                    loadingAnimMat.SetFloat("_AnimTime", loadingAnimTime);
+                    Graphics.Blit(loadingGodWarriorTex, loadingAnimRT, loadingAnimMat);
+                }
                 if (unityLoadingTimer <= 0f)
                 {
                     IsPaused = false;
@@ -363,6 +373,16 @@ namespace DoomHellsAscension
                 landingAnimMat.SetFloat("_AnimTime", 0f);
                 Graphics.Blit(landingPosterTex, landingAnimRT, landingAnimMat);
             }
+            Shader lsh = Resources.Load<Shader>("Shaders/LoadingPixelAnim");
+            if (lsh == null) lsh = Shader.Find("Hidden/DoomLoadingPixelAnim");
+            if (lsh != null && loadingGodWarriorTex != null)
+            {
+                loadingAnimMat = new Material(lsh);
+                loadingAnimRT = new RenderTexture(1024, 571, 0, RenderTextureFormat.ARGB32);
+                loadingAnimRT.Create();
+                loadingAnimMat.SetFloat("_AnimTime", 0f);
+                Graphics.Blit(loadingGodWarriorTex, loadingAnimRT, loadingAnimMat);
+            }
         }
 
         private void OnDestroy()
@@ -377,6 +397,17 @@ namespace DoomHellsAscension
             {
                 Destroy(landingAnimMat);
                 landingAnimMat = null;
+            }
+            if (loadingAnimRT != null)
+            {
+                loadingAnimRT.Release();
+                Destroy(loadingAnimRT);
+                loadingAnimRT = null;
+            }
+            if (loadingAnimMat != null)
+            {
+                Destroy(loadingAnimMat);
+                loadingAnimMat = null;
             }
         }
 
@@ -2678,46 +2709,29 @@ namespace DoomHellsAscension
 
             DrawRect(new Rect(0, 0, sw, sh), new Color(0.01f, 0.005f, 0.008f, 1f));
 
-            // 1. DOOM Slayer & Hell Citadel with slow cinematic breathing zoom
-            if (loadingGodWarriorTex != null)
+            // 1. Live 2.5D Shader-Animated DEVIL: ABYSSAL REIGN Pixel-Art Loading Screen
+            Texture loadBgTex = (loadingAnimRT != null) ? (Texture)loadingAnimRT : (Texture)loadingGodWarriorTex;
+            if (loadBgTex != null)
             {
-                float imgAspect = (float)loadingGodWarriorTex.width / Mathf.Max(1, loadingGodWarriorTex.height);
-                float canAspect = sw / Mathf.Max(1f, sh);
-                float baseW = canAspect > imgAspect ? sw : sh * imgAspect;
-                float baseH = canAspect > imgAspect ? sw / imgAspect : sh;
-                float zoom = 1.01f + prog * 0.042f;
-                float drawW = baseW * zoom;
-                float drawH = baseH * zoom;
-                GUI.DrawTexture(new Rect((sw - drawW) * 0.5f, (sh - drawH) * 0.5f, drawW, drawH), loadingGodWarriorTex, ScaleMode.StretchToFill);
+                GUI.DrawTexture(new Rect(0, 0, sw, sh), loadBgTex, ScaleMode.ScaleAndCrop);
             }
 
-            // 2. Pulsing Crucible Blade, Hell Citadel Magma Furnace, Ascension Sky Beam & Drifting Crimson Embers/Leaves
-            if (softGlowTex != null)
+            // 2. Rising Volcanic Embers & Glowing Muzzle Sparks over the Animated Pixel Scene
+            if (softGlowTex != null && menuEmbers != null)
             {
-                float pulse = 0.5f + 0.5f * Mathf.Sin(t * 2.8f);
-                float beamPulse = 0.5f + 0.5f * Mathf.Sin(t * 2.2f + 1.0f);
-
-                GUI.color = new Color(1.0f, 0.30f, 0.16f, 0.26f + 0.14f * pulse);
-                GUI.DrawTexture(new Rect(sw * 0.605f - 120f, sh * 0.625f - 120f, 240f, 240f), softGlowTex);
-
-                GUI.color = new Color(0.98f, 0.22f, 0.14f, 0.22f + 0.11f * beamPulse);
-                GUI.DrawTexture(new Rect(sw * 0.735f - 140f, sh * 0.595f - 140f, 280f, 280f), softGlowTex);
-
-                GUI.color = new Color(0.65f, 0.88f, 1.0f, 0.20f + 0.10f * beamPulse);
-                GUI.DrawTexture(new Rect(sw * 0.742f - 90f, sh * 0.175f - 110f, 180f, 220f), softGlowTex);
-
-                if (menuEmbers != null)
+                for (int i = 0; i < menuEmbers.Length; i++)
                 {
-                    for (int i = 0; i < menuEmbers.Length; i++)
-                    {
-                        MenuParticle em = menuEmbers[i];
-                        float ex = (em.x + t * (48f + (i % 5) * 14f)) % (sw + 60f) - 30f;
-                        float ey = (em.y + t * (16f + (i % 4) * 7f) + Mathf.Sin(t * 2.2f + em.phase) * 18f) % (sh * 0.88f);
-                        float fl = 0.55f + 0.45f * Mathf.Sin(t * 5.0f + em.phase);
-                        float sz = em.size * 1.15f;
-                        GUI.color = new Color(0.96f, i % 3 == 0 ? 0.26f : 0.12f, 0.12f, 0.82f * fl);
-                        GUI.DrawTexture(new Rect(ex - sz, ey - sz * 0.55f, sz * 2.2f, sz * 1.1f), softGlowTex);
-                    }
+                    MenuParticle em = menuEmbers[i];
+                    float ex = (em.x + t * (em.vx * 0.45f) + Mathf.Sin(t * 2.2f + em.phase) * 16f) % (sw + 40f);
+                    if (ex < -20f) ex += sw + 40f;
+                    float ey = (em.y - t * (52f + (i % 5) * 16f)) % (sh + 40f);
+                    if (ey < -20f) ey += sh + 40f;
+                    float fl = 0.50f + 0.50f * Mathf.Sin(t * 5.2f + em.phase);
+                    float sz = em.size * 1.1f;
+                    GUI.color = i % 3 == 0
+                        ? new Color(1.0f, 0.82f, 0.34f, 0.85f * fl)
+                        : new Color(0.98f, 0.32f, 0.12f, 0.80f * fl);
+                    GUI.DrawTexture(new Rect(ex - sz, ey - sz, sz * 2f, sz * 2f), softGlowTex);
                 }
             }
             GUI.color = savedCol;

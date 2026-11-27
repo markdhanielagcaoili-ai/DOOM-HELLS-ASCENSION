@@ -704,6 +704,15 @@
       visibility: visible;
       pointer-events: auto;
     }
+    #loading-shader-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+      pointer-events: none;
+    }
     #loading-canvas {
       position: absolute;
       inset: 0;
@@ -854,8 +863,9 @@
     <div id="popup-box-root" class="popup-box"></div>
   </div>
 
-  <!-- DOOM SLAYER HELL CITADEL 60FPS ANIMATED LOADING SCREEN -->
-  <section id="loading-screen" aria-label="Loading DOOM Hell's Ascension">
+  <!-- DEVIL: ABYSSAL REIGN PIXEL-ART 2.5D SHADER ANIMATED LOADING SCREEN -->
+  <section id="loading-screen" aria-label="Loading DEVIL: Abyssal Reign">
+    <canvas id="loading-shader-canvas"></canvas>
     <canvas id="loading-canvas"></canvas>
     <div class="loading-vignette"></div>
     <div class="loading-hud">
@@ -1487,13 +1497,14 @@
       };
 
       // =========================================================================
-      // 2.5. GOD WARRIOR DEMONIC BLOOD-ECLIPSE 60FPS ANIMATED LOADING SCREEN
-      // Matching pin.it/5moNg2A7a: tumbling crimson leaves, rippling blood-moon lake,
-      // rolling volcanic ash mist, pulsing eclipse corona & God-Warrior celestial halo!
+      // 2.5. DEVIL: ABYSSAL REIGN 60FPS 2.5D GLSL SHADER ANIMATED LOADING SCREEN
+      //      Pouring molten lava waterfall, dancing DEVIL title flames, breathing &
+      //      firing DOOM Slayer with shotgun recoil + muzzle sparks & rising embers!
       // =========================================================================
       const loadScreenEl = document.getElementById("loading-screen");
+      const loadShaderCanvas = document.getElementById("loading-shader-canvas");
       const loadCanvas = document.getElementById("loading-canvas");
-      const lctx = loadCanvas.getContext("2d", { alpha: false });
+      const lctx = loadCanvas.getContext("2d", { alpha: true });
       const loadTitleEl = document.getElementById("loading-title");
       const loadStatusEl = document.getElementById("loading-status");
       const loadPctEl = document.getElementById("loading-pct");
@@ -1504,62 +1515,254 @@
         "TIP: Press [0] to spin-draw your Reaver Karambit · [LMB] Slash · [RMB] Heavy Stab · [Y] Spin Inspect",
         "TIP: Reaver Vandal deals 4x Headshot damage and unleashes the Soul-Pillar Finisher on Boss & final kills",
         "TIP: Watch out for flying & leaping demons — dodge their toxic acid spit before corrosion drains your HP",
-        "TIP: Clear 100% of hostiles to unseal the Golden Ascension Portal and unlock the next Campaign Level",
+        "TIP: Clear 100% of hostiles to unseal the Obsidian Diamond Portal and unlock the next Campaign Level",
         "TIP: Press [SHIFT] to Phase-Dash through demon swarms and [Q/E] at 100% Resonance for Overdrive"
       ];
       const loadStages = [
-        "AWAKENING GOD WARRIOR...",
-        "IGNITING BLOOD ECLIPSE...",
-        "FORGING REAVER ARSENAL...",
-        "UNSEALING DEMONIC CITADEL...",
+        "AWAKENING SLAYER ARSENAL...",
+        "IGNITING MOLTEN CITADEL...",
+        "LOADING SUPER SHOTGUN & REAVER...",
+        "UNSEALING ABYSSAL REALM...",
         "ENTERING BATTLEFIELD..."
       ];
       const returnLoadStages = [
         "EXITING DEMONIC CITADEL...",
-        "SEALING BLOOD ECLIPSE...",
-        "RECALLING SHADOW ARMY...",
+        "SEALING OBSIDIAN RIFT...",
+        "COOLING HELLFIRE FURNACE...",
         "RESTORING COMMAND SANCTUM...",
         "ENTERING MAIN MENU..."
       ];
 
       const loadBgImg = new Image();
       loadBgImg.decoding = "async";
-      loadBgImg.src = "assets/hero/loading_god_warrior.jpg?v=2";
+      loadBgImg.src = "assets/hero/loading_god_warrior.jpg?v=3";
+
+      let lgl = null;
+      let lglProg = null;
+      let lglTex = null;
+      let lglTexReady = false;
+      let luTimeLoc = null;
+      let luCanvasSizeLoc = null;
+      let luTexSizeLoc = null;
+
+      function initLoadingWebGL() {
+        try {
+          lgl = loadShaderCanvas.getContext("webgl", { alpha: false, antialias: false })
+             || loadShaderCanvas.getContext("experimental-webgl", { alpha: false, antialias: false });
+          if (!lgl) return;
+
+          const vsSrc = `
+            attribute vec2 aPos;
+            varying vec2 vUv;
+            void main() {
+              vUv = vec2(aPos.x * 0.5 + 0.5, 0.5 - aPos.y * 0.5);
+              gl_Position = vec4(aPos, 0.0, 1.0);
+            }
+          `;
+          const fsSrc = `
+            precision highp float;
+            uniform sampler2D uTex;
+            uniform float uTime;
+            uniform vec2 uCanvasSize;
+            uniform vec2 uTexSize;
+            varying vec2 vUv;
+
+            float gauss(vec2 p, vec2 c, vec2 r) {
+              vec2 d = (p - c) / r;
+              return exp(-dot(d, d));
+            }
+
+            void main() {
+              float t = uTime;
+              float canA = uCanvasSize.x / max(1.0, uCanvasSize.y);
+              float texA = uTexSize.x / max(1.0, uTexSize.y);
+              vec2 p = vUv;
+              if (canA > texA) {
+                float sy = texA / canA;
+                p.y = (vUv.y - 0.5) * sy + 0.5;
+              } else {
+                float sx = canA / texA;
+                p.x = (vUv.x - 0.5) * sx + 0.5;
+              }
+
+              vec2 uv = p;
+              float breath = sin(t * 2.05);
+              float fireBeat = pow(max(0.0, sin(t * 3.4)), 6.0);
+              float fastFlicker = 0.5 + 0.5 * sin(t * 19.0) * cos(t * 11.5);
+
+              // 1. PIXEL-ART DOOM SLAYER (Right side): Breathing, Helmet Bob, Super Shotgun Recoil & Muzzle Blast!
+              float footAnchor = smoothstep(0.92, 0.64, p.y);
+              float torsoMask = gauss(p, vec2(0.735, 0.365), vec2(0.118, 0.165)) * footAnchor;
+              uv.y += breath * 0.0115 * torsoMask;
+              uv.x -= (p.x - 0.735) * breath * 0.040 * torsoMask;
+
+              float headMask = gauss(p, vec2(0.735, 0.185), vec2(0.055, 0.088));
+              uv.y += sin(t * 2.05 - 0.25) * 0.0105 * headMask;
+              uv.x += sin(t * 1.1) * 0.0032 * headMask;
+
+              float gunMask = gauss(p, vec2(0.775, 0.425), vec2(0.130, 0.072));
+              uv.x += (fireBeat * 0.0135 + sin(t * 2.05 - 0.5) * 0.0035) * gunMask;
+              uv.y += (fireBeat * 0.0055 + breath * 0.0080) * gunMask;
+
+              float muzzleMask = gauss(p, vec2(0.900, 0.398), vec2(0.052, 0.085));
+              float muzzleScale = 0.085 * fireBeat + 0.038 * fastFlicker;
+              uv -= (p - vec2(0.882, 0.402)) * muzzleScale * muzzleMask;
+              uv.y += sin(p.x * 80.0 - t * 22.0) * 0.0036 * muzzleMask;
+
+              // 2. EXPLOSIVE FIREBURSTS behind Slayer
+              float burstMask = gauss(p, vec2(0.625, 0.595), vec2(0.068, 0.085))
+                              + gauss(p, vec2(0.825, 0.615), vec2(0.062, 0.080))
+                              + gauss(p, vec2(0.565, 0.935), vec2(0.075, 0.070))
+                              + gauss(p, vec2(0.895, 0.885), vec2(0.065, 0.080));
+              float bClamp = clamp(burstMask, 0.0, 1.0);
+              float burstWave = 0.035 * sin(t * 8.5) + 0.055 * fireBeat;
+              uv += vec2(sin(p.y * 55.0 - t * 9.0), cos(p.x * 55.0 + t * 8.0)) * 0.0035 * bClamp;
+              uv -= (p - vec2(0.73, 0.62)) * burstWave * bClamp * 0.35;
+
+              // 3. FLOATING SHATTERED VOLCANIC ROCKS upper-right
+              float rockMask = gauss(p, vec2(0.68, 0.09), vec2(0.16, 0.085)) * (1.0 - clamp(headMask * 1.4, 0.0, 1.0));
+              uv.y += sin(t * 1.6 + p.x * 14.0) * 0.0055 * rockMask;
+
+              vec2 sampleUV = clamp(uv, vec2(0.002), vec2(0.998));
+              vec4 col = texture2D(uTex, sampleUV);
+
+              // 4. CONTINUOUS POURING MOLTEN LAVA WATERFALL & BOILING LAVA POOL
+              float lavaPix = smoothstep(0.45, 0.88, col.r - col.b * 0.6) * smoothstep(0.15, 0.62, col.g);
+              float fallUpper = gauss(p, vec2(0.240, 0.155), vec2(0.048, 0.075));
+              float fallLower = gauss(p, vec2(0.240, 0.735), vec2(0.055, 0.110))
+                              + gauss(p, vec2(0.408, 0.855), vec2(0.024, 0.075));
+              float fallMask = clamp(fallUpper + fallLower, 0.0, 1.0) * lavaPix;
+              if (fallMask > 0.02) {
+                vec2 luv = vec2(sampleUV.x + sin(p.y * 46.0 - t * 7.2) * 0.0042 * fallMask,
+                                sampleUV.y - fract(t * 0.55) * 0.048 * fallMask);
+                vec4 lc = texture2D(uTex, clamp(luv, vec2(0.002), vec2(0.998)));
+                col = mix(col, max(col, lc), fallMask * 0.72);
+              }
+
+              float poolMask = gauss(p, vec2(0.415, 0.945), vec2(0.095, 0.068)) * lavaPix;
+              if (poolMask > 0.02) {
+                vec2 puv = sampleUV + vec2(sin(p.y * 60.0 + t * 4.8) * 0.0055, cos(p.x * 45.0 - t * 3.6) * 0.0028) * poolMask;
+                col = mix(col, texture2D(uTex, clamp(puv, vec2(0.002), vec2(0.998))), poolMask * 0.75);
+              }
+
+              // 5. DANCING FIRE FLAMES LICKING OFF "DEVIL" TITLE
+              float titleFlameArea = gauss(p, vec2(0.335, 0.375), vec2(0.255, 0.195));
+              float titleFlame = smoothstep(0.52, 0.92, col.r - col.b * 0.55) * smoothstep(0.22, 0.70, col.g) * titleFlameArea;
+              if (titleFlame > 0.02) {
+                vec2 fuv = sampleUV + vec2(sin(p.y * 62.0 - t * 7.8) * 0.0038, -cos(p.x * 48.0 + t * 6.2) * 0.0025) * titleFlame;
+                col = mix(col, texture2D(uTex, clamp(fuv, vec2(0.002), vec2(0.998))), titleFlame * 0.78);
+              }
+
+              // 6. DYNAMIC LIGHTING GLOW PULSES
+              float pulse1 = 0.5 + 0.5 * sin(t * 3.4);
+              float pulse2 = 0.5 + 0.5 * sin(t * 2.5 + 1.1);
+
+              col.rgb += vec3(0.85, 0.45, 0.10) * muzzleMask * (0.22 + 0.65 * fireBeat + 0.20 * fastFlicker);
+              col.rgb += vec3(0.45, 0.16, 0.02) * clamp(fallMask + poolMask, 0.0, 1.0) * (0.20 + 0.30 * pulse1);
+              col.rgb += vec3(0.55, 0.22, 0.04) * bClamp * (0.18 + 0.35 * fireBeat + 0.18 * fastFlicker);
+
+              float titleDot = gauss(p, vec2(0.379, 0.628), vec2(0.022, 0.022));
+              col.rgb += vec3(0.35, 0.12, 0.02) * titleFlame * (0.15 + 0.25 * fastFlicker);
+              col.rgb += vec3(0.75, 0.22, 0.04) * titleDot * (0.30 + 0.45 * pulse1);
+
+              float visorGlow = gauss(p, vec2(0.735, 0.188), vec2(0.026, 0.022));
+              col.rgb += vec3(0.12, 0.42, 0.34) * visorGlow * (0.18 + 0.24 * pulse2);
+
+              float gargoyleGlow = gauss(p, vec2(0.086, 0.128), vec2(0.018, 0.018))
+                                 + gauss(p, vec2(0.914, 0.128), vec2(0.018, 0.018))
+                                 + gauss(p, vec2(0.068, 0.805), vec2(0.026, 0.055));
+              col.rgb += vec3(0.65, 0.08, 0.04) * gargoyleGlow * (0.22 + 0.32 * pulse2);
+
+              gl_FragColor = vec4(col.rgb, 1.0);
+            }
+          `;
+
+          function compile(type, src) {
+            const s = lgl.createShader(type);
+            lgl.shaderSource(s, src);
+            lgl.compileShader(s);
+            if (!lgl.getShaderParameter(s, lgl.COMPILE_STATUS)) {
+              console.warn("Loading shader compile:", lgl.getShaderInfoLog(s));
+              return null;
+            }
+            return s;
+          }
+          const vs = compile(lgl.VERTEX_SHADER, vsSrc);
+          const fs = compile(lgl.FRAGMENT_SHADER, fsSrc);
+          if (!vs || !fs) { lgl = null; return; }
+
+          lglProg = lgl.createProgram();
+          lgl.attachShader(lglProg, vs);
+          lgl.attachShader(lglProg, fs);
+          lgl.linkProgram(lglProg);
+          if (!lgl.getProgramParameter(lglProg, lgl.LINK_STATUS)) { lgl = null; return; }
+          lgl.useProgram(lglProg);
+
+          const buf = lgl.createBuffer();
+          lgl.bindBuffer(lgl.ARRAY_BUFFER, buf);
+          lgl.bufferData(lgl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), lgl.STATIC_DRAW);
+          const loc = lgl.getAttribLocation(lglProg, "aPos");
+          lgl.enableVertexAttribArray(loc);
+          lgl.vertexAttribPointer(loc, 2, lgl.FLOAT, false, 0, 0);
+
+          luTimeLoc = lgl.getUniformLocation(lglProg, "uTime");
+          luCanvasSizeLoc = lgl.getUniformLocation(lglProg, "uCanvasSize");
+          luTexSizeLoc = lgl.getUniformLocation(lglProg, "uTexSize");
+
+          lglTex = lgl.createTexture();
+          lgl.bindTexture(lgl.TEXTURE_2D, lglTex);
+          lgl.pixelStorei(lgl.UNPACK_FLIP_Y_WEBGL, false);
+          lgl.texParameteri(lgl.TEXTURE_2D, lgl.TEXTURE_WRAP_S, lgl.CLAMP_TO_EDGE);
+          lgl.texParameteri(lgl.TEXTURE_2D, lgl.TEXTURE_WRAP_T, lgl.CLAMP_TO_EDGE);
+          lgl.texParameteri(lgl.TEXTURE_2D, lgl.TEXTURE_MIN_FILTER, lgl.LINEAR);
+          lgl.texParameteri(lgl.TEXTURE_2D, lgl.TEXTURE_MAG_FILTER, lgl.LINEAR);
+
+          const uploadTex = () => {
+            if (!lgl || !lglTex || !loadBgImg.naturalWidth) return;
+            lgl.bindTexture(lgl.TEXTURE_2D, lglTex);
+            lgl.texImage2D(lgl.TEXTURE_2D, 0, lgl.RGBA, lgl.RGBA, lgl.UNSIGNED_BYTE, loadBgImg);
+            lglTexReady = true;
+          };
+          if (loadBgImg.complete && loadBgImg.naturalWidth > 0) uploadTex();
+          else loadBgImg.addEventListener("load", uploadTex);
+        } catch (err) {
+          console.warn("Loading WebGL fallback:", err);
+          lgl = null;
+        }
+      }
+      initLoadingWebGL();
 
       let lcw = 1920, lch = 1080;
       function resizeLoadCanvas() {
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         lcw = Math.max(1, Math.floor(window.innerWidth * dpr));
         lch = Math.max(1, Math.floor(window.innerHeight * dpr));
+        loadShaderCanvas.width = lcw;
+        loadShaderCanvas.height = lch;
         loadCanvas.width = lcw;
         loadCanvas.height = lch;
+        if (lgl) lgl.viewport(0, 0, lcw, lch);
       }
       window.addEventListener("resize", resizeLoadCanvas);
       resizeLoadCanvas();
 
-      // 3D-tumbling crimson demon leaves/petals matching reference video 0:02-0:07!
-      const bloodLeaves = Array.from({ length: 42 }, (_, i) => ({
-        x: Math.random() * 1.15 - 0.1,
-        y: Math.random() * 0.85,
-        vx: 0.032 + Math.random() * 0.055,
-        vy: 0.014 + Math.random() * 0.032,
-        rot: Math.random() * Math.PI * 2,
-        vrot: (Math.random() - 0.5) * 2.8,
-        tumble: Math.random() * Math.PI * 2,
-        vtumble: 1.8 + Math.random() * 3.0,
-        size: 6 + Math.random() * 11,
-        bright: i % 3 === 0
+      // Rising fiery molten sparks + shotgun muzzle embers
+      const loadSparks = Array.from({ length: 64 }, (_, i) => ({
+        x: Math.random(),
+        y: Math.random(),
+        vx: (Math.random() - 0.35) * 0.032,
+        vy: -(0.042 + Math.random() * 0.095),
+        size: 1.8 + Math.random() * 3.8,
+        phase: Math.random() * Math.PI * 2,
+        gold: i % 3 !== 0
       }));
-
-      // Rolling volcanic silver-ash & crimson mist banks
-      const valleyMist = Array.from({ length: 10 }, (_, i) => ({
-        x: (i / 10) * 1.3 - 0.15,
-        y: 0.56 + (i % 3) * 0.08,
-        vx: 0.010 + (i % 4) * 0.004,
-        rx: 0.22 + (i % 3) * 0.08,
-        ry: 0.07 + (i % 2) * 0.035,
-        crimson: i % 4 === 0,
-        alpha: 0.10 + (i % 3) * 0.04
+      const muzzleSparks = Array.from({ length: 18 }, () => ({
+        x: 0.89 + Math.random() * 0.08,
+        y: 0.36 + Math.random() * 0.07,
+        vx: 0.16 + Math.random() * 0.24,
+        vy: (Math.random() - 0.5) * 0.14,
+        size: 1.8 + Math.random() * 2.8,
+        life: Math.random()
       }));
 
       let loadActive = false;
@@ -1585,7 +1788,6 @@
         loadActive = true;
         loadScreenEl.classList.add("active");
         if (loadIsReturn) {
-          // Pre-reveal the main menu silently behind the opaque loading screen so fade-out is seamless!
           setTimeout(() => { if (loadActive && loadIsReturn) restoreHero(); }, 480);
         } else {
           dismissHero();
@@ -1595,132 +1797,81 @@
 
       function renderLoadingScreen(now) {
         if (!loadActive) return;
-        const dt = Math.min(0.05, (now - loadLastTs) / 1000);
+        const dt = Math.min(0.05, Math.max(0, (now - loadLastTs) / 1000));
         loadLastTs = now;
         const elapsed = (now - loadStartTs) / 1000;
 
-        lctx.fillStyle = "#020102";
-        lctx.fillRect(0, 0, lcw, lch);
-
-        // 1. Draw DOOM Slayer & Hell Citadel scene with slow cinematic breathing zoom
-        if (loadBgImg.complete && loadBgImg.naturalWidth > 0) {
-          const imgA = loadBgImg.naturalWidth / loadBgImg.naturalHeight;
-          const canA = lcw / lch;
-          const baseW = canA > imgA ? lcw : lch * imgA;
-          const baseH = canA > imgA ? lcw / imgA : lch;
-          const zoom = 1.01 + Math.min(0.045, elapsed * 0.011) + Math.sin(elapsed * 0.7) * 0.004;
-          const drawW = baseW * zoom;
-          const drawH = baseH * zoom;
-          const dx = (lcw - drawW) * 0.5;
-          const dy = (lch - drawH) * 0.5;
-
-          lctx.drawImage(loadBgImg, dx, dy, drawW, drawH);
-
-          // 2. Pulsing Crucible Blade, Hell Citadel Furnace, Ascension Sky Beam & Slayer Visor Glows
-          lctx.save();
-          lctx.globalCompositeOperation = "screen";
-          const bladePulse = 0.5 + 0.5 * Math.sin(elapsed * 3.0);
-          const beamPulse = 0.5 + 0.5 * Math.sin(elapsed * 2.2 + 1.0);
-
-          const bladeX = dx + drawW * 0.605;
-          const bladeY = dy + drawH * 0.625;
-          const bladeR = drawW * 0.105;
-          const bg1 = lctx.createRadialGradient(bladeX, bladeY, bladeR * 0.08, bladeX, bladeY, bladeR);
-          bg1.addColorStop(0, `rgba(255, 92, 42, ${(0.34 + 0.16 * bladePulse).toFixed(3)})`);
-          bg1.addColorStop(0.5, `rgba(220, 28, 22, ${(0.14 + 0.08 * bladePulse).toFixed(3)})`);
-          bg1.addColorStop(1, "rgba(0, 0, 0, 0)");
-          lctx.fillStyle = bg1;
-          lctx.fillRect(bladeX - bladeR, bladeY - bladeR, bladeR * 2, bladeR * 2);
-
-          const citX = dx + drawW * 0.735;
-          const citY = dy + drawH * 0.595;
-          const citR = drawW * 0.125;
-          const cg = lctx.createRadialGradient(citX, citY, citR * 0.1, citX, citY, citR);
-          cg.addColorStop(0, `rgba(255, 68, 28, ${(0.24 + 0.13 * beamPulse).toFixed(3)})`);
-          cg.addColorStop(0.5, `rgba(195, 22, 18, ${(0.10 + 0.06 * beamPulse).toFixed(3)})`);
-          cg.addColorStop(1, "rgba(0, 0, 0, 0)");
-          lctx.fillStyle = cg;
-          lctx.fillRect(citX - citR, citY - citR, citR * 2, citR * 2);
-
-          const skyX = dx + drawW * 0.742;
-          const skyY = dy + drawH * 0.175;
-          const skyR = drawW * 0.095;
-          const sg = lctx.createRadialGradient(skyX, skyY, skyR * 0.06, skyX, skyY, skyR);
-          sg.addColorStop(0, `rgba(186, 232, 255, ${(0.26 + 0.14 * beamPulse).toFixed(3)})`);
-          sg.addColorStop(0.5, `rgba(96, 175, 255, ${(0.10 + 0.05 * beamPulse).toFixed(3)})`);
-          sg.addColorStop(1, "rgba(0, 0, 0, 0)");
-          lctx.fillStyle = sg;
-          lctx.fillRect(skyX - skyR, skyY - skyR, skyR * 2, skyR * 2);
-
-          const visX = dx + drawW * 0.512;
-          const visY = dy + drawH * 0.345;
-          const visR = drawW * 0.036;
-          const vg = lctx.createRadialGradient(visX, visY, visR * 0.05, visX, visY, visR);
-          vg.addColorStop(0, `rgba(120, 240, 255, ${(0.22 + 0.10 * bladePulse).toFixed(3)})`);
-          vg.addColorStop(1, "rgba(0, 0, 0, 0)");
-          lctx.fillStyle = vg;
-          lctx.fillRect(visX - visR, visY - visR, visR * 2, visR * 2);
-          lctx.restore();
+        // 1. Render live 2.5D animated DEVIL: ABYSSAL REIGN pixel-art shader (with instant 2D fallback)
+        if (lgl && lglProg && lglTexReady) {
+          lgl.useProgram(lglProg);
+          lgl.uniform1f(luTimeLoc, elapsed);
+          lgl.uniform2f(luCanvasSizeLoc, lcw, lch);
+          lgl.uniform2f(luTexSizeLoc, loadBgImg.naturalWidth, loadBgImg.naturalHeight);
+          lgl.drawArrays(lgl.TRIANGLES, 0, 6);
+          lctx.clearRect(0, 0, lcw, lch);
+        } else {
+          lctx.fillStyle = "#020102";
+          lctx.fillRect(0, 0, lcw, lch);
+          if (loadBgImg.complete && loadBgImg.naturalWidth > 0) {
+            const imgA = loadBgImg.naturalWidth / loadBgImg.naturalHeight;
+            const canA = lcw / lch;
+            const dw = canA > imgA ? lcw : lch * imgA;
+            const dh = canA > imgA ? lcw / imgA : lch;
+            lctx.drawImage(loadBgImg, (lcw - dw) * 0.5, (lch - dh) * 0.5, dw, dh);
+          }
         }
 
-        // 3. Rolling Silver-Ash & Demonic Crimson Valley Mist
+        // 2. Render rising molten embers + streaming Super Shotgun muzzle sparks on foreground canvas
         lctx.save();
         lctx.globalCompositeOperation = "screen";
-        for (let i = 0; i < valleyMist.length; i++) {
-          const m = valleyMist[i];
-          m.x += m.vx * dt;
-          if (m.x > 1.25) m.x = -0.25;
-          const mx = m.x * lcw, my = m.y * lch;
-          const rx = m.rx * lcw, ry = m.ry * lch;
-          lctx.save();
-          lctx.translate(mx, my);
-          lctx.scale(1, ry / Math.max(1, rx));
-          const g = lctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-          if (m.crimson) {
-            g.addColorStop(0, `rgba(210, 32, 22, ${m.alpha.toFixed(3)})`);
-            g.addColorStop(1, "rgba(0,0,0,0)");
+        for (let i = 0; i < loadSparks.length; i++) {
+          const sp = loadSparks[i];
+          sp.x += (sp.vx + Math.sin(elapsed * 2.2 + sp.phase) * 0.015) * dt;
+          sp.y += sp.vy * dt;
+          if (sp.y < -0.05) { sp.y = 1.05; sp.x = Math.random(); }
+          if (sp.x > 1.05) sp.x = -0.04;
+          if (sp.x < -0.05) sp.x = 1.04;
+          const sx = sp.x * lcw, sy = sp.y * lch;
+          const fl = 0.45 + 0.55 * Math.sin(elapsed * 5.6 + sp.phase);
+          const r = sp.size * (lcw / 1920) * (0.85 + 0.35 * fl);
+          const g = lctx.createRadialGradient(sx, sy, 0, sx, sy, r * 3.4);
+          if (sp.gold) {
+            g.addColorStop(0, `rgba(255, 234, 152, ${(0.92 * fl).toFixed(3)})`);
+            g.addColorStop(0.42, `rgba(255, 132, 32, ${(0.58 * fl).toFixed(3)})`);
+            g.addColorStop(1, "rgba(220, 32, 16, 0)");
           } else {
-            g.addColorStop(0, `rgba(195, 185, 190, ${(m.alpha * 0.72).toFixed(3)})`);
-            g.addColorStop(1, "rgba(0,0,0,0)");
+            g.addColorStop(0, `rgba(255, 146, 82, ${(0.88 * fl).toFixed(3)})`);
+            g.addColorStop(0.42, `rgba(235, 42, 22, ${(0.52 * fl).toFixed(3)})`);
+            g.addColorStop(1, "rgba(148, 16, 10, 0)");
           }
           lctx.fillStyle = g;
           lctx.beginPath();
-          lctx.arc(0, 0, rx, 0, Math.PI * 2);
+          lctx.arc(sx, sy, r * 3.4, 0, Math.PI * 2);
           lctx.fill();
-          lctx.restore();
+        }
+
+        // Shotgun Muzzle Blast Sparks spraying right from the double barrels!
+        for (let i = 0; i < muzzleSparks.length; i++) {
+          const ms = muzzleSparks[i];
+          ms.life += dt * 2.2;
+          ms.x += ms.vx * dt;
+          ms.y += ms.vy * dt;
+          if (ms.life >= 1.0 || ms.x > 1.04) {
+            ms.life = 0;
+            ms.x = 0.885 + Math.random() * 0.015;
+            ms.y = 0.388 + (Math.random() - 0.5) * 0.035;
+            ms.vx = 0.14 + Math.random() * 0.24;
+            ms.vy = (Math.random() - 0.5) * 0.15;
+          }
+          const alpha = (1.0 - ms.life) * 0.92;
+          const mx = ms.x * lcw, my = ms.y * lch;
+          const mr = ms.size * (lcw / 1920);
+          lctx.fillStyle = `rgba(255, 224, 128, ${alpha.toFixed(3)})`;
+          lctx.fillRect(mx - mr, my - mr * 0.5, mr * 3.2, mr);
         }
         lctx.restore();
 
-        // 4. 3D-Tumbling Glowing Blood-Red Leaves & Embers
-        for (let i = 0; i < bloodLeaves.length; i++) {
-          const lf = bloodLeaves[i];
-          lf.x += (lf.vx + Math.sin(elapsed * 1.9 + lf.tumble) * 0.015) * dt;
-          lf.y += (lf.vy + Math.cos(elapsed * 2.3 + lf.tumble) * 0.010) * dt;
-          lf.rot += lf.vrot * dt;
-          lf.tumble += lf.vtumble * dt;
-          if (lf.x > 1.08 || lf.y > 0.92) {
-            lf.x = -0.05 + Math.random() * 0.36;
-            lf.y = -0.04 + Math.random() * 0.42;
-          }
-          const lx = lf.x * lcw, ly = lf.y * lch;
-          const sc = lf.size * (lcw / 1920);
-          const flip = 0.28 + 0.72 * Math.abs(Math.cos(lf.tumble));
-          lctx.save();
-          lctx.translate(lx, ly);
-          lctx.rotate(lf.rot);
-          lctx.scale(1, flip);
-          lctx.fillStyle = lf.bright ? "rgba(248, 56, 42, 0.92)" : "rgba(182, 20, 22, 0.85)";
-          lctx.shadowColor = "rgba(239, 68, 68, 0.75)";
-          lctx.shadowBlur = 10;
-          lctx.beginPath();
-          lctx.moveTo(-sc, 0);
-          lctx.quadraticCurveTo(0, -sc * 0.65, sc, 0);
-          lctx.quadraticCurveTo(0, sc * 0.65, -sc, 0);
-          lctx.fill();
-          lctx.restore();
-        }
-
-        // 5. Compute smooth unified progress (blends cinematic timer + real Unity WebGL preload progress!)
+        // 3. Compute smooth unified progress (blends cinematic timer + real Unity WebGL preload progress!)
         const timeProg = Math.min(1, elapsed / loadMinDur);
         const engineProg = unityReady ? 1 : Math.min(0.94, unityLoadProgress);
         const shownProg = unityReady ? timeProg : Math.min(timeProg, engineProg);
