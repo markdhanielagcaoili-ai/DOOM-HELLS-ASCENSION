@@ -63,6 +63,9 @@ namespace DoomHellsAscension
         private string modalTitle = "";
         private string modalSub = "";
         private int shopCategory = 0; // 0=Guns, 1=Melee
+        private int shopSelectedId = -1; // -1 = 4-Column Arsenal Grid; 0..4 = Firearm; 100..103 = Melee
+        private string pendingWebSkinsPayload = "";
+        private readonly Dictionary<int, Texture2D> pixelWeaponTexCache = new Dictionary<int, Texture2D>();
         private Vector2 shopScroll;
         private Vector2 modePopupScroll;
         private MenuPopupState menuPopup = MenuPopupState.None;
@@ -186,6 +189,12 @@ namespace DoomHellsAscension
             }
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            if (!string.IsNullOrEmpty(pendingWebSkinsPayload))
+            {
+                string payload = pendingWebSkinsPayload;
+                pendingWebSkinsPayload = "";
+                ApplyWebSkins(payload);
+            }
         }
 
         private StratumDef GetRealmForLevel(int level)
@@ -409,6 +418,11 @@ namespace DoomHellsAscension
                 Destroy(loadingAnimMat);
                 loadingAnimMat = null;
             }
+            foreach (var kv in pixelWeaponTexCache)
+            {
+                if (kv.Value != null) Destroy(kv.Value);
+            }
+            pixelWeaponTexCache.Clear();
         }
 
         // =========================================================================
@@ -456,6 +470,36 @@ namespace DoomHellsAscension
                 {
                     audioMutedUi = wantMuted;
                     if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.ToggleAudio();
+                }
+            }
+        }
+
+        public void ApplyWebSkins(string payload)
+        {
+            if (string.IsNullOrEmpty(payload)) return;
+            var p = FPSPlayerController.Instance;
+            if (p == null)
+            {
+                pendingWebSkinsPayload = payload;
+                return;
+            }
+            string[] sections = payload.Split('|');
+            if (sections.Length >= 1 && !string.IsNullOrEmpty(sections[0]))
+            {
+                string[] wParts = sections[0].Split(',');
+                for (int i = 0; i < wParts.Length && i < p.weapons.Count; i++)
+                {
+                    if (int.TryParse(wParts[i], out int sIdx))
+                        p.SetWeaponSkin(i, sIdx);
+                }
+            }
+            if (sections.Length >= 2 && !string.IsNullOrEmpty(sections[1]))
+            {
+                string[] mParts = sections[1].Split(',');
+                for (int i = 0; i < mParts.Length && i < p.melees.Count; i++)
+                {
+                    if (int.TryParse(mParts[i], out int sIdx))
+                        p.SetMeleeSkin(i, sIdx);
                 }
             }
         }
@@ -801,6 +845,7 @@ namespace DoomHellsAscension
             ShopOpen = !ShopOpen;
             if (ShopOpen)
             {
+                shopSelectedId = -1;
                 if (IsRunning) IsPaused = true;
                 LockCursor(false);
             }
@@ -2509,46 +2554,499 @@ namespace DoomHellsAscension
             return new Vector2(r.x + nx * r.width, r.y + ny * r.height);
         }
 
+        private Texture2D GetPixelWeaponTex(bool isMelee, int id, WeaponSkinDef skin)
+        {
+            int skinId = skin != null ? skin.id : 0;
+            int cacheKey = (isMelee ? 1000 : 0) + id * 16 + skinId;
+            if (pixelWeaponTexCache.TryGetValue(cacheKey, out Texture2D cached) && cached != null)
+                return cached;
+
+            const int W = 64;
+            const int H = 24;
+            Color[] grid = new Color[W * H];
+            for (int i = 0; i < grid.Length; i++) grid[i] = Color.clear;
+
+            Color body = skin != null ? skin.bodyColor : new Color(0.18f, 0.16f, 0.30f);
+            Color bodyHi = Color.Lerp(body, Color.white, 0.24f);
+            Color dark = skin != null ? skin.darkColor : new Color(0.08f, 0.07f, 0.12f);
+            Color trim = skin != null ? skin.trimColor : new Color(0.84f, 0.87f, 0.94f);
+            Color glow = skin != null ? skin.glowColor : new Color(0.68f, 0.30f, 1.00f);
+            Color glowCore = Color.Lerp(glow, Color.white, 0.50f);
+
+            void Fill(int x, int yTop, int w, int h, Color c)
+            {
+                for (int dy = 0; dy < h; dy++)
+                {
+                    int py = H - 1 - (yTop + dy);
+                    if (py < 0 || py >= H) continue;
+                    for (int dx = 0; dx < w; dx++)
+                    {
+                        int px = x + dx;
+                        if (px < 0 || px >= W) continue;
+                        grid[py * W + px] = c;
+                    }
+                }
+            }
+
+            if (!isMelee)
+            {
+                if (id == 0)
+                {
+                    // VANDAL (Left-facing Gothic Reaver Assault Rifle)
+                    Fill(3, 8, 5, 3, trim);
+                    Fill(8, 9, 11, 2, trim);
+                    Fill(11, 7, 8, 1, dark);
+                    Fill(18, 7, 15, 5, body);
+                    Fill(19, 7, 13, 1, bodyHi);
+                    Fill(20, 9, 3, 2, glow);
+                    Fill(25, 9, 4, 2, glow);
+                    Fill(21, 9, 1, 1, glowCore);
+                    Fill(26, 9, 2, 1, glowCore);
+                    Fill(33, 6, 14, 7, body);
+                    Fill(34, 6, 12, 1, trim);
+                    Fill(36, 4, 2, 2, trim);
+                    Fill(40, 4, 2, 2, trim);
+                    Fill(35, 9, 8, 2, glow);
+                    Fill(37, 9, 4, 1, glowCore);
+                    // Curved banana mag
+                    Fill(28, 13, 5, 3, dark);
+                    Fill(27, 16, 5, 3, dark);
+                    Fill(26, 19, 4, 2, trim);
+                    Fill(28, 15, 2, 3, glow);
+                    // Pistol grip & gothic cutaway stock
+                    Fill(41, 13, 4, 3, dark);
+                    Fill(42, 16, 4, 4, dark);
+                    Fill(47, 7, 13, 3, body);
+                    Fill(47, 10, 5, 3, body);
+                    Fill(56, 10, 4, 7, body);
+                    Fill(48, 14, 9, 2, trim);
+                    Fill(58, 7, 2, 10, trim);
+                }
+                else if (id == 1)
+                {
+                    // PHANTOM (Left-facing Suppressed Tactical Carbine)
+                    Fill(2, 8, 14, 3, dark);
+                    Fill(3, 8, 12, 1, trim);
+                    Fill(5, 9, 2, 1, glow);
+                    Fill(9, 9, 2, 1, glow);
+                    Fill(16, 7, 16, 5, body);
+                    Fill(17, 7, 14, 1, bodyHi);
+                    Fill(19, 9, 10, 1, glow);
+                    Fill(21, 9, 5, 1, glowCore);
+                    // Receiver & holo sight
+                    Fill(32, 7, 15, 6, body);
+                    Fill(34, 4, 9, 3, dark);
+                    Fill(36, 5, 5, 1, glow);
+                    Fill(34, 9, 9, 2, trim);
+                    // Straight tactical mag
+                    Fill(29, 13, 5, 7, dark);
+                    Fill(30, 14, 2, 5, glow);
+                    // Grip & solid stock
+                    Fill(41, 13, 4, 6, dark);
+                    Fill(47, 8, 13, 4, body);
+                    Fill(52, 12, 8, 4, dark);
+                    Fill(58, 8, 2, 8, trim);
+                }
+                else if (id == 2)
+                {
+                    // JUDGE (Left-facing Drum-Fed Tactical Shotgun)
+                    Fill(3, 7, 15, 4, trim);
+                    Fill(4, 8, 13, 1, dark);
+                    Fill(18, 7, 26, 6, body);
+                    Fill(19, 7, 23, 1, bodyHi);
+                    Fill(20, 9, 20, 2, glow);
+                    Fill(24, 9, 10, 1, glowCore);
+                    // Iconic round drum magazine
+                    Fill(26, 13, 10, 7, dark);
+                    Fill(25, 14, 12, 5, dark);
+                    Fill(28, 15, 6, 3, trim);
+                    Fill(30, 16, 2, 1, glow);
+                    // Grip & skeletal stock
+                    Fill(40, 13, 4, 6, dark);
+                    Fill(44, 8, 15, 3, body);
+                    Fill(55, 11, 4, 6, body);
+                    Fill(46, 14, 10, 2, trim);
+                }
+                else if (id == 3)
+                {
+                    // ODIN (Left-facing Heavy Belt-Fed LMG)
+                    Fill(2, 8, 14, 2, trim);
+                    Fill(2, 11, 14, 2, trim);
+                    Fill(4, 7, 3, 7, dark);
+                    Fill(16, 7, 14, 6, body);
+                    Fill(18, 8, 10, 1, glow);
+                    Fill(18, 11, 10, 1, glow);
+                    // Carry handle + heavy receiver
+                    Fill(24, 4, 16, 2, trim);
+                    Fill(25, 6, 2, 2, trim);
+                    Fill(37, 6, 2, 2, trim);
+                    Fill(30, 6, 18, 8, body);
+                    Fill(31, 6, 16, 1, bodyHi);
+                    // Massive ammo box & glowing belt feed
+                    Fill(25, 14, 14, 7, dark);
+                    Fill(26, 15, 12, 5, body);
+                    Fill(29, 12, 6, 3, glow);
+                    Fill(30, 13, 4, 1, glowCore);
+                    // Heavy LMG stock
+                    Fill(43, 14, 4, 5, dark);
+                    Fill(48, 7, 13, 6, body);
+                    Fill(53, 13, 8, 4, dark);
+                    Fill(59, 7, 2, 10, trim);
+                }
+                else
+                {
+                    // OPERATOR (Left-facing .50 Anti-Materiel Rail Sniper)
+                    Fill(1, 8, 5, 4, dark);
+                    Fill(2, 9, 3, 2, trim);
+                    Fill(6, 9, 17, 2, trim);
+                    // Big elevated sniper scope
+                    Fill(26, 3, 18, 4, dark);
+                    Fill(24, 2, 4, 6, trim);
+                    Fill(42, 3, 3, 4, trim);
+                    Fill(28, 4, 13, 2, glow);
+                    Fill(31, 4, 6, 1, glowCore);
+                    Fill(29, 7, 2, 2, trim);
+                    Fill(38, 7, 2, 2, trim);
+                    // Sleek sniper chassis + rail core
+                    Fill(22, 8, 26, 5, body);
+                    Fill(23, 8, 24, 1, bodyHi);
+                    Fill(24, 10, 18, 1, glow);
+                    Fill(40, 10, 3, 2, trim);
+                    Fill(30, 13, 6, 6, dark);
+                    // Thumbhole sniper stock
+                    Fill(43, 13, 4, 6, dark);
+                    Fill(48, 8, 14, 4, body);
+                    Fill(57, 12, 5, 6, body);
+                    Fill(47, 16, 11, 2, trim);
+                }
+            }
+            else
+            {
+                if (id == 0)
+                {
+                    // KARAMBIT (Curved Tiger-Claw Blade + Hollow Finger Ring)
+                    Fill(10, 16, 5, 3, trim);
+                    Fill(12, 13, 7, 4, trim);
+                    Fill(16, 10, 9, 5, trim);
+                    Fill(22, 8, 11, 5, body);
+                    Fill(14, 14, 6, 2, glow);
+                    Fill(18, 11, 9, 2, glow);
+                    Fill(21, 10, 5, 1, glowCore);
+                    // Bolster + ergonomic curved handle
+                    Fill(32, 7, 4, 7, trim);
+                    Fill(36, 8, 10, 5, body);
+                    Fill(37, 10, 8, 1, glow);
+                    Fill(36, 12, 9, 2, dark);
+                    // Signature hollow finger ring on right
+                    Fill(46, 7, 9, 9, trim);
+                    Fill(48, 9, 5, 5, Color.clear);
+                    Fill(49, 6, 3, 2, glow);
+                }
+                else if (id == 1)
+                {
+                    // KATANA (Long Curved Samurai Blade + Tsuba Guard)
+                    Fill(4, 12, 8, 2, trim);
+                    Fill(10, 11, 14, 3, trim);
+                    Fill(22, 10, 21, 3, trim);
+                    Fill(12, 10, 30, 1, bodyHi);
+                    Fill(9, 12, 33, 1, glow);
+                    Fill(16, 12, 18, 1, glowCore);
+                    // Tsuba guard & wrapped tsuka hilt
+                    Fill(43, 6, 3, 12, trim);
+                    Fill(44, 8, 1, 8, glow);
+                    Fill(46, 10, 13, 4, dark);
+                    Fill(48, 11, 2, 2, body);
+                    Fill(52, 11, 2, 2, body);
+                    Fill(56, 11, 2, 2, body);
+                    Fill(59, 9, 2, 6, trim);
+                }
+                else if (id == 2)
+                {
+                    // CHAINSWORD (Motorized Demonic Chainsaw Blade + Saw Teeth)
+                    Fill(6, 9, 36, 7, body);
+                    Fill(8, 9, 32, 1, bodyHi);
+                    Fill(10, 11, 28, 3, dark);
+                    Fill(13, 12, 22, 1, glow);
+                    Fill(18, 12, 10, 1, glowCore);
+                    // Saw teeth along top, tip, and bottom
+                    for (int tx = 7; tx <= 37; tx += 4)
+                    {
+                        Fill(tx, 7, 2, 2, trim);
+                        Fill(tx + 1, 16, 2, 2, trim);
+                    }
+                    Fill(4, 10, 2, 5, trim);
+                    // Armored D-guard & handle
+                    Fill(42, 7, 4, 11, trim);
+                    Fill(46, 10, 13, 4, dark);
+                    Fill(46, 16, 12, 2, trim);
+                    Fill(56, 10, 3, 8, trim);
+                }
+                else
+                {
+                    // WARHAMMER (Colossal Obsidian Double-Faced Hammer)
+                    Fill(9, 3, 17, 18, body);
+                    Fill(10, 3, 15, 2, bodyHi);
+                    Fill(7, 5, 3, 14, trim);
+                    Fill(25, 5, 3, 14, trim);
+                    Fill(15, 1, 5, 2, trim);
+                    Fill(15, 21, 5, 2, trim);
+                    Fill(13, 6, 9, 12, dark);
+                    Fill(15, 8, 5, 8, glow);
+                    Fill(16, 10, 3, 4, glowCore);
+                    // Heavy shaft + spiked pommel
+                    Fill(28, 10, 29, 4, dark);
+                    Fill(28, 10, 29, 1, trim);
+                    Fill(34, 11, 4, 2, glow);
+                    Fill(44, 11, 4, 2, glow);
+                    Fill(57, 8, 4, 8, trim);
+                }
+            }
+
+            // Crisp 1px dark retro pixel-art outline pass
+            Color[] outlined = (Color[])grid.Clone();
+            Color outlineCol = new Color(0.03f, 0.05f, 0.08f, 0.96f);
+            for (int y = 0; y < H; y++)
+            {
+                for (int x = 0; x < W; x++)
+                {
+                    if (grid[y * W + x].a > 0.1f) continue;
+                    bool adj = (x > 0 && grid[y * W + (x - 1)].a > 0.1f)
+                            || (x < W - 1 && grid[y * W + (x + 1)].a > 0.1f)
+                            || (y > 0 && grid[(y - 1) * W + x].a > 0.1f)
+                            || (y < H - 1 && grid[(y + 1) * W + x].a > 0.1f);
+                    if (adj) outlined[y * W + x] = outlineCol;
+                }
+            }
+
+            Texture2D tex = new Texture2D(W, H, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.SetPixels(outlined);
+            tex.Apply();
+            pixelWeaponTexCache[cacheKey] = tex;
+            return tex;
+        }
+
+        private void DrawArsenalTile(Rect r, FPSPlayerController p, bool isMelee, int id)
+        {
+            List<WeaponSkinDef> skins = p.skins;
+            int skinIdx = isMelee ? p.melees[id].skinIndex : p.weapons[id].skinIndex;
+            skinIdx = (skins != null && skins.Count > 0) ? Mathf.Clamp(skinIdx, 0, skins.Count - 1) : 0;
+            WeaponSkinDef sk = (skins != null && skins.Count > 0) ? skins[skinIdx] : null;
+            Color accent = sk != null ? sk.glowColor : new Color(0.7f, 0.35f, 1f);
+
+            bool isEquipped = isMelee ? (p.IsMeleeEquipped && p.meleeIndex == id) : (!p.IsMeleeEquipped && p.weaponIndex == id);
+            bool owned = isMelee ? p.melees[id].owned : p.weapons[id].owned;
+            bool hover = r.Contains(Event.current.mousePosition);
+
+            // VALORANT dark slate card background & border
+            DrawRect(r, hover ? new Color(0.15f, 0.22f, 0.30f, 0.96f) : new Color(0.10f, 0.16f, 0.22f, 0.88f));
+            Color border = hover ? accent : (isEquipped ? new Color(0.95f, 0.32f, 0.28f, 0.90f) : new Color(0.54f, 0.68f, 0.78f, 0.28f));
+            float bw = hover || isEquipped ? 2f : 1f;
+            DrawRect(new Rect(r.x, r.y, r.width, bw), border);
+            DrawRect(new Rect(r.x, r.yMax - bw, r.width, bw), border);
+            DrawRect(new Rect(r.x, r.y, bw, r.height), border);
+            DrawRect(new Rect(r.xMax - bw, r.y, bw, r.height), border);
+
+            // Soft radial glow behind the pixelated gun
+            if (softGlowTex != null)
+            {
+                Color prev = GUI.color;
+                GUI.color = new Color(accent.r, accent.g, accent.b, hover ? 0.34f : 0.16f);
+                GUI.DrawTexture(new Rect(r.x + r.width * 0.15f, r.y + 14f, r.width * 0.70f, r.height - 50f), softGlowTex);
+                GUI.color = prev;
+            }
+
+            // Top micro tags: slot & active skin name
+            string slotTag = isMelee ? "[0]" : $"[{id + 1}] MK-{p.weapons[id].level}";
+            if (!owned) slotTag += " · LOCKED";
+            GUI.Label(new Rect(r.x + 8f, r.y + 4f, r.width * 0.56f, 18f), slotTag, popupRowSubStyle);
+
+            if (sk != null)
+            {
+                Color prevC = GUI.color;
+                GUI.color = Color.Lerp(accent, Color.white, 0.32f);
+                GUI.Label(new Rect(r.x + r.width * 0.52f, r.y + 4f, r.width * 0.44f - 6f, 18f), sk.shortTag, hudAmmoRightStyle);
+                GUI.color = prevC;
+            }
+
+            // Crisp Pixelated Weapon Texture (FilterMode.Point!)
+            Texture2D pxTex = GetPixelWeaponTex(isMelee, id, sk);
+            if (pxTex != null)
+            {
+                float padX = 16f;
+                float drawW = r.width - padX * 2f;
+                float drawH = drawW * (24f / 64f);
+                float maxH = r.height - 68f;
+                if (drawH > maxH) { drawH = maxH; drawW = drawH * (64f / 24f); }
+                Rect spriteR = new Rect(r.x + (r.width - drawW) * 0.5f, r.y + 24f + (maxH - drawH) * 0.5f, drawW, drawH);
+                GUI.DrawTexture(spriteR, pxTex, ScaleMode.ScaleToFit);
+            }
+
+            // VALORANT 4 Diamond Skin Variant Pips (◆ ◆ ◆ ◆)
+            int skinCount = skins != null ? skins.Count : 4;
+            float pipSpacing = 14f;
+            float startPipX = r.x + r.width * 0.5f - ((skinCount - 1) * pipSpacing) * 0.5f;
+            float pipY = r.yMax - 36f;
+            for (int s = 0; s < skinCount; s++)
+            {
+                bool activePip = (s == skinIdx);
+                Color pipCol = activePip
+                    ? (skins != null ? skins[s].glowColor : Color.white)
+                    : new Color(0.68f, 0.78f, 0.86f, 0.32f);
+                float sz = activePip ? 7f : 5f;
+                DrawRect(new Rect(startPipX + s * pipSpacing - sz * 0.5f, pipY - sz * 0.5f, sz, sz), pipCol);
+            }
+
+            // Bottom Weapon Name Strip (matching VALORANT collection bar)
+            Rect foot = new Rect(r.x + 1f, r.yMax - 25f, r.width - 2f, 24f);
+            DrawRect(foot, isEquipped ? new Color(0.62f, 0.14f, 0.14f, 0.72f) : new Color(0.42f, 0.53f, 0.63f, 0.22f));
+            string shortTitle = isMelee
+                ? (id == 0 ? "KARAMBIT" : id == 1 ? "KATANA" : id == 2 ? "CHAINSWORD" : "WARHAMMER")
+                : p.weapons[id].shortName;
+            GUI.Label(foot, shortTitle, hudCenterSmallStyle);
+
+            if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+            {
+                shopSelectedId = isMelee ? (100 + id) : id;
+                if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayPickup();
+            }
+        }
+
         private void DrawShopModal(float sw, float sh)
         {
             var p = FPSPlayerController.Instance;
             if (p == null) return;
-            DrawRect(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.84f));
+            DrawRect(new Rect(0, 0, sw, sh), new Color(0.02f, 0.04f, 0.07f, 0.88f));
 
-            Rect box = new Rect(sw * 0.06f, sh * 0.06f, sw * 0.88f, sh * 0.88f);
-            DrawRect(box, new Color(0.08f, 0.07f, 0.06f, 0.97f));
-            DrawRect(new Rect(box.x, box.y, box.width, 2f), new Color(0.86f, 0.71f, 0.36f, 0.85f));
+            Rect box = new Rect(34f, 24f, sw - 68f, sh - 48f);
+            DrawRect(box, new Color(0.05f, 0.09f, 0.14f, 0.97f));
+            DrawRect(new Rect(box.x, box.y, box.width, 2f), new Color(0.92f, 0.25f, 0.24f, 0.92f));
+            DrawRect(new Rect(box.x, box.yMax - 2f, box.width, 2f), new Color(0.45f, 0.65f, 0.82f, 0.35f));
 
-            GUI.Label(new Rect(box.x + 22, box.y + 14, 580, 30), "BLACK-MARKET DEMONIC ARMORY & LOADOUT SHOP [B]", headerStyle);
-            GUI.Label(new Rect(box.xMax - 390, box.y + 14, 195, 30), $"CREDITS: ${p.credits}", hudAmmoRightStyle);
-            if (GUI.Button(new Rect(box.xMax - 180, box.y + 12, 160, 32), "CLOSE / RESUME [B]", buttonBrassStyle)) ToggleShop();
+            GUI.Label(new Rect(box.x + 22f, box.y + 12f, 650f, 30f), "ARMORY COLLECTION // PIXEL ARSENAL & SKIN SWITCHER [B]", headerStyle);
+            GUI.Label(new Rect(box.xMax - 395f, box.y + 12f, 200f, 30f), $"CREDITS: ${p.credits}", hudAmmoRightStyle);
+            if (GUI.Button(new Rect(box.xMax - 182f, box.y + 10f, 162f, 32f), "CLOSE / RESUME [B]", buttonBrassStyle)) ToggleShop();
 
-            // Category Tabs
-            shopCategory = Mathf.Clamp(shopCategory, 0, 1);
-            if (GUI.Button(new Rect(box.x + 22, box.y + 56, 220, 32), shopCategory == 0 ? "[1] FIREARMS & UPGRADES" : "1. FIREARMS & UPGRADES", shopCategory == 0 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 0;
-            if (GUI.Button(new Rect(box.x + 252, box.y + 56, 220, 32), shopCategory == 1 ? "[2] MELEE WEAPONS [0]" : "2. MELEE WEAPONS [0]", shopCategory == 1 ? buttonBrassStyle : buttonDarkStyle)) shopCategory = 1;
-
-            Rect listView = new Rect(box.x + 22, box.y + 102, box.width - 44, box.height - 122);
-            GUILayout.BeginArea(listView);
-            shopScroll = GUILayout.BeginScrollView(shopScroll);
-
-            if (shopCategory == 0)
+            if (shopSelectedId < 0)
             {
-                for (int i = 0; i < p.weapons.Count; i++)
+                // =============================================================
+                // VALORANT-STYLE 4-COLUMN PIXEL-ART ARSENAL GRID
+                // =============================================================
+                GUI.Label(new Rect(box.x + 22f, box.y + 44f, box.width - 44f, 20f),
+                    "CLICK ANY PIXELATED WEAPON TO SWITCH BETWEEN 4 SKINS, EQUIP, OR UPGRADE MK-LEVEL", popupRowSubStyle);
+
+                float padX = 20f;
+                float gap = 16f;
+                float colW = (box.width - padX * 2f - gap * 3f) / 4f;
+                float topY = box.y + 72f;
+
+                // COL 0: RIFLES (VANDAL, PHANTOM)
+                float c0 = box.x + padX;
+                GUI.Label(new Rect(c0, topY, colW, 22f), "RIFLES", hudCenterSmallStyle);
+                DrawArsenalTile(new Rect(c0, topY + 26f, colW, 170f), p, false, 0);
+                DrawArsenalTile(new Rect(c0, topY + 208f, colW, 170f), p, false, 1);
+
+                // COL 1: SHOTGUNS + MACHINE GUNS (JUDGE, ODIN)
+                float c1 = c0 + colW + gap;
+                GUI.Label(new Rect(c1, topY, colW, 22f), "SHOTGUNS", hudCenterSmallStyle);
+                DrawArsenalTile(new Rect(c1, topY + 26f, colW, 170f), p, false, 2);
+                GUI.Label(new Rect(c1, topY + 212f, colW, 22f), "MACHINE GUNS", hudCenterSmallStyle);
+                DrawArsenalTile(new Rect(c1, topY + 238f, colW, 170f), p, false, 3);
+
+                // COL 2: SNIPER RIFLES + MELEE BLADES (OPERATOR, KARAMBIT, KATANA)
+                float c2 = c1 + colW + gap;
+                GUI.Label(new Rect(c2, topY, colW, 22f), "SNIPER RIFLES", hudCenterSmallStyle);
+                DrawArsenalTile(new Rect(c2, topY + 26f, colW, 158f), p, false, 4);
+                GUI.Label(new Rect(c2, topY + 196f, colW, 22f), "MELEE · BLADES", hudCenterSmallStyle);
+                DrawArsenalTile(new Rect(c2, topY + 222f, colW, 158f), p, true, 0);
+                DrawArsenalTile(new Rect(c2, topY + 390f, colW, 158f), p, true, 1);
+
+                // COL 3: MELEE HEAVY (CHAINSWORD, WARHAMMER) + SKIN LEGEND CARD
+                float c3 = c2 + colW + gap;
+                GUI.Label(new Rect(c3, topY, colW, 22f), "MELEE · HEAVY", hudCenterSmallStyle);
+                DrawArsenalTile(new Rect(c3, topY + 26f, colW, 170f), p, true, 2);
+                DrawArsenalTile(new Rect(c3, topY + 208f, colW, 170f), p, true, 3);
+
+                Rect legendR = new Rect(c3, topY + 392f, colW, 156f);
+                DrawRect(legendR, new Color(0.08f, 0.13f, 0.18f, 0.85f));
+                DrawRect(new Rect(legendR.x, legendR.y, legendR.width, 1f), new Color(0.55f, 0.72f, 0.85f, 0.28f));
+                GUI.Label(new Rect(legendR.x + 10f, legendR.y + 8f, legendR.width - 20f, 20f), "4 UNLOCKED SKINS", hudCenterSmallStyle);
+                if (p.skins != null)
                 {
-                    WeaponDef w = p.weapons[i];
-                    GUILayout.BeginVertical(panelBoxStyle);
-                    GUILayout.Label($"SLOT [{i + 1}] {w.name}  —  {(w.owned ? $"MK-{w.level} | DMG: {w.damage}{(w.pellets > 1 ? $"x{w.pellets}" : "")} | MAG: {w.magSize}" : "LOCKED")}", headerStyle);
-                    GUILayout.Label(w.desc, labelStyle);
-                    GUILayout.BeginHorizontal();
+                    for (int s = 0; s < p.skins.Count; s++)
+                    {
+                        float sy = legendR.y + 36f + s * 28f;
+                        DrawRect(new Rect(legendR.x + 14f, sy + 5f, 10f, 10f), p.skins[s].glowColor);
+                        GUI.Label(new Rect(legendR.x + 32f, sy, legendR.width - 42f, 22f), p.skins[s].name, smallMonoStyle);
+                    }
+                }
+            }
+            else
+            {
+                // =============================================================
+                // WEAPON SKIN SWITCHER & UPGRADE INSPECTOR (CLICKED WEAPON)
+                // =============================================================
+                bool isMelee = shopSelectedId >= 100;
+                int id = isMelee ? (shopSelectedId - 100) : shopSelectedId;
+                int skinIdx = isMelee ? p.melees[id].skinIndex : p.weapons[id].skinIndex;
+                WeaponSkinDef activeSkin = (p.skins != null && p.skins.Count > 0) ? p.skins[Mathf.Clamp(skinIdx, 0, p.skins.Count - 1)] : null;
+                Color accent = activeSkin != null ? activeSkin.glowColor : Color.magenta;
+
+                if (GUI.Button(new Rect(box.x + 22f, box.y + 52f, 210f, 32f), "← BACK TO ARSENAL", buttonDarkStyle))
+                {
+                    shopSelectedId = -1;
+                    return;
+                }
+
+                string wFullName = isMelee ? p.melees[id].name : p.weapons[id].name;
+                string activeSkinName = activeSkin != null ? activeSkin.name : "DEFAULT";
+                GUI.Label(new Rect(box.x + 248f, box.y + 52f, box.width - 270f, 32f),
+                    $"{wFullName}   //   ACTIVE SKIN: {activeSkinName}", headerStyle);
+
+                // LEFT STAGE: HUGE CRISP PIXELATED PREVIEW + STATS + BUY/UPGRADE/EQUIP
+                Rect leftPanel = new Rect(box.x + 22f, box.y + 98f, 680f, box.height - 120f);
+                DrawRect(leftPanel, new Color(0.09f, 0.14f, 0.20f, 0.92f));
+                DrawRect(new Rect(leftPanel.x, leftPanel.y, leftPanel.width, 2f), accent);
+
+                if (softGlowTex != null)
+                {
+                    Color prev = GUI.color;
+                    GUI.color = new Color(accent.r, accent.g, accent.b, 0.28f);
+                    GUI.DrawTexture(new Rect(leftPanel.x + 70f, leftPanel.y + 18f, leftPanel.width - 140f, 250f), softGlowTex);
+                    GUI.color = prev;
+                }
+
+                Texture2D heroTex = GetPixelWeaponTex(isMelee, id, activeSkin);
+                if (heroTex != null)
+                {
+                    // Razor-sharp 8x pixel-art preview!
+                    Rect bigSpr = new Rect(leftPanel.x + (leftPanel.width - 512f) * 0.5f, leftPanel.y + 44f, 512f, 192f);
+                    GUI.DrawTexture(bigSpr, heroTex, ScaleMode.ScaleToFit);
+                }
+
+                string desc = isMelee ? p.melees[id].desc : p.weapons[id].desc;
+                string stats = isMelee
+                    ? $"DAMAGE: {p.melees[id].damage}   |   REACH: {p.melees[id].range}m   |   SWING: {p.melees[id].cooldown:F2}s   |   SLOT [0]"
+                    : $"MK-{p.weapons[id].level}   |   DMG: {p.weapons[id].damage}{(p.weapons[id].pellets > 1 ? $"x{p.weapons[id].pellets}" : "")}   |   HS: {p.weapons[id].headshotMult:F1}x   |   MAG: {p.weapons[id].magSize}   |   SLOT [{id + 1}]";
+
+                DrawRect(new Rect(leftPanel.x + 18f, leftPanel.y + 266f, leftPanel.width - 36f, 34f), new Color(0.05f, 0.08f, 0.12f, 0.90f));
+                GUI.Label(new Rect(leftPanel.x + 24f, leftPanel.y + 266f, leftPanel.width - 48f, 34f), stats, hudCenterSmallStyle);
+                GUI.Label(new Rect(leftPanel.x + 22f, leftPanel.y + 312f, leftPanel.width - 44f, 92f), desc, labelStyle);
+
+                // Action buttons row (Unlock / Upgrade / Equip)
+                float btnY = leftPanel.yMax - 64f;
+                if (!isMelee)
+                {
+                    WeaponDef w = p.weapons[id];
                     int cost = w.owned ? w.upgradeCost * w.level : w.buyCost;
                     if (!w.owned)
                     {
                         GUI.enabled = p.credits >= cost;
-                        if (GUILayout.Button($"UNLOCK FIREARM (${cost})", buttonBrassStyle, GUILayout.Height(30)))
+                        if (GUI.Button(new Rect(leftPanel.x + 20f, btnY, 310f, 44f), $"UNLOCK FIREARM (${cost})", buttonBrassStyle))
                         {
                             p.credits -= cost; w.owned = true; p.shells = Mathf.Min(p.maxShells, p.shells + 20);
-                            p.mags[i] = w.magSize; p.SelectWeapon(i);
+                            p.mags[id] = w.magSize; p.SelectWeapon(id);
                             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayPickup();
                         }
                         GUI.enabled = true;
@@ -2556,60 +3054,95 @@ namespace DoomHellsAscension
                     else
                     {
                         GUI.enabled = p.credits >= cost && w.level < 5;
-                        if (GUILayout.Button(w.level >= 5 ? "MAX LEVEL (MK-5)" : $"UPGRADE TO MK-{w.level + 1} (${cost})", buttonBrassStyle, GUILayout.Height(30)))
+                        if (GUI.Button(new Rect(leftPanel.x + 20f, btnY, 340f, 44f), w.level >= 5 ? "MAX LEVEL (MK-5)" : $"UPGRADE TO MK-{w.level + 1} (${cost})", buttonBrassStyle))
                         {
                             p.credits -= cost; w.level++;
                             w.damage = Mathf.Round(w.baseDamage * (1f + (w.level - 1) * 0.22f));
                             w.magSize += 4;
-                            p.mags[i] = w.magSize;
+                            p.mags[id] = w.magSize;
                             p.shells = Mathf.Min(p.maxShells, p.shells + 16);
                             p.cells = Mathf.Min(p.maxCells, p.cells + 60);
-                            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayReload(i);
+                            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayReload(id);
                         }
                         GUI.enabled = true;
-                        if (GUILayout.Button(p.weaponIndex == i ? "EQUIPPED" : "EQUIP", buttonDarkStyle, GUILayout.Height(30), GUILayout.Width(130)))
+                        bool eq = !p.IsMeleeEquipped && p.weaponIndex == id;
+                        if (GUI.Button(new Rect(leftPanel.x + 378f, btnY, 282f, 44f), eq ? "EQUIPPED IN HAND" : $"EQUIP ON SLOT [{id + 1}]", eq ? buttonBrassStyle : buttonDarkStyle))
                         {
-                            p.SelectWeapon(i);
+                            p.SelectWeapon(id);
                             if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayPickup();
                         }
                     }
-                    GUILayout.EndHorizontal();
-                    GUILayout.EndVertical();
-                    GUILayout.Space(6);
                 }
-            }
-            else if (shopCategory == 1)
-            {
-                for (int i = 0; i < p.melees.Count; i++)
+                else
                 {
-                    MeleeDef m = p.melees[i];
-                    GUILayout.BeginVertical(panelBoxStyle);
-                    GUILayout.Label($"{m.name}  —  DMG: {m.damage} | REACH: {m.range}m", headerStyle);
-                    GUILayout.Label(m.desc, labelStyle);
+                    MeleeDef m = p.melees[id];
                     if (!m.owned)
                     {
                         GUI.enabled = p.credits >= m.cost;
-                        if (GUILayout.Button($"BUY & EQUIP ON [0] (${m.cost})", buttonBrassStyle, GUILayout.Height(30)))
+                        if (GUI.Button(new Rect(leftPanel.x + 20f, btnY, leftPanel.width - 40f, 44f), $"UNLOCK & EQUIP ON [0] (${m.cost})", buttonBrassStyle))
                         {
                             p.credits -= m.cost; m.owned = true;
-                            p.EquipMeleeFromShop(i);
+                            p.EquipMeleeFromShop(id);
                         }
                         GUI.enabled = true;
                     }
                     else
                     {
-                        if (GUILayout.Button(p.meleeIndex == i ? "EQUIPPED ON [0]" : "EQUIP ON [0]", buttonDarkStyle, GUILayout.Height(30)))
+                        bool eq = p.meleeIndex == id;
+                        if (GUI.Button(new Rect(leftPanel.x + 20f, btnY, leftPanel.width - 40f, 44f), eq ? "EQUIPPED ON SLOT [0]" : "EQUIP MELEE ON SLOT [0]", eq ? buttonBrassStyle : buttonDarkStyle))
                         {
-                            p.EquipMeleeFromShop(i);
+                            p.EquipMeleeFromShop(id);
                         }
                     }
-                    GUILayout.EndVertical();
-                    GUILayout.Space(6);
+                }
+
+                // RIGHT PANEL: 4 CLICKABLE SKIN VARIANT SWITCHER CARDS
+                Rect rightPanel = new Rect(leftPanel.xMax + 18f, box.y + 98f, box.xMax - leftPanel.xMax - 40f, box.height - 120f);
+                DrawRect(rightPanel, new Color(0.08f, 0.12f, 0.18f, 0.92f));
+                GUI.Label(new Rect(rightPanel.x + 14f, rightPanel.y + 10f, rightPanel.width - 28f, 24f), "SELECT SKIN VARIANT (INSTANT LIVE SWAP)", hudCenterSmallStyle);
+
+                if (p.skins != null)
+                {
+                    float cardH = (rightPanel.height - 82f) / 4f;
+                    for (int s = 0; s < p.skins.Count; s++)
+                    {
+                        WeaponSkinDef sk = p.skins[s];
+                        Rect sc = new Rect(rightPanel.x + 14f, rightPanel.y + 42f + s * (cardH + 10f), rightPanel.width - 28f, cardH);
+                        bool isSel = (s == skinIdx);
+                        bool hov = sc.Contains(Event.current.mousePosition);
+
+                        DrawRect(sc, isSel ? new Color(0.16f, 0.23f, 0.31f, 0.98f) : (hov ? new Color(0.13f, 0.19f, 0.26f, 0.95f) : new Color(0.07f, 0.11f, 0.16f, 0.92f)));
+                        Color sb = isSel ? sk.glowColor : (hov ? Color.Lerp(sk.glowColor, Color.white, 0.25f) : new Color(0.5f, 0.65f, 0.78f, 0.28f));
+                        float sbw = isSel ? 2.5f : 1f;
+                        DrawRect(new Rect(sc.x, sc.y, sc.width, sbw), sb);
+                        DrawRect(new Rect(sc.x, sc.yMax - sbw, sc.width, sbw), sb);
+                        DrawRect(new Rect(sc.x, sc.y, sbw, sc.height), sb);
+                        DrawRect(new Rect(sc.xMax - sbw, sc.y, sbw, sc.height), sb);
+
+                        // Mini crisp pixel-art weapon wearing THIS skin!
+                        Texture2D miniTex = GetPixelWeaponTex(isMelee, id, sk);
+                        if (miniTex != null)
+                        {
+                            GUI.DrawTexture(new Rect(sc.x + 12f, sc.y + (sc.height - 60f) * 0.5f, 160f, 60f), miniTex, ScaleMode.ScaleToFit);
+                        }
+
+                        // Skin title, 3 colorway swatches, & EQUIPPED badge
+                        float tx = sc.x + 184f;
+                        GUI.Label(new Rect(tx, sc.y + 12f, sc.width - 194f, 24f), sk.name, isSel ? cardTitleSelStyle : popupCardTitleStyle);
+                        DrawRect(new Rect(tx, sc.y + 42f, 18f, 14f), sk.bodyColor);
+                        DrawRect(new Rect(tx + 24f, sc.y + 42f, 18f, 14f), sk.trimColor);
+                        DrawRect(new Rect(tx + 48f, sc.y + 42f, 18f, 14f), sk.glowColor);
+                        GUI.Label(new Rect(tx, sc.y + 64f, sc.width - 194f, 22f), isSel ? "◆ SKIN EQUIPPED (LIVE 3D)" : "CLICK TO APPLY SKIN", popupRowSubStyle);
+
+                        if (GUI.Button(sc, GUIContent.none, GUIStyle.none))
+                        {
+                            if (isMelee) p.SetMeleeSkin(id, s);
+                            else p.SetWeaponSkin(id, s);
+                            if (RealisticGunAudio.Instance != null) RealisticGunAudio.Instance.PlayPickup();
+                        }
+                    }
                 }
             }
-
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
         }
 
         private void DrawStateModal(float sw, float sh)

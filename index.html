@@ -610,6 +610,417 @@
       margin-top: 6px;
     }
 
+    /* =====================================================================
+       VALORANT-STYLE 4-COLUMN PIXEL-ART ARMORY SHOP & SKIN SWITCHER POP-UP
+       ===================================================================== */
+    .popup-box.armory-wide {
+      width: min(1080px, 95vw);
+      max-height: 90vh;
+      background: linear-gradient(158deg, rgba(11, 21, 31, 0.97) 0%, rgba(18, 33, 47, 0.98) 54%, rgba(9, 17, 25, 0.99) 100%);
+      border: 1.5px solid rgba(132, 178, 210, 0.34);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.92), 0 0 42px rgba(220, 38, 38, 0.22);
+    }
+
+    .popup-box.armory-wide .popup-header {
+      background: linear-gradient(90deg, rgba(22, 14, 18, 0.92) 0%, rgba(14, 27, 40, 0.92) 100%);
+      border-bottom: 1px solid rgba(148, 188, 218, 0.22);
+    }
+
+    .arsenal-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 4px 2px 2px;
+      font-size: 0.76rem;
+      letter-spacing: 0.12em;
+      color: #9fb7cc;
+    }
+
+    .arsenal-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+
+    @media (max-width: 880px) {
+      .arsenal-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .arsenal-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .arsenal-col {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .arsenal-cat-head {
+      text-align: center;
+      font-size: 0.86rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      color: #dbeafe;
+      text-transform: uppercase;
+      padding: 2px 0;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+    }
+
+    .arsenal-cat-head.spaced {
+      margin-top: 6px;
+    }
+
+    .arsenal-card {
+      position: relative;
+      width: 100%;
+      padding: 0;
+      border-radius: 3px;
+      border: 1px solid rgba(164, 198, 222, 0.24);
+      background: linear-gradient(180deg, rgba(46, 68, 86, 0.44) 0%, rgba(28, 44, 58, 0.56) 100%);
+      color: #f1f5f9;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.16s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    .arsenal-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--skin-glow, #ef4444);
+      background: linear-gradient(180deg, rgba(58, 86, 108, 0.58) 0%, rgba(32, 50, 68, 0.72) 100%);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.52), 0 0 18px color-mix(in srgb, var(--skin-glow, #ef4444) 36%, transparent);
+    }
+
+    .arsenal-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 8px 0;
+      font-size: 0.66rem;
+      letter-spacing: 0.11em;
+      color: #93b0c8;
+    }
+
+    .arsenal-skin-tag {
+      font-weight: 700;
+      color: var(--skin-glow, #c084fc);
+      text-shadow: 0 0 8px color-mix(in srgb, var(--skin-glow, #c084fc) 55%, transparent);
+    }
+
+    .pixel-gun-wrap {
+      position: relative;
+      height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px 0;
+    }
+
+    .pixel-gun-wrap::before {
+      content: "";
+      position: absolute;
+      inset: 10px 20px;
+      background: radial-gradient(ellipse at center, color-mix(in srgb, var(--skin-glow, #a855f7) 26%, transparent) 0%, transparent 72%);
+      pointer-events: none;
+    }
+
+    .pixel-gun-canvas {
+      position: relative;
+      z-index: 1;
+      width: 192px;
+      height: 72px;
+      max-width: 100%;
+      object-fit: contain;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.65));
+      transition: transform 0.18s ease;
+    }
+
+    .arsenal-card:hover .pixel-gun-canvas {
+      transform: scale(1.06);
+    }
+
+    .skin-pips {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 7px;
+      padding: 2px 0 6px;
+    }
+
+    .skin-pip {
+      width: 6px;
+      height: 6px;
+      transform: rotate(45deg);
+      border: 1px solid rgba(215, 232, 245, 0.45);
+      background: rgba(18, 30, 42, 0.7);
+      transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .skin-pip.active {
+      background: var(--pip-col, #ffffff);
+      border-color: #ffffff;
+      box-shadow: 0 0 8px var(--pip-col, #ffffff);
+      transform: rotate(45deg) scale(1.22);
+    }
+
+    .arsenal-card-foot {
+      width: 100%;
+      padding: 4px 6px;
+      text-align: center;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #e2e8f0;
+      background: rgba(164, 188, 208, 0.16);
+      border-top: 1px solid rgba(180, 208, 230, 0.14);
+    }
+
+    .arsenal-legend {
+      border-radius: 3px;
+      border: 1px solid rgba(164, 198, 222, 0.22);
+      background: rgba(20, 34, 48, 0.56);
+      padding: 10px 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .arsenal-legend-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: #cbd5e1;
+      text-align: center;
+      border-bottom: 1px solid rgba(164, 198, 222, 0.16);
+      padding-bottom: 5px;
+    }
+
+    .arsenal-legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: #dbeafe;
+    }
+
+    /* CLICKED WEAPON SKIN SWITCHER VIEW */
+    .skin-inspector-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .skin-inspector {
+      display: grid;
+      grid-template-columns: minmax(0, 1.32fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 780px) {
+      .skin-inspector {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .skin-stage {
+      border-radius: 4px;
+      border: 1px solid rgba(164, 198, 222, 0.28);
+      border-top: 2px solid var(--skin-glow, #a855f7);
+      background: radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--skin-glow, #a855f7) 24%, transparent) 0%, rgba(16, 28, 40, 0.88) 72%);
+      padding: 18px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .skin-stage-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .skin-stage-name {
+      font-size: 1.42rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      color: #ffffff;
+    }
+
+    .skin-stage-badge {
+      padding: 4px 10px;
+      border-radius: 3px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #ffffff;
+      border: 1px solid var(--skin-glow, #a855f7);
+      background: color-mix(in srgb, var(--skin-glow, #a855f7) 24%, rgba(12, 20, 30, 0.9));
+      box-shadow: 0 0 14px color-mix(in srgb, var(--skin-glow, #a855f7) 35%, transparent);
+    }
+
+    .skin-hero-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 188px;
+      padding: 10px;
+    }
+
+    .pixel-gun-canvas.hero {
+      width: min(448px, 100%);
+      height: auto;
+      aspect-ratio: 64 / 24;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.78));
+    }
+
+    .skin-stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .skin-stat-box {
+      padding: 7px 10px;
+      border-radius: 3px;
+      background: rgba(9, 17, 25, 0.76);
+      border: 1px solid rgba(150, 185, 212, 0.2);
+      text-align: center;
+    }
+
+    .skin-stat-lbl {
+      display: block;
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      color: #93b0c8;
+    }
+
+    .skin-stat-val {
+      display: block;
+      font-size: 0.96rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #f8fafc;
+      margin-top: 2px;
+    }
+
+    .skin-desc {
+      font-size: 0.78rem;
+      line-height: 1.45;
+      letter-spacing: 0.03em;
+      color: #cbd5e1;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .skin-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .skin-list-head {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: #cbd5e1;
+      text-transform: uppercase;
+      padding-left: 2px;
+    }
+
+    .skin-option {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 4px;
+      border: 1px solid rgba(154, 188, 216, 0.24);
+      background: rgba(16, 28, 40, 0.82);
+      color: #f8fafc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+      transition: transform 0.15s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .skin-option:hover {
+      transform: translateX(3px);
+      border-color: var(--opt-glow, #ef4444);
+      background: rgba(26, 44, 62, 0.92);
+    }
+
+    .skin-option.active {
+      border-color: var(--opt-glow, #a855f7);
+      border-width: 1.5px;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--opt-glow, #a855f7) 20%, rgba(16, 28, 40, 0.95)) 0%, rgba(20, 36, 52, 0.95) 100%);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--opt-glow, #a855f7) 30%, transparent);
+    }
+
+    .skin-option-mini {
+      width: 128px;
+      height: 48px;
+      flex-shrink: 0;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.7));
+    }
+
+    .skin-option-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .skin-option-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #ffffff;
+    }
+
+    .skin-swatches {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 5px 0 4px;
+    }
+
+    .skin-swatch {
+      width: 14px;
+      height: 10px;
+      border-radius: 2px;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+    }
+
+    .skin-option-status {
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      color: #93b0c8;
+    }
+
+    .skin-option.active .skin-option-status {
+      color: var(--opt-glow, #c084fc);
+      font-weight: 700;
+    }
+
     /* Discreet Skip Trigger During Opening 8s */
     #skip-intro-btn {
       position: absolute;
@@ -1275,7 +1686,8 @@
 
       const pinSvg = `<svg viewBox="0 0 24 24" width="22" height="22" fill="#ef4444"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>`;
 
-      function openPopupHtml(title, innerHtml) {
+      function openPopupHtml(title, innerHtml, opts = {}) {
+        popupRoot.classList.toggle("armory-wide", !!opts.wide);
         popupRoot.style.animation = "none";
         popupRoot.innerHTML = `
           <div class="popup-header">
@@ -1366,26 +1778,490 @@
         });
       }
 
-      // COMPACT ARMORY SHOP POP-UP
-      function openArmoryPopup() {
-        openPopupHtml("Armory Shop", `
-          <div class="compact-item"><span>REAVER VANDAL &amp; INFERNO PHANTOM</span><span style="color:#fca5a5">RIFLES [1-2]</span></div>
-          <div class="compact-item"><span>HELL-JUDGE &amp; SOUL-SHREDDER ODIN</span><span style="color:#fca5a5">HEAVY [3-4]</span></div>
-          <div class="compact-item"><span>REAVER OPERATOR SNIPER + SCOPE</span><span style="color:#fca5a5">SNIPER [5]</span></div>
-          <div class="compact-item"><span>KARAMBIT / KATANA / CHAINSWORD / WARHAMMER</span><span style="color:#fca5a5">EQUIP [0]</span></div>
-          <button id="btn-enter-shop" class="compact-btn" style="width:100%;padding:11px;">
-            ${unityReady ? "▶ OPEN LIVE ARMORY SHOP [B]" : "⏳ LOADING UNITY ARMORY..."}
+      // =========================================================================
+      // VALORANT-STYLE PIXEL-ART ARMORY SHOP & LIVE 4-SKIN SWITCHER
+      // =========================================================================
+      const ARMORY_SKINS = [
+        { id: 0, name: "REAVER AMETHYST", shortTag: "REAVER", body: "#292447", bodyHi: "#4c4378", dark: "#120f1f", trim: "#d1d9eb", glow: "#ad4dff", glowCore: "#e2c2ff" },
+        { id: 1, name: "ABYSSAL INFERNO", shortTag: "INFERNO", body: "#3d1417", bodyHi: "#6e2529", dark: "#1a0a0a", trim: "#db3d2e", glow: "#ff4d1a", glowCore: "#ffd0a6" },
+        { id: 2, name: "PRIME SOVEREIGN", shortTag: "PRIME", body: "#dbd6c7", bodyHi: "#ffffff", dark: "#2e2b33", trim: "#f5bd38", glow: "#ffd13d", glowCore: "#fff7cc" },
+        { id: 3, name: "SPECTRAL CYAN", shortTag: "SPECTRAL", body: "#143347", bodyHi: "#285d7d", dark: "#0a1724", trim: "#bde6fa", glow: "#2edbff", glowCore: "#d6f7ff" }
+      ];
+
+      const ARMORY_WEAPONS = [
+        { id: 0, shortName: "VANDAL", name: "REAVER VANDAL", slot: "[1]", cat: "RIFLE", dmg: "40 (4x HS)", mag: "25 / INF", rate: "AUTO 7.62", desc: "Iconic 7.62 gothic rifle forged in obsidian steel & silver filigree with telekinetic reload and lethal 1-tap headshots." },
+        { id: 1, shortName: "PHANTOM", name: "INFERNO PHANTOM", slot: "[2]", cat: "RIFLE", dmg: "35 (3.5x HS)", mag: "30 / INF", rate: "SILENCED", desc: "Suppressed high-RPM tactical rifle with integrated silencer, pinpoint ADS holo-sight, and rapid reload." },
+        { id: 2, shortName: "JUDGE", name: "HELL-JUDGE SHOTGUN", slot: "[3]", cat: "SHOTGUN", dmg: "20 x 9", mag: "7 DRUM", rate: "AUTO 12G", desc: "Rapid-fire drum-fed tactical shotgun unleashing 9 brimstone pellets per blast for close-quarters devastation." },
+        { id: 3, shortName: "ODIN", name: "SOUL-SHREDDER ODIN", slot: "[4]", cat: "MACHINE GUN", dmg: "32 / RD", mag: "100 BELT", rate: "SPIN-UP", desc: "100-round belt-fed heavy LMG with spin-up RPM ramp, visible ammo belt, and overwhelming wall-of-fire." },
+        { id: 4, shortName: "OPERATOR", name: "REAVER OPERATOR", slot: "[5]", cat: "SNIPER", dmg: "180 (3x HS)", mag: "5 RAIL", rate: "BOLT .50", desc: "Bolt-action .50 anti-materiel rail sniper with full-screen optic scope and earth-shattering 1-shot eliminations." }
+      ];
+
+      const ARMORY_MELEES = [
+        { id: 0, shortName: "KARAMBIT", name: "REAVER KARAMBIT", slot: "[0]", cat: "MELEE", dmg: "75 SLASH", mag: "3.4m REACH", rate: "SPIN [Y]", desc: "Curved forged-steel & obsidian claw knife with finger-ring spin draw ([0]), LMB slash combo, and RMB heavy stab." },
+        { id: 1, shortName: "KATANA", name: "ONI BLOOD-KATANA", slot: "[0]", cat: "MELEE", dmg: "145 CLEAVE", mag: "4.6m REACH", rate: "WIDE ARC", desc: "Curved superheated demonic katana with unsheathe draw ([0]) that cleaves multiple hostiles in a wide crimson arc." },
+        { id: 2, shortName: "CHAINSWORD", name: "RIPPER CHAINSWORD", slot: "[0]", cat: "MELEE", dmg: "195 RIP", mag: "4.0m REACH", rate: "+20 HP LEECH", desc: "Motorized demonic chainsaw blade ([0]) with live spinning saw teeth. Shreds armor and leeches +20 HP per hit." },
+        { id: 3, shortName: "WARHAMMER", name: "HELL-BREAKER WARHAMMER", slot: "[0]", cat: "MELEE", dmg: "270 SLAM", mag: "7.5m AOE", rate: "SHOCKWAVE", desc: "Colossal obsidian-steel warhammer ([0]). Slams the ground to unleash a 7.5m 360-degree seismic shockwave." }
+      ];
+
+      const SKIN_STORE_KEY = "doom_weapon_skins_v1";
+      let savedWeaponSkins = [0, 0, 0, 0, 0];
+      let savedMeleeSkins = [0, 0, 0, 0];
+      try {
+        const raw = localStorage.getItem(SKIN_STORE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed.w) && parsed.w.length === 5)
+            savedWeaponSkins = parsed.w.map(v => Math.max(0, Math.min(ARMORY_SKINS.length - 1, v | 0)));
+          if (Array.isArray(parsed.m) && parsed.m.length === 4)
+            savedMeleeSkins = parsed.m.map(v => Math.max(0, Math.min(ARMORY_SKINS.length - 1, v | 0)));
+        }
+      } catch (_) { }
+
+      function persistWebSkins() {
+        try { localStorage.setItem(SKIN_STORE_KEY, JSON.stringify({ w: savedWeaponSkins, m: savedMeleeSkins })); } catch (_) { }
+      }
+
+      function syncWebSkinsToUnity() {
+        if (unityReady && unityInst) {
+          const payload = `${savedWeaponSkins.join(",")}|${savedMeleeSkins.join(",")}`;
+          unityInst.SendMessage("GameManager", "ApplyWebSkins", payload);
+        }
+      }
+
+      let uiAudioCtx = null;
+      function playSkinClickSfx(pitchIdx = 0) {
+        if (webAudioMuted) return;
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          if (!uiAudioCtx) uiAudioCtx = new AC();
+          if (uiAudioCtx.state === "suspended") uiAudioCtx.resume();
+          const now = uiAudioCtx.currentTime;
+          const osc = uiAudioCtx.createOscillator();
+          const gain = uiAudioCtx.createGain();
+          osc.type = "triangle";
+          const baseF = 340 + pitchIdx * 75;
+          osc.frequency.setValueAtTime(baseF, now);
+          osc.frequency.exponentialRampToValueAtTime(baseF * 1.45, now + 0.065);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.connect(gain);
+          gain.connect(uiAudioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.095);
+        } catch (_) { }
+      }
+
+      // Crisp 64x24 Retro Pixel-Art Weapon Silhouette Renderer (Left-Facing VALORANT Style + 1px Pixel Outline!)
+      function drawPixelWeapon(canvas, isMelee, id, skin) {
+        if (!canvas) return;
+        const W = 64, H = 24;
+        canvas.width = W;
+        canvas.height = H;
+        const pctx = canvas.getContext("2d");
+        pctx.imageSmoothingEnabled = false;
+
+        const grid = new Array(W * H).fill(null);
+        const fill = (x, y, w, h, col) => {
+          for (let dy = 0; dy < h; dy++) {
+            const py = y + dy;
+            if (py < 0 || py >= H) continue;
+            for (let dx = 0; dx < w; dx++) {
+              const px = x + dx;
+              if (px < 0 || px >= W) continue;
+              grid[py * W + px] = col;
+            }
+          }
+        };
+
+        const { body, bodyHi, dark, trim, glow, glowCore } = skin;
+
+        if (!isMelee) {
+          if (id === 0) {
+            // VANDAL
+            fill(3, 8, 5, 3, trim);
+            fill(8, 9, 11, 2, trim);
+            fill(11, 7, 8, 1, dark);
+            fill(18, 7, 15, 5, body);
+            fill(19, 7, 13, 1, bodyHi);
+            fill(20, 9, 3, 2, glow);
+            fill(25, 9, 4, 2, glow);
+            fill(21, 9, 1, 1, glowCore);
+            fill(26, 9, 2, 1, glowCore);
+            fill(33, 6, 14, 7, body);
+            fill(34, 6, 12, 1, trim);
+            fill(36, 4, 2, 2, trim);
+            fill(40, 4, 2, 2, trim);
+            fill(35, 9, 8, 2, glow);
+            fill(37, 9, 4, 1, glowCore);
+            fill(28, 13, 5, 3, dark);
+            fill(27, 16, 5, 3, dark);
+            fill(26, 19, 4, 2, trim);
+            fill(28, 15, 2, 3, glow);
+            fill(41, 13, 4, 3, dark);
+            fill(42, 16, 4, 4, dark);
+            fill(47, 7, 13, 3, body);
+            fill(47, 10, 5, 3, body);
+            fill(56, 10, 4, 7, body);
+            fill(48, 14, 9, 2, trim);
+            fill(58, 7, 2, 10, trim);
+          } else if (id === 1) {
+            // PHANTOM
+            fill(2, 8, 14, 3, dark);
+            fill(3, 8, 12, 1, trim);
+            fill(5, 9, 2, 1, glow);
+            fill(9, 9, 2, 1, glow);
+            fill(16, 7, 16, 5, body);
+            fill(17, 7, 14, 1, bodyHi);
+            fill(19, 9, 10, 1, glow);
+            fill(21, 9, 5, 1, glowCore);
+            fill(32, 7, 15, 6, body);
+            fill(34, 4, 9, 3, dark);
+            fill(36, 5, 5, 1, glow);
+            fill(34, 9, 9, 2, trim);
+            fill(29, 13, 5, 7, dark);
+            fill(30, 14, 2, 5, glow);
+            fill(41, 13, 4, 6, dark);
+            fill(47, 8, 13, 4, body);
+            fill(52, 12, 8, 4, dark);
+            fill(58, 8, 2, 8, trim);
+          } else if (id === 2) {
+            // JUDGE
+            fill(3, 7, 15, 4, trim);
+            fill(4, 8, 13, 1, dark);
+            fill(18, 7, 26, 6, body);
+            fill(19, 7, 23, 1, bodyHi);
+            fill(20, 9, 20, 2, glow);
+            fill(24, 9, 10, 1, glowCore);
+            fill(26, 13, 10, 7, dark);
+            fill(25, 14, 12, 5, dark);
+            fill(28, 15, 6, 3, trim);
+            fill(30, 16, 2, 1, glow);
+            fill(40, 13, 4, 6, dark);
+            fill(44, 8, 15, 3, body);
+            fill(55, 11, 4, 6, body);
+            fill(46, 14, 10, 2, trim);
+          } else if (id === 3) {
+            // ODIN
+            fill(2, 8, 14, 2, trim);
+            fill(2, 11, 14, 2, trim);
+            fill(4, 7, 3, 7, dark);
+            fill(16, 7, 14, 6, body);
+            fill(18, 8, 10, 1, glow);
+            fill(18, 11, 10, 1, glow);
+            fill(24, 4, 16, 2, trim);
+            fill(25, 6, 2, 2, trim);
+            fill(37, 6, 2, 2, trim);
+            fill(30, 6, 18, 8, body);
+            fill(31, 6, 16, 1, bodyHi);
+            fill(25, 14, 14, 7, dark);
+            fill(26, 15, 12, 5, body);
+            fill(29, 12, 6, 3, glow);
+            fill(30, 13, 4, 1, glowCore);
+            fill(43, 14, 4, 5, dark);
+            fill(48, 7, 13, 6, body);
+            fill(53, 13, 8, 4, dark);
+            fill(59, 7, 2, 10, trim);
+          } else {
+            // OPERATOR
+            fill(1, 8, 5, 4, dark);
+            fill(2, 9, 3, 2, trim);
+            fill(6, 9, 17, 2, trim);
+            fill(26, 3, 18, 4, dark);
+            fill(24, 2, 4, 6, trim);
+            fill(42, 3, 3, 4, trim);
+            fill(28, 4, 13, 2, glow);
+            fill(31, 4, 6, 1, glowCore);
+            fill(29, 7, 2, 2, trim);
+            fill(38, 7, 2, 2, trim);
+            fill(22, 8, 26, 5, body);
+            fill(23, 8, 24, 1, bodyHi);
+            fill(24, 10, 18, 1, glow);
+            fill(40, 10, 3, 2, trim);
+            fill(30, 13, 6, 6, dark);
+            fill(43, 13, 4, 6, dark);
+            fill(48, 8, 14, 4, body);
+            fill(57, 12, 5, 6, body);
+            fill(47, 16, 11, 2, trim);
+          }
+        } else {
+          if (id === 0) {
+            // KARAMBIT
+            fill(10, 16, 5, 3, trim);
+            fill(12, 13, 7, 4, trim);
+            fill(16, 10, 9, 5, trim);
+            fill(22, 8, 11, 5, body);
+            fill(14, 14, 6, 2, glow);
+            fill(18, 11, 9, 2, glow);
+            fill(21, 10, 5, 1, glowCore);
+            fill(32, 7, 4, 7, trim);
+            fill(36, 8, 10, 5, body);
+            fill(37, 10, 8, 1, glow);
+            fill(36, 12, 9, 2, dark);
+            fill(46, 7, 9, 9, trim);
+            fill(48, 9, 5, 5, null);
+            fill(49, 6, 3, 2, glow);
+          } else if (id === 1) {
+            // KATANA
+            fill(4, 12, 8, 2, trim);
+            fill(10, 11, 14, 3, trim);
+            fill(22, 10, 21, 3, trim);
+            fill(12, 10, 30, 1, bodyHi);
+            fill(9, 12, 33, 1, glow);
+            fill(16, 12, 18, 1, glowCore);
+            fill(43, 6, 3, 12, trim);
+            fill(44, 8, 1, 8, glow);
+            fill(46, 10, 13, 4, dark);
+            fill(48, 11, 2, 2, body);
+            fill(52, 11, 2, 2, body);
+            fill(56, 11, 2, 2, body);
+            fill(59, 9, 2, 6, trim);
+          } else if (id === 2) {
+            // CHAINSWORD
+            fill(6, 9, 36, 7, body);
+            fill(8, 9, 32, 1, bodyHi);
+            fill(10, 11, 28, 3, dark);
+            fill(13, 12, 22, 1, glow);
+            fill(18, 12, 10, 1, glowCore);
+            for (let tx = 7; tx <= 37; tx += 4) {
+              fill(tx, 7, 2, 2, trim);
+              fill(tx + 1, 16, 2, 2, trim);
+            }
+            fill(4, 10, 2, 5, trim);
+            fill(42, 7, 4, 11, trim);
+            fill(46, 10, 13, 4, dark);
+            fill(46, 16, 12, 2, trim);
+            fill(56, 10, 3, 8, trim);
+          } else {
+            // WARHAMMER
+            fill(9, 3, 17, 18, body);
+            fill(10, 3, 15, 2, bodyHi);
+            fill(7, 5, 3, 14, trim);
+            fill(25, 5, 3, 14, trim);
+            fill(15, 1, 5, 2, trim);
+            fill(15, 21, 5, 2, trim);
+            fill(13, 6, 9, 12, dark);
+            fill(15, 8, 5, 8, glow);
+            fill(16, 10, 3, 4, glowCore);
+            fill(28, 10, 29, 4, dark);
+            fill(28, 10, 29, 1, trim);
+            fill(34, 11, 4, 2, glow);
+            fill(44, 11, 4, 2, glow);
+            fill(57, 8, 4, 8, trim);
+          }
+        }
+
+        // Render with crisp 1px dark retro pixel-art outline
+        pctx.clearRect(0, 0, W, H);
+        pctx.fillStyle = "#06090f";
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            if (grid[y * W + x]) continue;
+            if ((x > 0 && grid[y * W + (x - 1)]) ||
+                (x < W - 1 && grid[y * W + (x + 1)]) ||
+                (y > 0 && grid[(y - 1) * W + x]) ||
+                (y < H - 1 && grid[(y + 1) * W + x])) {
+              pctx.fillRect(x, y, 1, 1);
+            }
+          }
+        }
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const c = grid[y * W + x];
+            if (c) {
+              pctx.fillStyle = c;
+              pctx.fillRect(x, y, 1, 1);
+            }
+          }
+        }
+      }
+
+      function buildArsenalCardHtml(isMelee, item) {
+        const skinIdx = isMelee ? savedMeleeSkins[item.id] : savedWeaponSkins[item.id];
+        const sk = ARMORY_SKINS[skinIdx] || ARMORY_SKINS[0];
+        const pipsHtml = ARMORY_SKINS.map((s, idx) =>
+          `<span class="skin-pip ${idx === skinIdx ? "active" : ""}" style="--pip-col:${s.glow}"></span>`
+        ).join("");
+        return `
+          <button class="arsenal-card" data-melee="${isMelee ? 1 : 0}" data-id="${item.id}" style="--skin-glow:${sk.glow}">
+            <div class="arsenal-card-meta">
+              <span>${item.slot}</span>
+              <span class="arsenal-skin-tag">${sk.shortTag}</span>
+            </div>
+            <div class="pixel-gun-wrap">
+              <canvas class="pixel-gun-canvas" data-px-melee="${isMelee ? 1 : 0}" data-px-id="${item.id}" data-px-skin="${skinIdx}"></canvas>
+            </div>
+            <div class="skin-pips">${pipsHtml}</div>
+            <div class="arsenal-card-foot">${item.shortName}</div>
           </button>
-        `);
+        `;
+      }
+
+      // VALORANT-STYLE 4-COLUMN PIXELATED ARMORY SHOP POP-UP
+      function openArmoryPopup() {
+        const legendRows = ARMORY_SKINS.map(s =>
+          `<div class="arsenal-legend-row"><span class="skin-pip active" style="--pip-col:${s.glow}"></span><span>${s.name}</span></div>`
+        ).join("");
+
+        openPopupHtml("Armory Collection", `
+          <div class="arsenal-toolbar">
+            <span>CLICK ANY PIXELATED WEAPON TO SWITCH SKINS · SAVES &amp; SYNCS LIVE TO UNITY 6</span>
+            <button id="btn-enter-shop" class="compact-btn secondary" style="padding:5px 11px;font-size:0.74rem;">
+              ${unityReady ? "⚙ IN-GAME CREDITS SHOP [B]" : "⏳ ENGINE LOADING..."}
+            </button>
+          </div>
+          <div class="arsenal-grid">
+            <div class="arsenal-col">
+              <div class="arsenal-cat-head">RIFLES</div>
+              ${buildArsenalCardHtml(false, ARMORY_WEAPONS[0])}
+              ${buildArsenalCardHtml(false, ARMORY_WEAPONS[1])}
+            </div>
+            <div class="arsenal-col">
+              <div class="arsenal-cat-head">SHOTGUNS</div>
+              ${buildArsenalCardHtml(false, ARMORY_WEAPONS[2])}
+              <div class="arsenal-cat-head spaced">MACHINE GUNS</div>
+              ${buildArsenalCardHtml(false, ARMORY_WEAPONS[3])}
+            </div>
+            <div class="arsenal-col">
+              <div class="arsenal-cat-head">SNIPER RIFLES</div>
+              ${buildArsenalCardHtml(false, ARMORY_WEAPONS[4])}
+              <div class="arsenal-cat-head spaced">MELEE · BLADES</div>
+              ${buildArsenalCardHtml(true, ARMORY_MELEES[0])}
+              ${buildArsenalCardHtml(true, ARMORY_MELEES[1])}
+            </div>
+            <div class="arsenal-col">
+              <div class="arsenal-cat-head">MELEE · HEAVY</div>
+              ${buildArsenalCardHtml(true, ARMORY_MELEES[2])}
+              ${buildArsenalCardHtml(true, ARMORY_MELEES[3])}
+              <div class="arsenal-legend">
+                <div class="arsenal-legend-title">4 SKIN VARIANTS</div>
+                ${legendRows}
+              </div>
+            </div>
+          </div>
+        `, { wide: true });
+
+        popupRoot.querySelectorAll("canvas[data-px-id]").forEach((c) => {
+          const isM = c.getAttribute("data-px-melee") === "1";
+          const wid = parseInt(c.getAttribute("data-px-id"), 10);
+          const sidx = parseInt(c.getAttribute("data-px-skin"), 10);
+          drawPixelWeapon(c, isM, wid, ARMORY_SKINS[sidx] || ARMORY_SKINS[0]);
+        });
+
+        popupRoot.querySelectorAll(".arsenal-card").forEach((card) => {
+          card.addEventListener("click", () => {
+            const isM = card.getAttribute("data-melee") === "1";
+            const wid = parseInt(card.getAttribute("data-id"), 10);
+            playSkinClickSfx(1);
+            openWeaponSkinView(isM, wid);
+          });
+        });
+
         document.getElementById("btn-enter-shop").addEventListener("click", (e) => {
+          syncWebSkinsToUnity();
           if (unityReady && unityInst) {
             closePopup();
             dismissHero();
             unityInst.SendMessage("GameManager", "OpenShopFromWeb", "");
           } else {
             pendingShopOpen = true;
-            e.target.textContent = "⏳ LOADING ENGINE — OPENING SHOP...";
+            e.target.textContent = "⏳ OPENING UNITY SHOP...";
           }
+        });
+      }
+
+      // CLICKED WEAPON SKIN SWITCHER POP-UP VIEW
+      function openWeaponSkinView(isMelee, id) {
+        const item = isMelee ? ARMORY_MELEES[id] : ARMORY_WEAPONS[id];
+        const currentSkinIdx = isMelee ? savedMeleeSkins[id] : savedWeaponSkins[id];
+        const activeSkin = ARMORY_SKINS[currentSkinIdx] || ARMORY_SKINS[0];
+
+        const skinCardsHtml = ARMORY_SKINS.map((sk, idx) => `
+          <button class="skin-option ${idx === currentSkinIdx ? "active" : ""}" data-skin="${idx}" style="--opt-glow:${sk.glow}">
+            <canvas class="skin-option-mini" data-opt-skin="${idx}"></canvas>
+            <div class="skin-option-info">
+              <div class="skin-option-title">${sk.name}</div>
+              <div class="skin-swatches">
+                <span class="skin-swatch" style="background:${sk.body}"></span>
+                <span class="skin-swatch" style="background:${sk.trim}"></span>
+                <span class="skin-swatch" style="background:${sk.glow}"></span>
+              </div>
+              <div class="skin-option-status">${idx === currentSkinIdx ? "◆ EQUIPPED (ACTIVE IN-GAME)" : "CLICK TO EQUIP SKIN"}</div>
+            </div>
+          </button>
+        `).join("");
+
+        openPopupHtml(`Armory // ${item.shortName} Skins`, `
+          <div class="skin-inspector-top">
+            <button id="btn-back-arsenal" class="compact-btn secondary">← BACK TO ARSENAL</button>
+            <span style="font-size:0.74rem;letter-spacing:0.12em;color:#93b0c8;">${item.cat} · SLOT ${item.slot} · PIXEL ART SKIN SWITCHER</span>
+          </div>
+          <div class="skin-inspector">
+            <div id="skin-stage-box" class="skin-stage" style="--skin-glow:${activeSkin.glow}">
+              <div class="skin-stage-head">
+                <div class="skin-stage-name">${item.name}</div>
+                <div id="skin-stage-badge" class="skin-stage-badge">${activeSkin.name}</div>
+              </div>
+              <div class="skin-hero-wrap">
+                <canvas id="skin-hero-canvas" class="pixel-gun-canvas hero"></canvas>
+              </div>
+              <div id="skin-hero-pips" class="skin-pips">
+                ${ARMORY_SKINS.map((s, idx) => `<span class="skin-pip ${idx === currentSkinIdx ? "active" : ""}" style="--pip-col:${s.glow}"></span>`).join("")}
+              </div>
+              <div class="skin-stats-row">
+                <div class="skin-stat-box"><span class="skin-stat-lbl">DAMAGE</span><span class="skin-stat-val">${item.dmg}</span></div>
+                <div class="skin-stat-box"><span class="skin-stat-lbl">${isMelee ? "RANGE" : "MAGAZINE"}</span><span class="skin-stat-val">${item.mag}</span></div>
+                <div class="skin-stat-box"><span class="skin-stat-lbl">TRAIT</span><span class="skin-stat-val">${item.rate}</span></div>
+              </div>
+              <div class="skin-desc">${item.desc}</div>
+            </div>
+            <div class="skin-list">
+              <div class="skin-list-head">SWITCH WEAPON SKIN (4 VARIANTS)</div>
+              ${skinCardsHtml}
+            </div>
+          </div>
+        `, { wide: true });
+
+        const heroCanvas = document.getElementById("skin-hero-canvas");
+        const stageBox = document.getElementById("skin-stage-box");
+        const stageBadge = document.getElementById("skin-stage-badge");
+        const heroPips = document.getElementById("skin-hero-pips");
+
+        drawPixelWeapon(heroCanvas, isMelee, id, activeSkin);
+        popupRoot.querySelectorAll("canvas[data-opt-skin]").forEach((c) => {
+          const sidx = parseInt(c.getAttribute("data-opt-skin"), 10);
+          drawPixelWeapon(c, isMelee, id, ARMORY_SKINS[sidx]);
+        });
+
+        document.getElementById("btn-back-arsenal").addEventListener("click", () => {
+          playSkinClickSfx(0);
+          openArmoryPopup();
+        });
+
+        popupRoot.querySelectorAll(".skin-option").forEach((optBtn) => {
+          optBtn.addEventListener("click", () => {
+            const newIdx = parseInt(optBtn.getAttribute("data-skin"), 10);
+            if (isMelee) savedMeleeSkins[id] = newIdx;
+            else savedWeaponSkins[id] = newIdx;
+            persistWebSkins();
+            syncWebSkinsToUnity();
+            playSkinClickSfx(newIdx + 1);
+
+            const sk = ARMORY_SKINS[newIdx];
+            drawPixelWeapon(heroCanvas, isMelee, id, sk);
+            stageBox.style.setProperty("--skin-glow", sk.glow);
+            stageBadge.textContent = sk.name;
+            heroPips.innerHTML = ARMORY_SKINS.map((s, idx) =>
+              `<span class="skin-pip ${idx === newIdx ? "active" : ""}" style="--pip-col:${s.glow}"></span>`
+            ).join("");
+
+            popupRoot.querySelectorAll(".skin-option").forEach((b) => {
+              const bIdx = parseInt(b.getAttribute("data-skin"), 10);
+              const isAct = bIdx === newIdx;
+              b.classList.toggle("active", isAct);
+              b.querySelector(".skin-option-status").textContent = isAct ? "◆ EQUIPPED (ACTIVE IN-GAME)" : "CLICK TO EQUIP SKIN";
+            });
+          });
         });
       }
 
@@ -1470,6 +2346,7 @@
         const diffLabel = diffNum <= 0.8 ? "EASY" : diffNum >= 1.3 ? "HARD" : "MEDIUM";
         startGodWarriorLoadingScreen(`${label} · ${diffLabel}`, () => {
           syncWebSettingsToUnity();
+          syncWebSkinsToUnity();
           if (unityInst) unityInst.SendMessage("GameManager", "LaunchFromWebHero", `${mode}|${diff}`);
         });
       }
@@ -1925,6 +2802,7 @@
         engineDot.classList.add("ready");
         engineStatusText.textContent = "ENGINE READY";
         syncWebSettingsToUnity();
+        syncWebSkinsToUnity();
         if (pendingShopOpen) {
           pendingShopOpen = false;
           closePopup();

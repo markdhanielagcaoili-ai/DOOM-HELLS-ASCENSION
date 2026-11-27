@@ -54,6 +54,20 @@ namespace DoomHellsAscension
         public int buyCost;
         public int level = 1;
         public int upgradeCost;
+        public int skinIndex = 0;
+    }
+
+    [Serializable]
+    public class WeaponSkinDef
+    {
+        public int id;
+        public string name;
+        public string shortTag;
+        public Color bodyColor;
+        public Color darkColor;
+        public Color trimColor;
+        public Color glowColor;
+        public Color tracerColor;
     }
 
     [Serializable]
@@ -70,6 +84,7 @@ namespace DoomHellsAscension
         public Color bladeColor;
         public bool owned;
         public int cost;
+        public int skinIndex = 0;
     }
 
     [Serializable]
@@ -115,6 +130,49 @@ namespace DoomHellsAscension
     public static class GameCatalog
     {
         public const int MaxCampaignLevel = 100;
+
+        public static List<WeaponSkinDef> CreateDefaultSkins()
+        {
+            return new List<WeaponSkinDef>
+            {
+                new WeaponSkinDef
+                {
+                    id = 0, name = "REAVER AMETHYST", shortTag = "REAVER",
+                    bodyColor = new Color(0.16f, 0.14f, 0.28f),
+                    darkColor = new Color(0.07f, 0.06f, 0.12f),
+                    trimColor = new Color(0.82f, 0.85f, 0.92f),
+                    glowColor = new Color(0.68f, 0.30f, 1.00f),
+                    tracerColor = new Color(0.76f, 0.42f, 1.00f)
+                },
+                new WeaponSkinDef
+                {
+                    id = 1, name = "ABYSSAL INFERNO", shortTag = "INFERNO",
+                    bodyColor = new Color(0.24f, 0.08f, 0.09f),
+                    darkColor = new Color(0.10f, 0.04f, 0.04f),
+                    trimColor = new Color(0.86f, 0.24f, 0.18f),
+                    glowColor = new Color(1.00f, 0.30f, 0.10f),
+                    tracerColor = new Color(1.00f, 0.38f, 0.14f)
+                },
+                new WeaponSkinDef
+                {
+                    id = 2, name = "PRIME SOVEREIGN", shortTag = "PRIME",
+                    bodyColor = new Color(0.86f, 0.84f, 0.78f),
+                    darkColor = new Color(0.18f, 0.17f, 0.20f),
+                    trimColor = new Color(0.96f, 0.74f, 0.22f),
+                    glowColor = new Color(1.00f, 0.82f, 0.24f),
+                    tracerColor = new Color(1.00f, 0.88f, 0.36f)
+                },
+                new WeaponSkinDef
+                {
+                    id = 3, name = "SPECTRAL CYAN", shortTag = "SPECTRAL",
+                    bodyColor = new Color(0.08f, 0.20f, 0.28f),
+                    darkColor = new Color(0.04f, 0.09f, 0.14f),
+                    trimColor = new Color(0.74f, 0.90f, 0.98f),
+                    glowColor = new Color(0.18f, 0.86f, 1.00f),
+                    tracerColor = new Color(0.32f, 0.92f, 1.00f)
+                }
+            };
+        }
 
         public static List<WeaponDef> CreateDefaultWeapons()
         {

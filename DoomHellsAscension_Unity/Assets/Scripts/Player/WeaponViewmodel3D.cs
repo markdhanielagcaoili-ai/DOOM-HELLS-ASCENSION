@@ -76,6 +76,7 @@ namespace DoomHellsAscension
         private readonly Vector3 vandalMagBasePos = new Vector3(0f, -0.092f, 0.088f);
 
         private int activeWeaponId = 0;
+        private Color activeVandalGlowColor = new Color(0.68f, 0.30f, 1.00f);
 
         // Damped spring recoil physics for authentic snappy VALORANT Vandal kick & spray feel
         private float recoilPosZ;
@@ -335,6 +336,10 @@ namespace DoomHellsAscension
             );
 
             SetActiveWeaponModel(activeWeaponId);
+            if (Application.isPlaying && FPSPlayerController.Instance != null)
+            {
+                FPSPlayerController.Instance.ApplyAllEquippedSkinsToViewmodel();
+            }
         }
 
         private void BuildArticulatedMeleeSystem(
@@ -1514,6 +1519,125 @@ namespace DoomHellsAscension
             }
         }
 
+        public void ApplyWeaponSkin(int weaponId, WeaponSkinDef skin)
+        {
+            if (skin == null || weaponModels == null || weaponId < 0 || weaponId >= weaponModels.Length) return;
+            GameObject model = weaponModels[weaponId];
+            if (model == null) return;
+
+            foreach (Renderer r in model.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is ParticleSystemRenderer) continue;
+                Material m = r.material;
+                if (m == null) continue;
+                string n = r.gameObject.name.ToLowerInvariant();
+
+                bool isEmissive = m.IsKeywordEnabled("_EMISSION") || n.Contains("glow") || n.Contains("rune")
+                    || n.Contains("core") || n.Contains("reticle") || n.Contains("dot")
+                    || n.Contains("vent") || n.Contains("supp") || n.Contains("crest");
+                if (isEmissive)
+                {
+                    if (m.HasProperty("_Color")) m.color = skin.glowColor;
+                    if (m.HasProperty("_EmissionColor"))
+                    {
+                        m.EnableKeyword("_EMISSION");
+                        m.SetColor("_EmissionColor", skin.glowColor * 2.6f);
+                    }
+                    continue;
+                }
+
+                bool isTrim = n.Contains("silver") || n.Contains("filigree") || n.Contains("barrel")
+                    || n.Contains("bolt") || n.Contains("crown") || n.Contains("fin") || n.Contains("spike")
+                    || n.Contains("rail") || n.Contains("thorn") || n.Contains("mount") || n.Contains("objective");
+                bool isDark = n.Contains("grip") || n.Contains("mag") || n.Contains("polymer")
+                    || n.Contains("drum") || n.Contains("box") || n.Contains("stock") || n.Contains("scope");
+
+                if (isTrim)
+                {
+                    m.color = skin.trimColor;
+                }
+                else if (isDark)
+                {
+                    m.color = skin.darkColor;
+                }
+                else
+                {
+                    m.color = skin.bodyColor;
+                }
+            }
+
+            // Update Reaver Vandal dynamic rune / core / muzzle flash materials when Vandal skin changes
+            if (weaponId == 0)
+            {
+                activeVandalGlowColor = skin.glowColor;
+                if (reaverRuneMat != null && reaverRuneMat.HasProperty("_EmissionColor"))
+                    reaverRuneMat.SetColor("_EmissionColor", skin.glowColor * 2.2f);
+                if (reaverCoreGlowMat != null)
+                {
+                    reaverCoreGlowMat.color = skin.glowColor;
+                    if (reaverCoreGlowMat.HasProperty("_EmissionColor"))
+                        reaverCoreGlowMat.SetColor("_EmissionColor", skin.glowColor * 2.8f);
+                }
+                if (reaverSightDotMat != null)
+                {
+                    reaverSightDotMat.color = skin.glowColor;
+                    if (reaverSightDotMat.HasProperty("_EmissionColor"))
+                        reaverSightDotMat.SetColor("_EmissionColor", skin.glowColor * 3.6f);
+                }
+                if (reaverMuzzleFlashMat != null && reaverMuzzleFlashMat.HasProperty("_Color"))
+                    reaverMuzzleFlashMat.color = new Color(skin.glowColor.r, skin.glowColor.g, skin.glowColor.b, 0.95f);
+            }
+        }
+
+        public void ApplyMeleeSkin(int meleeId, WeaponSkinDef skin)
+        {
+            if (skin == null || meleeModels == null || meleeId < 0 || meleeId >= meleeModels.Length) return;
+            GameObject model = meleeModels[meleeId];
+            if (model == null) return;
+
+            foreach (Renderer r in model.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is ParticleSystemRenderer) continue;
+                Material m = r.material;
+                if (m == null) continue;
+                string n = r.gameObject.name.ToLowerInvariant();
+
+                bool isEmissive = m.IsKeywordEnabled("_EMISSION") || n.Contains("glow") || n.Contains("rune")
+                    || n.Contains("edge") || n.Contains("core") || n.Contains("ember") || n.Contains("energy");
+                if (isEmissive)
+                {
+                    if (m.HasProperty("_Color")) m.color = skin.glowColor;
+                    if (m.HasProperty("_EmissionColor"))
+                    {
+                        m.EnableKeyword("_EMISSION");
+                        m.SetColor("_EmissionColor", skin.glowColor * 2.6f);
+                    }
+                    continue;
+                }
+
+                bool isBladeTrim = n.Contains("blade") || n.Contains("ring") || n.Contains("guard")
+                    || n.Contains("teeth") || n.Contains("head") || n.Contains("spike") || n.Contains("steel");
+                m.color = isBladeTrim ? skin.trimColor : skin.bodyColor;
+            }
+
+            if (meleeId == 0 && karambitRuneMat != null && karambitRuneMat.HasProperty("_EmissionColor"))
+            {
+                karambitRuneMat.color = skin.glowColor;
+                karambitRuneMat.SetColor("_EmissionColor", skin.glowColor * 2.6f);
+            }
+            if (meleeId == activeMeleeId)
+            {
+                if (meleeBladeMat != null)
+                {
+                    meleeBladeMat.color = skin.glowColor;
+                    if (meleeBladeMat.HasProperty("_EmissionColor"))
+                        meleeBladeMat.SetColor("_EmissionColor", skin.glowColor * 2.2f);
+                }
+                if (meleeSlashArcMat != null)
+                    meleeSlashArcMat.color = new Color(skin.glowColor.r, skin.glowColor.g, skin.glowColor.b, 0f);
+            }
+        }
+
         public void TriggerInspect()
         {
             if (isMeleeEquipped)
@@ -1621,11 +1745,20 @@ namespace DoomHellsAscension
             Vector3 startPos = GetMuzzleWorldPosition();
             if (activeWeaponId == 0)
             {
-                // Dual-layer Reaver Vandal spectral violet-black tracer!
+                // Dual-layer Reaver Vandal spectral tracer dynamically tinted by active weapon skin!
+                Color coreTint = Color.Lerp(tracerColor, Color.white, 0.35f);
+                Color auraTint = tracerColor * 0.55f;
                 if (cachedSpectralTracerCoreMat == null)
-                    cachedSpectralTracerCoreMat = CitadelWorldBuilder.MakeEmissiveMat(new Color(0.88f, 0.64f, 1.0f), 4.0f);
+                    cachedSpectralTracerCoreMat = CitadelWorldBuilder.MakeEmissiveMat(coreTint, 4.0f);
                 if (cachedSpectralTracerAuraMat == null)
-                    cachedSpectralTracerAuraMat = CitadelWorldBuilder.MakeEmissiveMat(new Color(0.32f, 0.06f, 0.62f), 2.4f);
+                    cachedSpectralTracerAuraMat = CitadelWorldBuilder.MakeEmissiveMat(auraTint, 2.4f);
+
+                cachedSpectralTracerCoreMat.color = coreTint;
+                if (cachedSpectralTracerCoreMat.HasProperty("_EmissionColor"))
+                    cachedSpectralTracerCoreMat.SetColor("_EmissionColor", coreTint * 4.0f);
+                cachedSpectralTracerAuraMat.color = auraTint;
+                if (cachedSpectralTracerAuraMat.HasProperty("_EmissionColor"))
+                    cachedSpectralTracerAuraMat.SetColor("_EmissionColor", auraTint * 2.4f);
 
                 GameObject coreGo = new GameObject("ReaverTracerCore");
                 LineRenderer coreLr = coreGo.AddComponent<LineRenderer>();
@@ -1713,7 +1846,8 @@ namespace DoomHellsAscension
                         reaverMuzzleFlash.gameObject.SetActive(true);
                         if (reaverMuzzleFlashMat != null)
                         {
-                            reaverMuzzleFlashMat.color = new Color(1f, 0.92f, 1f, Mathf.Clamp01(tNorm * 1.45f));
+                            Color mf = Color.Lerp(activeVandalGlowColor, Color.white, 0.45f);
+                            reaverMuzzleFlashMat.color = new Color(mf.r, mf.g, mf.b, Mathf.Clamp01(tNorm * 1.45f));
                         }
                     }
                 }
@@ -1751,17 +1885,17 @@ namespace DoomHellsAscension
                 recoilRoll = Mathf.Lerp(recoilRoll, 0f, dt * 15f);
             }
 
-            // 3. LIVE PULSING REAVER VIOLET RUNES (Breathing aura + gunshot/reload surge!)
+            // 3. LIVE PULSING REAVER RUNES (Breathing aura + gunshot/reload surge in active skin color!)
             if (activeWeaponId == 0)
             {
                 reaverRuneFlare = Mathf.Lerp(reaverRuneFlare, 0f, dt * 7.5f);
                 float breath = 1.65f + 0.35f * Mathf.Sin(Time.time * 3.2f) + reaverRuneFlare * 2.4f;
                 if (reaverRuneMat != null && reaverRuneMat.HasProperty("_EmissionColor"))
-                    reaverRuneMat.SetColor("_EmissionColor", new Color(0.62f, 0.26f, 1.0f) * breath);
+                    reaverRuneMat.SetColor("_EmissionColor", activeVandalGlowColor * breath);
                 if (reaverCoreGlowMat != null && reaverCoreGlowMat.HasProperty("_EmissionColor"))
-                    reaverCoreGlowMat.SetColor("_EmissionColor", new Color(0.58f, 0.20f, 1.0f) * (breath * 1.15f));
+                    reaverCoreGlowMat.SetColor("_EmissionColor", activeVandalGlowColor * (breath * 1.15f));
                 if (reaverSightDotMat != null && reaverSightDotMat.HasProperty("_EmissionColor"))
-                    reaverSightDotMat.SetColor("_EmissionColor", new Color(0.84f, 0.54f, 1.0f) * (isADS ? 4.4f : 2.8f));
+                    reaverSightDotMat.SetColor("_EmissionColor", Color.Lerp(activeVandalGlowColor, Color.white, 0.35f) * (isADS ? 4.4f : 2.8f));
             }
 
             if (equipTimer > 0f) equipTimer = Mathf.Max(0f, equipTimer - dt);

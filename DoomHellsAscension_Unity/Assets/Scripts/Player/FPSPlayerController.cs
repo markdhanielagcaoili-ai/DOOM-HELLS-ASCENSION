@@ -31,6 +31,7 @@ namespace DoomHellsAscension
 
         public List<WeaponDef> weapons;
         public List<MeleeDef> melees;
+        public List<WeaponSkinDef> skins;
         public int[] mags;
         public int weaponIndex = 0;
         public int meleeIndex = 0;
@@ -77,7 +78,74 @@ namespace DoomHellsAscension
             controller = GetComponent<CharacterController>();
             weapons = GameCatalog.CreateDefaultWeapons();
             melees = GameCatalog.CreateDefaultMelees();
+            skins = GameCatalog.CreateDefaultSkins();
+            LoadSavedSkins();
             ResetLoadoutMags();
+        }
+
+        private void Start()
+        {
+            ApplyAllEquippedSkinsToViewmodel();
+        }
+
+        private void LoadSavedSkins()
+        {
+            for (int i = 0; i < weapons.Count; i++)
+            {
+                int saved = Mathf.Clamp(PlayerPrefs.GetInt($"DoomWeaponSkin_{i}", 0), 0, skins.Count - 1);
+                weapons[i].skinIndex = saved;
+                if (saved > 0)
+                {
+                    weapons[i].accentColor = skins[saved].glowColor;
+                    weapons[i].tracerColor = skins[saved].tracerColor;
+                }
+            }
+            for (int i = 0; i < melees.Count; i++)
+            {
+                int saved = Mathf.Clamp(PlayerPrefs.GetInt($"DoomMeleeSkin_{i}", 0), 0, skins.Count - 1);
+                melees[i].skinIndex = saved;
+                if (saved > 0) melees[i].bladeColor = skins[saved].glowColor;
+            }
+        }
+
+        public void ApplyAllEquippedSkinsToViewmodel()
+        {
+            if (viewmodel == null || skins == null || skins.Count == 0) return;
+            for (int i = 0; i < weapons.Count; i++)
+            {
+                int s = Mathf.Clamp(weapons[i].skinIndex, 0, skins.Count - 1);
+                if (s > 0) viewmodel.ApplyWeaponSkin(i, skins[s]);
+            }
+            for (int i = 0; i < melees.Count; i++)
+            {
+                int s = Mathf.Clamp(melees[i].skinIndex, 0, skins.Count - 1);
+                if (s > 0) viewmodel.ApplyMeleeSkin(i, skins[s]);
+            }
+        }
+
+        public void SetWeaponSkin(int weaponId, int skinIdx)
+        {
+            if (weaponId < 0 || weaponId >= weapons.Count || skins == null || skins.Count == 0) return;
+            int clamped = Mathf.Clamp(skinIdx, 0, skins.Count - 1);
+            weapons[weaponId].skinIndex = clamped;
+            WeaponSkinDef sk = skins[clamped];
+            weapons[weaponId].accentColor = sk.glowColor;
+            weapons[weaponId].tracerColor = sk.tracerColor;
+            PlayerPrefs.SetInt($"DoomWeaponSkin_{weaponId}", clamped);
+            PlayerPrefs.Save();
+            if (viewmodel != null) viewmodel.ApplyWeaponSkin(weaponId, sk);
+        }
+
+        public void SetMeleeSkin(int meleeId, int skinIdx)
+        {
+            if (meleeId < 0 || meleeId >= melees.Count || skins == null || skins.Count == 0) return;
+            int clamped = Mathf.Clamp(skinIdx, 0, skins.Count - 1);
+            melees[meleeId].skinIndex = clamped;
+            WeaponSkinDef sk = skins[clamped];
+            melees[meleeId].bladeColor = sk.glowColor;
+            PlayerPrefs.SetInt($"DoomMeleeSkin_{meleeId}", clamped);
+            PlayerPrefs.Save();
+            if (viewmodel != null) viewmodel.ApplyMeleeSkin(meleeId, sk);
         }
 
         public void ResetLoadoutMags()
